@@ -1,1 +1,8 @@
-
+__pycache__/
+*.pyc
+.venv/
+.env
+tokens.json
+output/
+.idea/
+.vscode/
