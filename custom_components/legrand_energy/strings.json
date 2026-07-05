@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Legrand Energy",
+        "description": "Enter your Legrand / Netatmo Home + Control credentials.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client Secret",
+          "subscription_key": "Subscription Key"
+        }
+      }
+    },
+    "error": {
+      "auth": "Authentication failed",
+      "cannot_connect": "Cannot connect to API"
+    },
+    "abort": {
+      "already_configured": "Already configured"
+    }
+  }
+}
