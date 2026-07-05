@@ -1,8 +1,19 @@
 {
   "domain": "legrand_energy",
   "name": "Legrand Energy",
-  "version": "0.1.0",
+  "codeowners": [
+    "@minimicro34"
+  ],
   "config_flow": true,
-  "requirements": [],
-  "dependencies": []
+  "documentation": "https://github.com/minimicro34/ha-legrand-energy",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/minimicro34/ha-legrand-energy/issues",
+  "loggers": [
+    "custom_components.legrand_energy"
+  ],
+  "requirements": [
+    "httpx>=0.28.0"
+  ],
+  "version": "2.0.0-dev1"
 }
