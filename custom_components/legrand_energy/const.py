@@ -13,6 +13,9 @@ MANUFACTURER = "Legrand"
 API_BASE = "https://api.netatmo.com"
 API_ENDPOINT = f"{API_BASE}/api"
 
+AUTHORIZE_URL = "https://api.netatmo.com/oauth2/authorize"
+TOKEN_URL = "https://api.netatmo.com/oauth2/token"
+
 OAUTH_AUTHORIZE_URL = f"{API_BASE}/oauth2/authorize"
 OAUTH_TOKEN_URL = f"{API_BASE}/oauth2/token"
 
