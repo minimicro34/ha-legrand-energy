@@ -1,25 +1,32 @@
-"""Config flow for Legrand Energy integration."""
-
 from __future__ import annotations
 
+import voluptuous as vol
+
 from homeassistant import config_entries
-from homeassistant.helpers import config_entry_oauth2_flow
 
 from .const import DOMAIN
 
 
-class LegrandEnergyConfigFlow(
-    config_entry_oauth2_flow.AbstractOAuth2FlowHandler,
-    domain=DOMAIN,
-):
-    """Handle OAuth2 config flow."""
+class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Simple config flow."""
 
-    DOMAIN = DOMAIN
+    VERSION = 1
 
-    async def async_oauth_create_entry(self, data: dict) -> config_entries.ConfigEntry:
-        """Create entry after OAuth."""
+    async def async_step_user(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(
+                title="Legrand Energy",
+                data=user_input,
+            )
 
-        return self.async_create_entry(
-            title="Legrand Energy",
-            data=data,
+        schema = vol.Schema(
+            {
+                vol.Required("subscription_key"): str,
+                vol.Required("access_token"): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
         )
