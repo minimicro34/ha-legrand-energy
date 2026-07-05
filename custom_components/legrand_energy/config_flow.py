@@ -3,27 +3,21 @@
 from __future__ import annotations
 
 from homeassistant import config_entries
-from homeassistant.components.application_credentials import AUTH_CALLBACK_PATH
-from homeassistant.helpers.config_entry_oauth2_flow import (
-    AbstractOAuth2FlowHandler,
-)
+from homeassistant.helpers import config_entry_oauth2_flow
 
 from .const import DOMAIN
 
 
-class LegrandEnergyConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
-    """Handle OAuth2 config flow for Legrand Energy."""
+class LegrandEnergyConfigFlow(
+    config_entry_oauth2_flow.AbstractOAuth2FlowHandler,
+    domain=DOMAIN,
+):
+    """Handle OAuth2 config flow."""
 
     DOMAIN = DOMAIN
 
-    @property
-    def logger(self):
-        """Return logger."""
-        import logging
-        return logging.getLogger(__name__)
-
     async def async_oauth_create_entry(self, data):
-        """Create config entry after successful OAuth."""
+        """Create entry after OAuth login."""
         return self.async_create_entry(
             title="Legrand Energy",
             data=data,
