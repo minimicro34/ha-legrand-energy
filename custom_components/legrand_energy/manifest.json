@@ -3,8 +3,6 @@
   "name": "Legrand Energy",
   "version": "0.1.0",
   "config_flow": true,
-  "dependencies": [
-    "application_credentials"
-  ],
-  "requirements": []
+  "requirements": [],
+  "dependencies": []
 }
