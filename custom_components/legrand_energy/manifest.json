@@ -1,7 +1,7 @@
 {
   "domain": "legrand_energy",
   "name": "Legrand Energy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "documentation": "https://github.com/minimicro34/ha-legrand-energy",
   "issue_tracker": "https://github.com/minimicro34/ha-legrand-energy/issues",
   "requirements": [
