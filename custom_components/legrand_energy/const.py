@@ -3,41 +3,32 @@
 from __future__ import annotations
 
 DOMAIN = "legrand_energy"
-NAME = "Legrand Energy"
 
-VERSION = "0.1.0"
+NAME = "Legrand Energy"
 
 MANUFACTURER = "Legrand"
 
-# API Netatmo / Home + Control
-API_BASE = "https://api.netatmo.com"
-API_ENDPOINT = f"{API_BASE}/api"
+DEFAULT_SCAN_INTERVAL = 60
+DEFAULT_TIMEOUT = 30
 
-AUTHORIZE_URL = "https://api.netatmo.com/oauth2/authorize"
-TOKEN_URL = "https://api.netatmo.com/oauth2/token"
+CONF_CLIENT_ID = "client_id"
+CONF_CLIENT_SECRET = "client_secret"
+CONF_SUBSCRIPTION_KEY = "subscription_key"
 
-OAUTH_AUTHORIZE_URL = f"{API_BASE}/oauth2/authorize"
-OAUTH_TOKEN_URL = f"{API_BASE}/oauth2/token"
+API_BASE_URL = "https://api.netatmo.com"
 
-# Home + Control endpoints
+AUTHORIZE_URL = f"{API_BASE_URL}/oauth2/authorize"
+TOKEN_URL = f"{API_BASE_URL}/oauth2/token"
+
+HOME_API_BASE = "https://api.netatmo.com/api"
+
 ENDPOINT_HOMESDATA = "/homesdata"
-ENDPOINT_HOMETOPOLOGY = "/hometopology"
 ENDPOINT_HOMESTATUS = "/homestatus"
+ENDPOINT_HOMETOPOLOGY = "/hometopology"
+ENDPOINT_ENERGY = "/energy"
 
-# Energy scopes
 SCOPES = [
     "topology.read",
     "meter.read",
     "network.read",
 ]
-
-# Configuration keys
-CONF_CLIENT_ID = "client_id"
-CONF_CLIENT_SECRET = "client_secret"
-CONF_SUBSCRIPTION_KEY = "subscription_key"
-
-# Default values
-DEFAULT_TIMEOUT = 30
-
-# Data refresh interval (seconds)
-DEFAULT_SCAN_INTERVAL = 60
