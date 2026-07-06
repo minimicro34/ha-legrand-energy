@@ -120,7 +120,16 @@ class LegrandEnergyApi:
 
         bridge_id: str | None = None
 
-            for module in discovered["modules"]:
+        for module in discovered["modules"]:
+            if module["is_bridge"]:
+                bridge_id = module["id"]
+                break
+
+        if bridge_id is None:
+            _LOGGER.warning("No NLE bridge found")
+            return results
+
+        for module in discovered["modules"]:
             if module["is_bridge"]:
                 continue
 
@@ -144,25 +153,6 @@ class LegrandEnergyApi:
             }
 
         return results
-
-    async def _get(
-        self,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        url = f"{API_BASE}/{endpoint}"
-
-        async with self._session.get(
-            url,
-            headers=self.headers,
-            params=params,
-        ) as response:
-            data = await response.json(content_type=None)
-
-            if response.status >= 400 or data.get("status") == "error":
-                raise LegrandEnergyApiError(data)
-
-            return data
 
     async def _post(
         self,
