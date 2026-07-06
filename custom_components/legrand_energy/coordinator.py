@@ -1,59 +1,44 @@
-"""DataUpdateCoordinator for Legrand Energy."""
+"""Data coordinator for Legrand Energy."""
 
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
-from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
-from .api import LegrandAPI, LegrandAPIError
+from .api import LegrandEnergyApi, LegrandEnergyApiError
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class LegrandEnergyCoordinator(DataUpdateCoordinator):
-    """Coordinator to fetch Legrand Energy data."""
+    """Coordinator for Legrand Energy data."""
 
     def __init__(
         self,
         hass: HomeAssistant,
-        api: LegrandAPI,
-        home_id: str,
+        entry: ConfigEntry,
     ) -> None:
-        """Initialize coordinator."""
+        self.entry = entry
+
+        access_token = entry.data["token"]["access_token"]
+        session = async_get_clientsession(hass)
+        self.api = LegrandEnergyApi(session, access_token)
 
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{DOMAIN}_{home_id}",
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            name=DOMAIN,
+            update_interval=DEFAULT_SCAN_INTERVAL,
         )
 
-        self.api = api
-        self.home_id = home_id
-
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self):
         """Fetch data from API."""
-
         try:
-            _LOGGER.debug("Fetching Legrand Energy data for home %s", self.home_id)
-
-            homesdata = await self.api.async_get_homesdata()
-            topology = await self.api.async_get_hometopology(self.home_id)
-            status = await self.api.async_get_homestatus(self.home_id)
-            energy = await self.api.async_get_energy(self.home_id)
-
-            return {
-                "homesdata": homesdata,
-                "topology": topology,
-                "status": status,
-                "energy": energy,
-            }
-
-        except LegrandAPIError as err:
-            _LOGGER.error("Error updating Legrand Energy data: %s", err)
-            raise UpdateFailed(str(err)) from err
+            return await self.api.async_get_all_measurements()
+        except LegrandEnergyApiError as err:
+            raise UpdateFailed(f"Error communicating with Legrand Energy API: {err}") from err

@@ -1,25 +1,21 @@
-"""Sensors for Legrand Energy integration."""
+"""Sensors for Legrand Energy."""
 
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity
+from typing import Any
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
-from .coordinator import LegrandEnergyCoordinator
-
-
-SENSOR_TYPES = {
-    "power": "Power",
-    "energy": "Energy",
-    "hp": "HP",
-    "hc": "HC",
-    "voltage": "Voltage",
-    "current": "Current",
-}
+from .const import DOMAIN, MANUFACTURER
 
 
 async def async_setup_entry(
@@ -27,64 +23,74 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up sensors."""
+    """Set up Legrand Energy sensors."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator: LegrandEnergyCoordinator = data["coordinator"]
+    modules = coordinator.data.get("modules", {})
 
-    entities = []
-
-    for sensor_type in SENSOR_TYPES:
-        entities.append(LegrandEnergySensor(coordinator, sensor_type))
+    entities = [
+        LegrandEnergySensor(coordinator, module_id, module)
+        for module_id, module in modules.items()
+    ]
 
     async_add_entities(entities)
 
 
 class LegrandEnergySensor(CoordinatorEntity, SensorEntity):
-    """Representation of a Legrand Energy sensor."""
+    """Legrand Energy sensor."""
 
-    def __init__(self, coordinator: LegrandEnergyCoordinator, sensor_type: str) -> None:
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+
+    def __init__(
+        self,
+        coordinator,
+        module_id: str,
+        module: dict[str, Any],
+    ) -> None:
+        """Initialize sensor."""
         super().__init__(coordinator)
-        self.sensor_type = sensor_type
 
-        self._attr_name = f"Legrand Energy {SENSOR_TYPES[sensor_type]}"
-        self._attr_unique_id = f"legrand_energy_{sensor_type}"
+        self._module_id = module_id
+        self._module = module
+
+        name = module.get("name", module_id)
+
+        self._attr_name = f"Legrand Energy {name}"
+        self._attr_unique_id = f"{DOMAIN}_{module_id}_energy".replace(":", "_").replace("#", "_")
+
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, module.get("bridge") or module_id)},
+            "name": "Legrand Ecometer",
+            "manufacturer": MANUFACTURER,
+            "model": "Drivia with Netatmo / Ecometer",
+        }
 
     @property
     def native_value(self):
         """Return sensor value."""
+        module = self.coordinator.data.get("modules", {}).get(self._module_id)
 
-        data = self.coordinator.data
-
-        if not data:
+        if module is None:
             return None
 
-        # ⚠️ Structure dépendante de l'API réelle
-        energy = data.get("energy", {})
-        status = data.get("status", {})
+        value = module.get("energy")
 
-        # Placeholder logique (sera ajustée avec tes JSON réels)
-        if self.sensor_type == "power":
-            return status.get("power")
+        if value is None:
+            return None
 
-        if self.sensor_type == "energy":
-            return energy.get("total_energy")
-
-        if self.sensor_type == "hp":
-            return energy.get("hp")
-
-        if self.sensor_type == "hc":
-            return energy.get("hc")
-
-        if self.sensor_type == "voltage":
-            return status.get("voltage")
-
-        if self.sensor_type == "current":
-            return status.get("current")
-
-        return None
+        return value
 
     @property
-    def available(self) -> bool:
-        """Sensor availability."""
-        return self.coordinator.data is not None
+    def extra_state_attributes(self):
+        """Return extra attributes."""
+        module = self.coordinator.data.get("modules", {}).get(self._module_id, {})
+
+        return {
+            "module_id": self._module_id,
+            "home_id": module.get("home_id"),
+            "home_name": module.get("home_name"),
+            "bridge": module.get("bridge"),
+            "measure_type": "sum_energy_buy_from_grid",
+        }
