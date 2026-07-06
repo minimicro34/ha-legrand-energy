@@ -154,11 +154,22 @@ class LegrandEnergyApi:
 
         return results
 
-    async def _post(
-        self,
-        endpoint: str,
-        data: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    async def _get(self, endpoint, params=None):
+        url = f"{API_BASE}/{endpoint}"
+
+        async with self._session.get(
+            url,
+            headers=self.headers,
+            params=params,
+        ) as response:
+            data = await response.json(content_type=None)
+
+            if response.status >= 400 or data.get("status") == "error":
+                raise LegrandEnergyApiError(data)
+
+            return data
+
+    async def _post(self, endpoint, data=None):
         url = f"{API_BASE}/{endpoint}"
 
         async with self._session.post(
@@ -172,15 +183,3 @@ class LegrandEnergyApi:
                 raise LegrandEnergyApiError(result)
 
             return result
-        data = await self._get("getmeasure", params=params)
-        _LOGGER.warning("GETMEASURE %s %s = %s", module_id, measure_type, data)
-
-        body = data.get("body", [])
-
-        if not body:
-            return None
-
-        try:
-            return body[-1]["value"][-1][0]
-        except (KeyError, IndexError, TypeError):
-            return None
