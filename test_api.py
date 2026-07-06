@@ -3,21 +3,18 @@ import json
 import time
 
 ACCESS_TOKEN = "638b79cafe533bf059048bad|3b36bb07e94516e8ccc1f1f72075c51b"
+HOME_ID = "69bd82c510bf0111d6055748"
 
-headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+url = "https://app.netatmo.net/syncapi/v1/homestatus"
 
 params = {
-    "device_id": "00:04:74:12:24:d4",
-    "module_id": "00:04:74:12:24:d4",
-    "scale": "1day",
-    "type": "sum_energy_buy_from_grid",
-    "date_end": "last",
-    "limit": 10,
+    "home_id": HOME_ID,
+    "device_types": '["NLE"]',
 }
 
 r = requests.get(
-    "https://api.netatmo.com/api/getmeasure",
-    headers=headers,
+    url,
+    headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
     params=params,
 )
 

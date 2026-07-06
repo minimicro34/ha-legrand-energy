@@ -89,8 +89,8 @@ class LegrandEnergyApi:
                     "home": json.dumps(home_payload, separators=(",", ":")),
                     "real_time": "true",
                     "scale": "5min",
-                    "date_begin": now - 24 * 3600,
-                    "date_end": now,
+                    "date_begin": 1783288800,
+                    "date_end": 1783375199,
                 },
             )
 
