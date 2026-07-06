@@ -12,8 +12,6 @@
   "loggers": [
     "custom_components.legrand_energy"
   ],
-  "requirements": [
-    "httpx>=0.28.0"
-  ],
-  "version": "2.0.0-dev1"
+  "requirements": [],
+  "version": "0.1.0"
 }

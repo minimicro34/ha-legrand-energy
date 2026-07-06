@@ -1,99 +1,190 @@
-"""Legrand / Netatmo API client for Home + Control."""
+"""API client for Legrand Energy / Netatmo Energy."""
 
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-import httpx
-from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
+import aiohttp
 
-from .const import (
-    API_ENDPOINT,
-    DEFAULT_TIMEOUT,
-    ENDPOINT_HOMESDATA,
-    ENDPOINT_HOMESTATUS,
-    ENDPOINT_HOMETOPOLOGY,
-)
+from .const import API_BASE
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class LegrandAPIError(Exception):
-    """Generic API error."""
+class LegrandEnergyApiError(Exception):
+    """Raised when the Legrand Energy API returns an error."""
 
 
-class LegrandAPI:
-    """Async API client using Home Assistant OAuth2 session."""
+class LegrandEnergyApi:
+    """Small async client for Netatmo Energy API."""
 
-    def __init__(
-        self,
-        session: OAuth2Session,
-        subscription_key: str,
-        timeout: int = DEFAULT_TIMEOUT,
-    ) -> None:
+    def __init__(self, session: aiohttp.ClientSession, access_token: str) -> None:
         self._session = session
-        self._subscription_key = subscription_key
-        self._timeout = timeout
+        self._access_token = access_token
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._access_token}"}
+
+    async def homesdata(self) -> dict[str, Any]:
+        """Return homes data."""
+        return await self._post("homesdata")
+
+    async def homestatus(self, home_id: str) -> dict[str, Any]:
+        """Return home status."""
+        return await self._post("homestatus", data={"home_id": home_id})
+
+    async def getmeasure(
+        self,
+        device_id: str,
+        module_id: str,
+        measure_type: str = "sum_energy_buy_from_grid",
+        scale: str = "1day",
+        date_end: str = "last",
+        limit: int = 1,
+    ) -> Any:
+        """Return a measurement for a module."""
+        params = {
+            "device_id": device_id,
+            "module_id": module_id,
+            "scale": scale,
+            "type": measure_type,
+            "date_end": date_end,
+            "limit": limit,
+        }
+
+        data = await self._get("getmeasure", params=params)
+        body = data.get("body", [])
+
+        if not body:
+            return None
+
+        try:
+            return body[-1]["value"][-1][0]
+        except (KeyError, IndexError, TypeError):
+            return None
+
+    async def discover_nle_modules(self) -> dict[str, Any]:
+        """Discover NLE / Drivia modules."""
+        data = await self.homesdata()
+        homes = data.get("body", {}).get("homes", [])
+
+        discovered: dict[str, Any] = {
+            "homes": [],
+            "modules": [],
+        }
+
+        for home in homes:
+            home_id = home.get("id")
+            home_name = home.get("name")
+            modules = home.get("modules", [])
+
+            for module in modules:
+                if module.get("type") != "NLE":
+                    continue
+
+                module_id = module.get("id")
+                bridge = module.get("bridge")
+                name = module.get("name", module_id)
+
+                discovered["modules"].append(
+                    {
+                        "home_id": home_id,
+                        "home_name": home_name,
+                        "id": module_id,
+                        "name": name,
+                        "type": module.get("type"),
+                        "bridge": bridge,
+                        "is_bridge": bridge is None,
+                    }
+                )
+
+            discovered["homes"].append(
+                {
+                    "id": home_id,
+                    "name": home_name,
+                }
+            )
+
+        return discovered
+
+    async def async_get_all_measurements(self) -> dict[str, Any]:
+        """Return measurements for all discovered NLE child modules."""
+        discovered = await self.discover_nle_modules()
+
+        results: dict[str, Any] = {
+            "homes": discovered["homes"],
+            "modules": {},
+        }
+
+        bridge_id: str | None = None
+
+        for module in discovered["modules"]:
+            if module["is_bridge"]:
+                bridge_id = module["id"]
+                break
+
+        if bridge_id is None:
+            _LOGGER.warning("No NLE bridge found")
+            return results
+
+        for module in discovered["modules"]:
+            if module["is_bridge"]:
+                continue
+
+            module_id = module["id"]
+
+            value = await self.getmeasure(
+                device_id=bridge_id,
+                module_id=module_id,
+                measure_type="sum_energy_buy_from_grid",
+                scale="1day",
+                date_end="last",
+                limit=1,
+            )
+
+            results["modules"][module_id] = {
+                **module,
+                "energy": value,
+            }
+
+        return results
 
     async def _get(
         self,
-        path: str,
+        endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Generic GET request with OAuth2 token."""
+        url = f"{API_BASE}/{endpoint}"
 
-        token = await self._session.async_get_access_token()
+        async with self._session.get(
+            url,
+            headers=self.headers,
+            params=params,
+        ) as response:
+            data = await response.json(content_type=None)
 
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "User-Agent": "ha-legrand-energy",
-            "Ocp-Apim-Subscription-Key": self._subscription_key,
-        }
+            if response.status >= 400 or data.get("status") == "error":
+                raise LegrandEnergyApiError(data)
 
-        async with httpx.AsyncClient(
-            base_url=API_ENDPOINT,
-            timeout=self._timeout,
-        ) as client:
-            try:
-                response = await client.get(
-                    path,
-                    params=params,
-                    headers=headers,
-                )
-                response.raise_for_status()
-                return response.json()
+            return data
 
-            except httpx.HTTPStatusError as err:
-                _LOGGER.error(
-                    "HTTP error calling %s: %s - %s",
-                    path,
-                    err.response.status_code,
-                    err.response.text,
-                )
-                raise LegrandAPIError(str(err)) from err
+    async def _post(
+        self,
+        endpoint: str,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        url = f"{API_BASE}/{endpoint}"
 
-            except httpx.RequestError as err:
-                _LOGGER.error("Request error calling %s: %s", path, err)
-                raise LegrandAPIError(str(err)) from err
+        async with self._session.post(
+            url,
+            headers=self.headers,
+            data=data,
+        ) as response:
+            result = await response.json(content_type=None)
 
-    # -------------------------
-    # Home + Control endpoints
-    # -------------------------
+            if response.status >= 400 or result.get("status") == "error":
+                raise LegrandEnergyApiError(result)
 
-    async def async_get_homesdata(self) -> dict[str, Any]:
-        """Get list of homes."""
-        return await self._get(ENDPOINT_HOMESDATA)
-
-    async def async_get_hometopology(self, home_id: str) -> dict[str, Any]:
-        """Get home topology (devices structure)."""
-        return await self._get(ENDPOINT_HOMETOPOLOGY, {"home_id": home_id})
-
-    async def async_get_homestatus(self, home_id: str) -> dict[str, Any]:
-        """Get live home status."""
-        return await self._get(ENDPOINT_HOMESTATUS, {"home_id": home_id})
-
-    async def async_get_energy(self, home_id: str) -> dict[str, Any]:
-        """Get energy consumption data."""
-        return await self._get("/energy", {"home_id": home_id})
+            return result

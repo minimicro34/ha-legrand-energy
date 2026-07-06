@@ -10,24 +10,36 @@ from .const import DOMAIN
 
 
 class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Simple config flow (safe version)."""
+    """Handle a config flow for Legrand Energy."""
 
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
+        """Handle the initial step."""
+
+        errors = {}
+
         if user_input is not None:
+            await self.async_set_unique_id("legrand_energy")
+            self._abort_if_unique_id_configured()
+
             return self.async_create_entry(
                 title="Legrand Energy",
-                data=user_input,
+                data={
+                    "token": {
+                        "access_token": user_input["access_token"],
+                    }
+                },
             )
 
         schema = vol.Schema(
             {
-                vol.Required("subscription_key"): str,
+                vol.Required("access_token"): str,
             }
         )
 
         return self.async_show_form(
             step_id="user",
             data_schema=schema,
+            errors=errors,
         )
