@@ -88,9 +88,11 @@ class LegrandEnergySensor(CoordinatorEntity, SensorEntity):
         module = self.coordinator.data.get("modules", {}).get(self._module_id, {})
 
         return {
-            "module_id": self._module_id,
-            "home_id": module.get("home_id"),
-            "home_name": module.get("home_name"),
-            "bridge": module.get("bridge"),
-            "measure_type": "sum_energy_buy_from_grid",
-        }
+        "module_id": self._module_id,
+        "home_id": module.get("home_id"),
+        "home_name": module.get("home_name"),
+        "bridge": module.get("bridge"),
+        "measure_type": "sum_energy_buy_from_grid",
+        "raw_energy": module.get("energy"),
+        "module_data": module,
+    }

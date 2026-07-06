@@ -188,3 +188,15 @@ class LegrandEnergyApi:
                 raise LegrandEnergyApiError(result)
 
             return result
+        data = await self._get("getmeasure", params=params)
+        _LOGGER.warning("GETMEASURE %s %s = %s", module_id, measure_type, data)
+
+        body = data.get("body", [])
+
+        if not body:
+            return None
+
+        try:
+            return body[-1]["value"][-1][0]
+        except (KeyError, IndexError, TypeError):
+            return None
