@@ -120,17 +120,11 @@ class LegrandEnergyApi:
 
         bridge_id: str | None = None
 
-        for module in discovered["modules"]:
+            for module in discovered["modules"]:
             if module["is_bridge"]:
-                bridge_id = module["id"]
-                break
+                continue
 
-        if bridge_id is None:
-            _LOGGER.warning("No NLE bridge found")
-            return results
-
-        for module in discovered["modules"]:
-            if module["is_bridge"]:
+            if module.get("name") != "Total":
                 continue
 
             module_id = module["id"]

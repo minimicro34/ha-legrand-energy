@@ -6,7 +6,7 @@ DOMAIN = "legrand_energy"
 
 API_BASE = "https://api.netatmo.com/api"
 
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
+DEFAULT_SCAN_INTERVAL = timedelta(minutes=15)
 
 MANUFACTURER = "Legrand"
 ATTRIBUTION = "Data provided by Legrand Home + Control"
