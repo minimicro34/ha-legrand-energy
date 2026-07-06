@@ -172,7 +172,15 @@ class LegrandEnergyApi:
             headers=self.headers,
             params=params,
         ) as response:
-            data = await response.json(content_type=None)
+            text = await response.text()
+            _LOGGER.warning("API %s status=%s response=%s", endpoint, response.status, text[:1000])
+
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError as err:
+                raise LegrandEnergyApiError(
+                    f"Invalid JSON from {endpoint}: HTTP {response.status}: {text[:300]}"
+                ) from err
 
             if response.status == 429 or data.get("error", {}).get("code") == 26:
                 raise LegrandEnergyRateLimitError(data)
