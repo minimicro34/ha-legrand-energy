@@ -83,7 +83,7 @@ class LegrandEnergyApi:
             home_payload = self._build_home_payload(homesdata)
 
             now = int(time.time())
-            gethomemeasure = await self._get(
+            gethomemeasure = await self._post(
                 "gethomemeasure",
                 params={
                     "home": json.dumps(home_payload, separators=(",", ":")),
@@ -189,3 +189,39 @@ class LegrandEnergyApi:
                 raise LegrandEnergyApiError(data)
 
             return data
+
+    async def _post(
+        self,
+        endpoint: str,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """POST helper."""
+        url = f"{APP_API_BASE}/{endpoint}"
+
+        async with self._session.post(
+            url,
+            headers=self.headers,
+            data=data,
+        ) as response:
+            text = await response.text()
+            _LOGGER.warning(
+                "API POST %s status=%s response=%s",
+                endpoint,
+                response.status,
+                text[:1000],
+            )
+
+            try:
+                result = json.loads(text)
+            except json.JSONDecodeError as err:
+                raise LegrandEnergyApiError(
+                    f"Invalid JSON from {endpoint}: HTTP {response.status}: {text[:300]}"
+                ) from err
+
+            if response.status == 429 or result.get("error", {}).get("code") == 26:
+                raise LegrandEnergyRateLimitError(result)
+
+            if response.status >= 400 or result.get("status") == "error":
+                raise LegrandEnergyApiError(result)
+
+            return result
