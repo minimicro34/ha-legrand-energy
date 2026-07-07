@@ -46,5 +46,5 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
             "manufacturer": MANUFACTURER,
             "model": "EcoMeter Circuit",
             "name": module.name,
-            "via_device": {(DOMAIN, module.bridge)},
+            "via_device": (DOMAIN, module.bridge),
         }
