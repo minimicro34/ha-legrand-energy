@@ -84,15 +84,17 @@ class LegrandEnergyApi:
 
             now = int(time.time())
             gethomemeasure = await self._post(
-                "gethomemeasure",
-                params={
-                    "home": json.dumps(home_payload, separators=(",", ":")),
-                    "real_time": "true",
-                    "scale": "5min",
-                    "date_begin": 1783288800,
-                    "date_end": 1783375199,
-                },
-            )
+                gethomemeasure = await self._post(
+                    "gethomemeasure",
+                        data={
+                            "home": json.dumps(home_payload, separators=(",", ":")),
+                            "real_time": "true",
+                            "scale": "5min",
+                            "date_begin": 1783288800,
+                            "date_end": 1783375199,
+                        },
+                    )
+                )
 
             modules = parse_gethomemeasure(
                 homesdata=homesdata,
