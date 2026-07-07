@@ -2,85 +2,209 @@
 
 from __future__ import annotations
 
-import json
 import logging
-import time
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import aiohttp
 
-from .const import APP_API_BASE
-from .models import ModuleMeasurement
-from .parser import parse_gethomemeasure
+from .models import LegrandModule
 
 _LOGGER = logging.getLogger(__name__)
 
-REQUEST_TYPES = (
-    "sum_energy_self_consumption",
-    "sum_energy_buy_from_grid",
-    "sum_energy_buy_from_grid$0",
-    "sum_energy_buy_from_grid$1",
-    "sum_energy_buy_from_grid$2",
-    "sum_energy_buy_from_grid$3",
-    "sum_energy_buy_from_grid$4",
-    "sum_energy_buy_from_grid$5",
-    "sum_energy_buy_from_grid$6",
-    "sum_energy_buy_from_grid$7",
-    "sum_energy_buy_from_grid$8",
-    "sum_energy_buy_from_grid$9",
-    "sum_energy_buy_from_grid$10",
-    "sum_energy_buy_from_grid$11",
-    "sum_energy_buy_from_grid_price$0",
-    "sum_energy_buy_from_grid_price$1",
-    "sum_energy_buy_from_grid_price$2",
-    "sum_energy_buy_from_grid_price$3",
-    "sum_energy_buy_from_grid_price$4",
-    "sum_energy_buy_from_grid_price$5",
-    "sum_energy_buy_from_grid_price$6",
-    "sum_energy_buy_from_grid_price$7",
-    "sum_energy_buy_from_grid_price$8",
-    "sum_energy_buy_from_grid_price$9",
-    "sum_energy_buy_from_grid_price$10",
-    "sum_energy_buy_from_grid_price$11",
-    "sum_energy_resell_to_grid",
-    "sum_energy_self_consumption",
-    "sum_energy_resell_to_grid_price",
-    "sum_energy_elec",
-    "sum_energy_elec$2",
-    "sum_energy_elec$0",
-    "sum_energy_elec$1",
-    "sum_energy_price$0",
-    "sum_energy_price$1",
-    "sum_energy_price$2",
-)
+APP_API_BASE = "https://app.netatmo.net/api"
+SYNC_API_BASE = "https://app.netatmo.net/syncapi/v1"
+TOKEN_URL = "https://api.netatmo.com/oauth2/token"
+
+API_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
+TokenUpdateCallback = Callable[[str, str], Awaitable[None]]
 
 
 class LegrandEnergyApiError(Exception):
-    """API error."""
-
-
-class LegrandEnergyRateLimitError(LegrandEnergyApiError):
-    """API rate limit error."""
+    """Legrand Energy API error."""
 
 
 class LegrandEnergyApi:
-    """Legrand Energy API client."""
+    """Legrand Energy public API client."""
 
-    def __init__(self, session: aiohttp.ClientSession, access_token: str) -> None:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        access_token: str,
+        refresh_token: str,
+        client_id: str,
+        client_secret: str,
+        token_update_callback: TokenUpdateCallback | None = None,
+    ) -> None:
         self._session = session
         self._access_token = access_token
+        self._refresh_token = refresh_token
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._token_update_callback = token_update_callback
+
         self._homes_cache: dict[str, Any] | None = None
-        self._data_cache: dict[str, ModuleMeasurement] = {}
+        self._status_cache: dict[str, Any] | None = None
+        self._contracts_cache: dict[str, Any] | None = None
 
     @property
     def headers(self) -> dict[str, str]:
+        """Return authorization headers."""
         return {"Authorization": f"Bearer {self._access_token}"}
 
-    async def update(self) -> dict[str, ModuleMeasurement]:
-        """Update all measurements."""
-        homesdata = self._homes_cache or await self.homesdata()
+    async def refresh_token(self) -> None:
+        """Refresh OAuth token."""
+        async with self._session.post(
+            TOKEN_URL,
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": self._refresh_token,
+                "client_id": self._client_id,
+                "client_secret": self._client_secret,
+            },
+            timeout=API_TIMEOUT,
+        ) as response:
+            data = await response.json(content_type=None)
 
-        modules = {}
+        if response.status >= 400 or "access_token" not in data:
+            raise LegrandEnergyApiError(data)
+
+        self._access_token = data["access_token"]
+        self._refresh_token = data.get("refresh_token", self._refresh_token)
+
+        _LOGGER.info("Legrand Energy OAuth token refreshed")
+
+        if self._token_update_callback is not None:
+            await self._token_update_callback(
+                self._access_token,
+                self._refresh_token,
+            )
+
+    async def _get(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        *,
+        base_url: str = APP_API_BASE,
+        retry: bool = True,
+    ) -> dict[str, Any]:
+        """GET helper."""
+        url = f"{base_url}/{endpoint}"
+
+        async with self._session.get(
+            url,
+            headers=self.headers,
+            params=params,
+            timeout=API_TIMEOUT,
+        ) as response:
+            data = await response.json(content_type=None)
+
+        if data.get("error", {}).get("code") == 3 and retry:
+            await self.refresh_token()
+            return await self._get(
+                endpoint,
+                params=params,
+                base_url=base_url,
+                retry=False,
+            )
+
+        if response.status >= 400 or data.get("status") == "error" or "error" in data:
+            _LOGGER.debug("Legrand API %s returned %s", endpoint, data)
+            raise LegrandEnergyApiError(data)
+
+        return data
+
+    async def _post(
+        self,
+        endpoint: str,
+        json_data: dict[str, Any] | None = None,
+        *,
+        base_url: str = APP_API_BASE,
+        retry: bool = True,
+    ) -> dict[str, Any]:
+        """POST helper."""
+        url = f"{base_url}/{endpoint}"
+
+        async with self._session.post(
+            url,
+            headers={
+                **self.headers,
+                "Content-Type": "application/json",
+            },
+            json=json_data,
+            timeout=API_TIMEOUT,
+        ) as response:
+            data = await response.json(content_type=None)
+
+        if data.get("error", {}).get("code") == 3 and retry:
+            await self.refresh_token()
+            return await self._post(
+                endpoint,
+                json_data=json_data,
+                base_url=base_url,
+                retry=False,
+            )
+
+        if response.status >= 400 or data.get("status") == "error" or "error" in data:
+            _LOGGER.debug("Legrand API POST %s returned %s", endpoint, data)
+            raise LegrandEnergyApiError(data)
+
+        return data
+
+    async def homesdata(self, *, force_refresh: bool = False) -> dict[str, Any]:
+        """Return homes data."""
+        if self._homes_cache is not None and not force_refresh:
+            return self._homes_cache
+
+        data = await self._get(
+            "homesdata",
+            params={
+                "app_type": "app_magellan",
+                "sync_measurements": "true",
+                "gateway_types": '["NLE"]',
+            },
+        )
+
+        self._homes_cache = data
+        return data
+
+    async def homestatus(self, home_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
+        """Return home status."""
+        if self._status_cache is not None and not force_refresh:
+            return self._status_cache
+
+        data = await self._get(
+            "homestatus",
+            params={
+                "home_id": home_id,
+                "device_types": '["NLE"]',
+            },
+            base_url=SYNC_API_BASE,
+        )
+
+        self._status_cache = data
+        return data
+
+    async def contracts(self, home_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
+        """Return contracts."""
+        if self._contracts_cache is not None and not force_refresh:
+            return self._contracts_cache
+
+        data = await self._post(
+            "getcontracts",
+            json_data={
+                "home_id": home_id,
+            },
+        )
+
+        self._contracts_cache = data
+        return data
+
+    async def discover_modules(self) -> dict[str, LegrandModule]:
+        """Discover NLE child modules."""
+        homesdata = await self.homesdata()
+
+        modules: dict[str, LegrandModule] = {}
 
         for home in homesdata.get("body", {}).get("homes", []):
             for module in home.get("modules", []):
@@ -90,122 +214,23 @@ class LegrandEnergyApi:
                 if not module.get("bridge"):
                     continue
 
-                modules[module["id"]] = ModuleMeasurement(
+                modules[module["id"]] = LegrandModule(
                     id=module["id"],
                     name=module.get("name", module["id"]),
                     type=module.get("type", ""),
                     bridge=module.get("bridge"),
                 )
 
-        self._data_cache = modules
         return modules
 
-    async def homesdata(self) -> dict[str, Any]:
-        """Get homes data."""
-        data = await self._get(
-            "homesdata",
-            params={
-                "app_type": "app_magellan",
-                "sync_measurements": "true",
-                "gateway_types": json.dumps(["NLE"]),
-            },
-        )
-        self._homes_cache = data
-        return data
+    async def update(self) -> dict[str, LegrandModule]:
+        """Update data.
 
-    def _build_home_payload(self, homesdata: dict[str, Any]) -> dict[str, Any]:
-        """Build gethomemeasure home payload."""
-        request_type = ",".join(REQUEST_TYPES)
+        For v0.1.0, this only exposes public API discovery data.
+        Private gethomemeasure data is intentionally not used here.
+        """
+        return await self.discover_modules()
 
-        for home in homesdata.get("body", {}).get("homes", []):
-            modules = []
 
-            for module in home.get("modules", []):
-                if module.get("type") != "NLE":
-                    continue
-
-                item = {
-                    "id": module["id"],
-                    "type": request_type,
-                }
-
-                if module.get("bridge"):
-                    item["bridge"] = module["bridge"]
-
-                modules.append(item)
-
-            if modules:
-                return {
-                    "id": home["id"],
-                    "modules": modules,
-                    "rooms": [],
-                }
-
-        raise LegrandEnergyApiError("No NLE modules found")
-
-    async def _get(
-        self,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """GET helper."""
-        url = f"{APP_API_BASE}/{endpoint}"
-
-        async with self._session.get(
-            url,
-            headers=self.headers,
-            params=params,
-        ) as response:
-            text = await response.text()
-            _LOGGER.warning("API %s status=%s response=%s", endpoint, response.status, text[:1000])
-
-            try:
-                data = json.loads(text)
-            except json.JSONDecodeError as err:
-                raise LegrandEnergyApiError(
-                    f"Invalid JSON from {endpoint}: HTTP {response.status}: {text[:300]}"
-                ) from err
-
-            if response.status == 429 or data.get("error", {}).get("code") == 26:
-                raise LegrandEnergyRateLimitError(data)
-
-            if response.status >= 400 or data.get("status") == "error":
-                raise LegrandEnergyApiError(data)
-
-            return data
-
-    async def _post(
-        self,
-        endpoint: str,
-        data: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """POST helper."""
-        url = f"{APP_API_BASE}/{endpoint}"
-
-        async with self._session.post(
-            url,
-            headers=self.headers,
-            data=data,
-        ) as response:
-            text = await response.text()
-            _LOGGER.warning(
-                "API POST %s status=%s response=%s",
-                endpoint,
-                response.status,
-                text[:1000],
-            )
-
-            try:
-                result = json.loads(text)
-            except json.JSONDecodeError as err:
-                raise LegrandEnergyApiError(
-                    f"Invalid JSON from {endpoint}: HTTP {response.status}: {text[:300]}"
-                ) from err
-
-            if response.status == 429 or result.get("error", {}).get("code") == 26:
-                raise LegrandEnergyRateLimitError(result)
-
-            if response.status >= 400 or result.get("status") == "error":
-                raise LegrandEnergyApiError(result)
-
-            return result
+class LegrandPrivateApi:
+    """Reserved for private gethomemeasure support."""

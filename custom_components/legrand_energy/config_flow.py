@@ -17,7 +17,7 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
 
-        errors = {}
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             await self.async_set_unique_id("legrand_energy")
@@ -26,15 +26,19 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title="Legrand Energy",
                 data={
-                    "token": {
-                        "access_token": user_input["access_token"],
-                    }
+                    "client_id": user_input["client_id"],
+                    "client_secret": user_input["client_secret"],
+                    "access_token": user_input["access_token"],
+                    "refresh_token": user_input["refresh_token"],
                 },
             )
 
         schema = vol.Schema(
             {
+                vol.Required("client_id"): str,
+                vol.Required("client_secret"): str,
                 vol.Required("access_token"): str,
+                vol.Required("refresh_token"): str,
             }
         )
 

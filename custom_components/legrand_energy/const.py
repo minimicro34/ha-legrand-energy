@@ -1,13 +1,11 @@
 """Constants for Legrand Energy."""
 
+from __future__ import annotations
+
 from datetime import timedelta
 
 DOMAIN = "legrand_energy"
 
-API_BASE = "https://api.netatmo.com/api"
-APP_API_BASE = "https://app.netatmo.net/api"
-
-DEFAULT_SCAN_INTERVAL = timedelta(minutes=15)
-
 MANUFACTURER = "Legrand"
-PLATFORMS = ["sensor"]
+
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
