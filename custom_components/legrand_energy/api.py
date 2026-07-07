@@ -17,6 +17,16 @@ TOKEN_URL = "https://api.netatmo.com/oauth2/token"
 
 API_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
+PRIVATE_MEASURE_TYPE_ELECTRICITY = (
+    "sum_energy_elec,"
+    "sum_energy_elec$0,"
+    "sum_energy_elec$1,"
+    "sum_energy_elec$2,"
+    "sum_energy_price$0,"
+    "sum_energy_price$1,"
+    "sum_energy_price$2"
+)
+
 TokenUpdateCallback = Callable[[str, str], Awaitable[None]]
 
 
@@ -87,13 +97,14 @@ class LegrandEnergyApi:
         *,
         base_url: str = APP_API_BASE,
         retry: bool = True,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """GET helper."""
         url = f"{base_url}/{endpoint}"
 
         async with self._session.get(
             url,
-            headers=self.headers,
+            headers=headers or self.headers,
             params=params,
             timeout=API_TIMEOUT,
         ) as response:
@@ -167,6 +178,24 @@ class LegrandEnergyApi:
 
         self._homes_cache = data
         return data
+    
+    async def homestatus(self) -> dict[str, Any]:
+        """Return home status."""
+        return await self._get(
+            "homestatus",
+            params={
+                "app_type": "app_magellan",
+            },
+        )
+
+    async def contracts(self) -> dict[str, Any]:
+        """Return contracts."""
+        return await self._get(
+            "getcontracts",
+            params={
+                "app_type": "app_magellan",
+            },
+        )
 
     async def discover_modules(self) -> dict[str, LegrandModule]:
         """Discover NLE modules."""
@@ -205,6 +234,38 @@ class LegrandEnergyApi:
         """
         return await self.discover_modules()
 
-
-class LegrandPrivateApi:
-    """Reserved for private gethomemeasure support."""
+    async def get_home_measure(
+    self,
+    home_id: str,
+    module_id: str,
+    bridge: str,
+    web_token: str,
+    date_begin: int,
+    date_end: int,
+) -> dict[str, Any]:
+        """Return private home measures."""
+        return await self._get(
+            "gethomemeasure",
+            params={
+                "home": (
+                    '{"id":"'
+                    + home_id
+                    + '","modules":[{"id":"'
+                    + module_id
+                    + '","bridge":"'
+                    + bridge
+                    + '","type":"'
+                    + PRIVATE_MEASURE_TYPE_ELECTRICITY
+                    + '"}],"rooms":[]}'
+                ),
+                "real_time": "true",
+                "scale": "5min",
+                "date_begin": date_begin,
+                "date_end": date_end,
+            },
+            headers={
+                "Authorization": f"Bearer {web_token}",
+                "Referer": "https://home.netatmo.com/",
+                "Accept": "application/json, text/plain, */*",
+            },
+        )

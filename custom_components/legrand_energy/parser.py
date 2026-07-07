@@ -1,80 +1,56 @@
-"""Parser for Legrand gethomemeasure."""
+"""Parser for Legrand Energy private API."""
 
 from __future__ import annotations
 
-from .models import MeasurePoint, ModuleMeasurement
+from dataclasses import dataclass
+from typing import Any
 
 
-def parse_gethomemeasure(
-    homesdata: dict,
-    gethomemeasure: dict,
-    request_types: list[str] | tuple[str, ...],
-) -> dict[str, ModuleMeasurement]:
+@dataclass(slots=True)
+class EnergyMeasure:
+    """Parsed electricity measure."""
+
+    energy_tariff1: float | None = None
+    energy_tariff2: float | None = None
+    price_tariff1: float | None = None
+    price_tariff2: float | None = None
+    timestamp: int | None = None
+
+
+def parse_energy_measure(data: dict[str, Any]) -> EnergyMeasure:
     """Parse gethomemeasure response."""
 
-    modules: dict[str, ModuleMeasurement] = {}
+    modules = data.get("body", {}).get("home", {}).get("modules", [])
 
-    #
-    # Build module index from homesdata
-    #
-    module_info: dict[str, dict] = {}
+    if not modules:
+        return EnergyMeasure()
 
-    for home in homesdata["body"]["homes"]:
-        for module in home["modules"]:
+    measures = modules[0].get("measures", [])
 
-            module_info[module["id"]] = {
-                "name": module.get("name", module["id"]),
-                "type": module.get("type", ""),
-                "bridge": module.get("bridge"),
-            }
+    if not measures:
+        return EnergyMeasure()
 
-    #
-    # Parse measurements
-    #
-    for module in gethomemeasure["body"]["home"]["modules"]:
+    latest_time = 0
+    latest_values: list[Any] | None = None
 
-        module_id = module["id"]
+    for measure in measures:
+        beg = measure.get("beg_time", 0)
+        step = measure.get("step_time", 0)
 
-        info = module_info.get(
-            module_id,
-            {
-                "name": module_id,
-                "type": "",
-                "bridge": None,
-            },
-        )
+        for index, values in enumerate(measure.get("value", [])):
+            ts = beg + index * step
 
-        measurement = ModuleMeasurement(
-            id=module_id,
-            name=info["name"],
-            type=info["type"],
-            bridge=info["bridge"],
-        )
+            if ts > latest_time:
+                latest_time = ts
+                latest_values = values
 
-        for block in module.get("measures", []):
+    if latest_values is None:
+        return EnergyMeasure()
 
-            start = block["beg_time"]
-            step = block["step_time"]
-
-            for index, row in enumerate(block["value"]):
-
-                timestamp = start + index * step
-
-                values = {
-                    name: value
-                    for name, value in zip(request_types, row)
-                    if value is not None
-                }
-
-                measurement.history.append(
-                    MeasurePoint(
-                        timestamp=timestamp,
-                        values=values,
-                    )
-                )
-
-        measurement.raw = module
-
-        modules[module_id] = measurement
-
-    return modules
+    return EnergyMeasure(
+        energy_tariff1=latest_values[2],
+        energy_tariff2=latest_values[3],
+        price_tariff1=latest_values[5],
+        price_tariff2=latest_values[6],
+        timestamp=latest_time,
+    )

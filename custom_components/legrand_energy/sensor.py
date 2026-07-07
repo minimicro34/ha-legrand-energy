@@ -24,7 +24,7 @@ async def async_setup_entry(
 
     async_add_entities(
         LegrandEnergyCircuitSensor(coordinator, module_id)
-        for module_id in coordinator.data
+        for module_id in coordinator.data["modules"]
     )
 
 

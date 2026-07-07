@@ -9,6 +9,11 @@ class LegrandModule:
     bridge: str | None = None
     room: str | None = None
     setup_date: int | None = None
+    energy_tariff1: float | None = None
+    energy_tariff2: float | None = None
+    price_tariff1: float | None = None
+    price_tariff2: float | None = None
+    last_measure: int | None = None
 
     @property
     def is_bridge(self) -> bool:
