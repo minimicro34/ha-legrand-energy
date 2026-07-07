@@ -3,20 +3,14 @@
     "step": {
       "user": {
         "title": "Legrand Energy",
-        "description": "Entrez vos identifiants Legrand / Netatmo Home + Control.",
+        "description": "Configurez les identifiants OAuth Legrand Energy.",
         "data": {
           "client_id": "Client ID",
           "client_secret": "Client Secret",
-          "subscription_key": "Clé d'abonnement"
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token"
         }
       }
-    },
-    "error": {
-      "auth": "Échec de l'authentification",
-      "cannot_connect": "Impossible de se connecter à l'API"
-    },
-    "abort": {
-      "already_configured": "Déjà configuré"
     }
   }
 }

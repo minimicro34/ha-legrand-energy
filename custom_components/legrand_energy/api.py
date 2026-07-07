@@ -168,50 +168,22 @@ class LegrandEnergyApi:
         self._homes_cache = data
         return data
 
-    async def homestatus(self, home_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
-        """Return home status."""
-        if self._status_cache is not None and not force_refresh:
-            return self._status_cache
-
-        data = await self._get(
-            "homestatus",
-            params={
-                "home_id": home_id,
-                "device_types": '["NLE"]',
-            },
-            base_url=SYNC_API_BASE,
-        )
-
-        self._status_cache = data
-        return data
-
-    async def contracts(self, home_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
-        """Return contracts."""
-        if self._contracts_cache is not None and not force_refresh:
-            return self._contracts_cache
-
-        data = await self._post(
-            "getcontracts",
-            json_data={
-                "home_id": home_id,
-            },
-        )
-
-        self._contracts_cache = data
-        return data
-
     async def discover_modules(self) -> dict[str, LegrandModule]:
-        """Discover NLE child modules."""
+        """Discover NLE modules."""
         homesdata = await self.homesdata()
 
         modules: dict[str, LegrandModule] = {}
 
         for home in homesdata.get("body", {}).get("homes", []):
+            # Dictionnaire des pièces
+            rooms = {
+                room["id"]: room.get("name")
+                for room in home.get("rooms", [])
+            }
+
+            # Modules
             for module in home.get("modules", []):
                 if module.get("type") != "NLE":
-                    continue
-
-                if not module.get("bridge"):
                     continue
 
                 modules[module["id"]] = LegrandModule(
@@ -219,6 +191,8 @@ class LegrandEnergyApi:
                     name=module.get("name", module["id"]),
                     type=module.get("type", ""),
                     bridge=module.get("bridge"),
+                    room=rooms.get(module.get("room_id")),
+                    setup_date=module.get("setup_date"),
                 )
 
         return modules

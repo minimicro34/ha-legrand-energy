@@ -3,9 +3,12 @@
     "step": {
       "user": {
         "title": "Legrand Energy",
-        "description": "Entre ton access token Netatmo/Legrand pour tester l'intégration.",
+        "description": "Configure Legrand Energy OAuth credentials.",
         "data": {
-          "access_token": "Access token"
+          "client_id": "Client ID",
+          "client_secret": "Client Secret",
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token"
         }
       }
     }

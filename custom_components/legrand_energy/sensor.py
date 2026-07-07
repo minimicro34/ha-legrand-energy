@@ -23,19 +23,17 @@ async def async_setup_entry(
     """Set up Legrand Energy sensors."""
     coordinator: LegrandEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [
+    async_add_entities(
         LegrandEnergyCircuitSensor(coordinator, module_id)
         for module_id in coordinator.data
-    ]
-
-    async_add_entities(entities)
+    )
 
 
 class LegrandEnergyCircuitSensor(
     CoordinatorEntity[LegrandEnergyCoordinator],
     SensorEntity,
 ):
-    """Legrand circuit discovery sensor."""
+    """Legrand Energy circuit sensor."""
 
     _attr_icon = "mdi:lightning-bolt-circle"
 
@@ -52,27 +50,35 @@ class LegrandEnergyCircuitSensor(
 
         self._attr_name = module.name
         self._attr_unique_id = (
-            f"{DOMAIN}_{module_id}_circuit"
+            f"{DOMAIN}_{module.id}_circuit"
             .replace(":", "_")
             .replace("#", "_")
         )
 
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, module_id)},
-            "name": module.name,
-            "manufacturer": MANUFACTURER,
-            "model": "Legrand EcoMeter",
-            "via_device": (DOMAIN, module.bridge),
-        }
+        if module.bridge is None:
+            self._attr_device_info = {
+                "identifiers": {(DOMAIN, module.id)},
+                "name": module.name,
+                "manufacturer": MANUFACTURER,
+                "model": "Legrand EcoMeter",
+            }
+        else:
+            self._attr_device_info = {
+                "identifiers": {(DOMAIN, module.id)},
+                "name": module.name,
+                "manufacturer": MANUFACTURER,
+                "model": "Legrand EcoMeter Circuit",
+                "via_device": (DOMAIN, module.bridge),
+            }
 
     @property
     def module(self) -> LegrandModule:
-        """Return current module."""
+        """Return module."""
         return self.coordinator.data[self._module_id]
 
     @property
     def native_value(self) -> str:
-        """Return sensor state."""
+        """Return state."""
         return "detected"
 
     @property
@@ -85,4 +91,6 @@ class LegrandEnergyCircuitSensor(
             "name": module.name,
             "type": module.type,
             "bridge": module.bridge,
+            "room": module.room,
+            "setup_date": module.setup_date,
         }

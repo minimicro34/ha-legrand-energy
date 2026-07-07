@@ -7,3 +7,5 @@ class LegrandModule:
     name: str
     type: str
     bridge: str | None = None
+    room: str | None = None
+    setup_date: int | None = None
