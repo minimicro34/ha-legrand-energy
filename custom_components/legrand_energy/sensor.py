@@ -28,10 +28,7 @@ async def async_setup_entry(
     )
 
 
-class LegrandEnergyCircuitSensor(
-    LegrandEntity,
-    SensorEntity,
-):
+class LegrandEnergyCircuitSensor(LegrandEntity, SensorEntity):
     """Representation of a Legrand circuit."""
 
     _attr_icon = "mdi:flash"
@@ -45,13 +42,8 @@ class LegrandEnergyCircuitSensor(
         super().__init__(coordinator, module_id)
 
         module = self.module
-
         self._attr_name = module.name
-        self._attr_unique_id = (
-            f"{DOMAIN}_{module.id}"
-            .replace(":", "_")
-            .replace("#", "_")
-        )
+        self._attr_unique_id = f"{DOMAIN}_{module.id}".replace(":", "_").replace("#", "_")
 
     @property
     def native_value(self) -> str:
