@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from typing import Any
-
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorDeviceClass,
+    SensorStateClass,
+)
+from homeassistant.const import UnitOfEnergy
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -22,11 +26,92 @@ async def async_setup_entry(
     """Set up Legrand Energy sensors."""
     coordinator: LegrandEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        LegrandEnergyCircuitSensor(coordinator, module_id)
-        for module_id in coordinator.data["modules"]
+    entities = []
+
+    for module_id in coordinator.data:
+        entities.extend(
+        (
+            LegrandEnergyEnergyTariff1Sensor(coordinator, module_id),
+            LegrandEnergyEnergyTariff2Sensor(coordinator, module_id),
+            LegrandEnergyPriceTariff1Sensor(coordinator, module_id),
+            LegrandEnergyPriceTariff2Sensor(coordinator, module_id),
+        )
     )
 
+    async_add_entities(entities)
+
+class LegrandEnergyMeasureSensor(
+    LegrandEntity,
+    SensorEntity,
+):
+    """Base measurement sensor."""
+
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, module_id):
+        super().__init__(coordinator, module_id)
+
+        self._attr_has_entity_name = True
+
+class LegrandEnergyEnergyTariff1Sensor(
+    LegrandEnergyMeasureSensor,
+):
+    _attr_translation_key = "energy_tariff1"
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
+
+    @property
+    def unique_id(self):
+        return f"{self.module.id}_energy_tariff1"
+
+    @property
+    def native_value(self):
+        return self.module.energy_tariff1
+
+class LegrandEnergyEnergyTariff2Sensor(
+    LegrandEnergyMeasureSensor,
+):
+    _attr_translation_key = "energy_tariff2"
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
+
+    @property
+    def unique_id(self):
+        return f"{self.module.id}_energy_tariff2"
+
+    @property
+    def native_value(self):
+        return self.module.energy_tariff2
+
+class LegrandEnergyPriceTariff1Sensor(
+    LegrandEnergyMeasureSensor,
+):
+    _attr_translation_key = "price_tariff1"
+
+    @property
+    def unique_id(self):
+        return f"{self.module.id}_price_tariff1"
+
+    @property
+    def native_value(self):
+        return self.module.price_tariff1
+
+class LegrandEnergyPriceTariff2Sensor(
+    LegrandEnergyMeasureSensor,
+):
+    _attr_translation_key = "price_tariff2"
+
+    @property
+    def unique_id(self):
+        return f"{self.module.id}_price_tariff2"
+
+    @property
+    def native_value(self):
+        return self.module.price_tariff2
 
 class LegrandEnergyCircuitSensor(LegrandEntity, SensorEntity):
     """Representation of a Legrand circuit."""

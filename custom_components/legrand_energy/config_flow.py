@@ -30,6 +30,7 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "client_secret": user_input["client_secret"],
                     "access_token": user_input["access_token"],
                     "refresh_token": user_input["refresh_token"],
+                    "web_token": user_input["web_token"],
                 },
             )
 
@@ -39,6 +40,10 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("client_secret"): str,
                 vol.Required("access_token"): str,
                 vol.Required("refresh_token"): str,
+                vol.Optional(
+                    "web_token",
+                    default=user_input.get("web_token", "") if user_input else "",
+                ): str,
             }
         )
 

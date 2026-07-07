@@ -8,8 +8,26 @@
           "client_id": "Client ID",
           "client_secret": "Client Secret",
           "access_token": "Access Token",
-          "refresh_token": "Refresh Token"
+          "refresh_token": "Refresh Token",
+          "web_token": "Web Token"
         }
+      }
+    }
+  },
+  "entity" :
+  {
+    "sensor": {
+      "energy_tariff1": {
+        "name": "Energie HP"
+      },
+      "energy_tariff2": {
+        "name": "Energy HC"
+      },
+      "price_tariff1": {
+        "name": "Cout HP"
+      },
+      "price_tariff2": {
+        "name": "Cout HC"
       }
     }
   }
