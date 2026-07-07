@@ -9,3 +9,8 @@ class LegrandModule:
     bridge: str | None = None
     room: str | None = None
     setup_date: int | None = None
+
+    @property
+    def is_bridge(self) -> bool:
+        """Return True if this module is the EcoMeter bridge."""
+        return self.bridge is None
