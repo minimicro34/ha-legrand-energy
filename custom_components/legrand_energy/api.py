@@ -78,45 +78,27 @@ class LegrandEnergyApi:
 
     async def update(self) -> dict[str, ModuleMeasurement]:
         """Update all measurements."""
-        try:
-            homesdata = self._homes_cache or await self.homesdata()
-            home_payload = self._build_home_payload(homesdata)
+        homesdata = self._homes_cache or await self.homesdata()
 
-            now = int(time.time())
-            gethomemeasure = await self._post(
-                gethomemeasure = await self._post(
-                    "gethomemeasure",
-                        data={
-                            "home": json.dumps(home_payload, separators=(",", ":")),
-                            "real_time": "true",
-                            "scale": "5min",
-                            "date_begin": 1783288800,
-                            "date_end": 1783375199,
-                        },
-                    )
+        modules = {}
+
+        for home in homesdata.get("body", {}).get("homes", []):
+            for module in home.get("modules", []):
+                if module.get("type") != "NLE":
+                    continue
+
+                if not module.get("bridge"):
+                    continue
+
+                modules[module["id"]] = ModuleMeasurement(
+                    id=module["id"],
+                    name=module.get("name", module["id"]),
+                    type=module.get("type", ""),
+                    bridge=module.get("bridge"),
                 )
 
-            modules = parse_gethomemeasure(
-                homesdata=homesdata,
-                gethomemeasure=gethomemeasure,
-                request_types=REQUEST_TYPES,
-            )
-
-            # Ignore bridge module without useful values.
-            modules = {
-                module_id: module
-                for module_id, module in modules.items()
-                if module.bridge is not None
-            }
-
-            self._data_cache = modules
-            return modules
-
-        except LegrandEnergyRateLimitError:
-            if self._data_cache:
-                _LOGGER.warning("Rate limit reached, returning cached data")
-                return self._data_cache
-            raise
+        self._data_cache = modules
+        return modules
 
     async def homesdata(self) -> dict[str, Any]:
         """Get homes data."""
