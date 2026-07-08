@@ -2,20 +2,130 @@
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Callable
+
 from homeassistant.components.sensor import (
-    SensorEntity,
     SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfEnergy
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
 from .entity import LegrandEntity
+from .models import LegrandModule
+
+
+@dataclass(frozen=True, kw_only=True)
+class LegrandSensorDescription(SensorEntityDescription):
+    """Legrand sensor description."""
+
+    value_fn: Callable[[LegrandModule], Any] | None = None
+    contract_value_fn: Callable[[Any], Any] | None = None
+
+
+ENERGY_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    LegrandSensorDescription(
+        key="energy_tariff1",
+        translation_key="energy_tariff1",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda module: getattr(module, "energy_tariff1", None),
+    ),
+    LegrandSensorDescription(
+        key="energy_tariff2",
+        translation_key="energy_tariff2",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda module: getattr(module, "energy_tariff2", None),
+    ),
+    LegrandSensorDescription(
+        key="price_tariff1",
+        translation_key="price_tariff1",
+        native_unit_of_measurement="€",
+        value_fn=lambda module: getattr(module, "price_tariff1", None),
+    ),
+    LegrandSensorDescription(
+        key="price_tariff2",
+        translation_key="price_tariff2",
+        native_unit_of_measurement="€",
+        value_fn=lambda module: getattr(module, "price_tariff2", None),
+    ),
+)
+
+STATISTICS_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    LegrandSensorDescription(
+        key="energy_total",
+        translation_key="energy_total",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda module: (
+            module.statistics.total_energy if module.statistics else None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="energy_cost",
+        translation_key="energy_cost",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="€",
+        value_fn=lambda module: (
+            module.statistics.total_cost if module.statistics else None
+        ),
+    ),
+)
+
+CONTRACT_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    LegrandSensorDescription(
+        key="contract_type",
+        translation_key="contract_type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        contract_value_fn=lambda contract: contract.type,
+    ),
+    LegrandSensorDescription(
+        key="contract_tariff",
+        translation_key="contract_tariff",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        contract_value_fn=lambda contract: contract.tariff,
+    ),
+    LegrandSensorDescription(
+        key="contract_option",
+        translation_key="contract_option",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        contract_value_fn=lambda contract: contract.tariff_option,
+    ),
+    LegrandSensorDescription(
+        key="contract_power",
+        translation_key="contract_power",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="kVA",
+        contract_value_fn=lambda contract: contract.power_threshold,
+    ),
+    LegrandSensorDescription(
+        key="peak_price",
+        translation_key="peak_price",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="€/kWh",
+        contract_value_fn=lambda contract: contract.peak_price,
+    ),
+    LegrandSensorDescription(
+        key="off_peak_price",
+        translation_key="off_peak_price",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="€/kWh",
+        contract_value_fn=lambda contract: contract.off_peak_price,
+    ),
+)
 
 
 async def async_setup_entry(
@@ -26,123 +136,112 @@ async def async_setup_entry(
     """Set up Legrand Energy sensors."""
     coordinator: LegrandEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = []
+    entities: list[SensorEntity] = []
 
-    for module_id in coordinator.data:
-        entities.extend(
-        (
-            LegrandEnergyEnergyTariff1Sensor(coordinator, module_id),
-            LegrandEnergyEnergyTariff2Sensor(coordinator, module_id),
-            LegrandEnergyPriceTariff1Sensor(coordinator, module_id),
-            LegrandEnergyPriceTariff2Sensor(coordinator, module_id),
-        )
+    for module_id, module in coordinator.data.items():
+        if module.bridge is None:
+            continue
+
+        try:
+            suffix = int(module_id.rsplit("#", 1)[1])
+        except (IndexError, ValueError):
+            continue
+
+        if suffix <= 5:
+            for description in ENERGY_DESCRIPTIONS:
+                entities.append(
+                    LegrandEnergySensor(
+                        coordinator=coordinator,
+                        module_id=module_id,
+                        description=description,
+                    )
+                )
+
+            for description in STATISTICS_DESCRIPTIONS:
+                entities.append(
+                    LegrandStatisticsSensor(
+                        coordinator=coordinator,
+                        module_id=module_id,
+                        description=description,
+                    )
+                )
+
+    bridge_id = next(
+        (module_id for module_id, module in coordinator.data.items() if module.bridge is None),
+        None,
     )
+
+    if bridge_id is not None:
+        for description in CONTRACT_DESCRIPTIONS:
+            entities.append(
+                LegrandContractSensor(
+                    coordinator=coordinator,
+                    module_id=bridge_id,
+                    description=description,
+                )
+            )
 
     async_add_entities(entities)
 
-class LegrandEnergyMeasureSensor(
-    LegrandEntity,
-    SensorEntity,
-):
-    """Base measurement sensor."""
 
-    _attr_should_poll = False
+class LegrandBaseSensor(LegrandEntity, SensorEntity):
+    """Base Legrand sensor."""
 
-    def __init__(self, coordinator, module_id):
-        super().__init__(coordinator, module_id)
-
-        self._attr_has_entity_name = True
-
-class LegrandEnergyEnergyTariff1Sensor(
-    LegrandEnergyMeasureSensor,
-):
-    _attr_translation_key = "energy_tariff1"
-
-    _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
-
-    @property
-    def unique_id(self):
-        return f"{self.module.id}_energy_tariff1"
-
-    @property
-    def native_value(self):
-        return self.module.energy_tariff1
-
-class LegrandEnergyEnergyTariff2Sensor(
-    LegrandEnergyMeasureSensor,
-):
-    _attr_translation_key = "energy_tariff2"
-
-    _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
-
-    @property
-    def unique_id(self):
-        return f"{self.module.id}_energy_tariff2"
-
-    @property
-    def native_value(self):
-        return self.module.energy_tariff2
-
-class LegrandEnergyPriceTariff1Sensor(
-    LegrandEnergyMeasureSensor,
-):
-    _attr_translation_key = "price_tariff1"
-
-    @property
-    def unique_id(self):
-        return f"{self.module.id}_price_tariff1"
-
-    @property
-    def native_value(self):
-        return self.module.price_tariff1
-
-class LegrandEnergyPriceTariff2Sensor(
-    LegrandEnergyMeasureSensor,
-):
-    _attr_translation_key = "price_tariff2"
-
-    @property
-    def unique_id(self):
-        return f"{self.module.id}_price_tariff2"
-
-    @property
-    def native_value(self):
-        return self.module.price_tariff2
-
-class LegrandEnergyCircuitSensor(LegrandEntity, SensorEntity):
-    """Representation of a Legrand circuit."""
-
-    _attr_icon = "mdi:flash"
+    entity_description: LegrandSensorDescription
 
     def __init__(
         self,
         coordinator: LegrandEnergyCoordinator,
         module_id: str,
+        description: LegrandSensorDescription,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize sensor."""
         super().__init__(coordinator, module_id)
+        self.entity_description = description
+        safe_module_id = module_id.replace(":", "_").replace("#", "_")
+        self._attr_unique_id = f"{DOMAIN}_{safe_module_id}_{description.key}"
+        self._attr_has_entity_name = True
 
-        module = self.module
-        self._attr_name = module.name
-        self._attr_unique_id = f"{DOMAIN}_{module.id}".replace(":", "_").replace("#", "_")
+
+class LegrandEnergySensor(LegrandBaseSensor):
+    """Energy sensor."""
 
     @property
-    def native_value(self) -> str:
-        """Return the sensor state."""
-        return "detected"
+    def native_value(self) -> Any:
+        """Return value."""
+        if self.entity_description.value_fn is None:
+            return None
+        return self.entity_description.value_fn(self.module)
+
+
+class LegrandStatisticsSensor(LegrandBaseSensor):
+    """Statistics sensor."""
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return extra attributes."""
-        module = self.module
+    def available(self) -> bool:
+        """Return availability."""
+        return super().available and self.module.statistics is not None
 
-        return {
-            "module_id": module.id,
-            "type": module.type,
-            "bridge": module.bridge,
-            "room": module.room,
-        }
+    @property
+    def native_value(self) -> Any:
+        """Return value."""
+        if self.entity_description.value_fn is None:
+            return None
+        return self.entity_description.value_fn(self.module)
+
+
+class LegrandContractSensor(LegrandBaseSensor):
+    """Contract sensor."""
+
+    @property
+    def available(self) -> bool:
+        """Return availability."""
+        return super().available and self.coordinator.contract is not None
+
+    @property
+    def native_value(self) -> Any:
+        """Return value."""
+        contract = self.coordinator.contract
+        if contract is None or self.entity_description.contract_value_fn is None:
+            return None
+        return self.entity_description.contract_value_fn(contract)

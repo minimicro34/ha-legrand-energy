@@ -147,7 +147,7 @@ class LegrandEnergyApi:
         ) as response:
             data = await response.json(content_type=None)
 
-        if data.get("error", {}).get("code") == 3 and retry:
+        if data.get("error", {}).get("code") in (2, 3) and retry:
             await self.refresh_token()
             return await self._post(
                 endpoint,

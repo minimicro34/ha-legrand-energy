@@ -148,3 +148,11 @@ class LegrandPrivateApi:
                 "date_end": date_end,
             },
         )
+    
+    async def getcontracts(self, home_id: str) -> dict[str, Any]:
+        """Return private energy contracts."""
+        return await self._get(
+            APP_API_BASE,
+            "getcontracts",
+            params={"home_id": home_id},
+            )

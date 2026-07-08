@@ -1,0 +1,69 @@
+{
+  "entity": {
+    "sensor": {
+      "energy_tariff1": {
+        "name": "Energy tariff 1"
+      },
+      "energy_tariff2": {
+        "name": "Energy tariff 2"
+      },
+      "price_tariff1": {
+        "name": "Price tariff 1"
+      },
+      "energy_total": {
+        "name": "Energy 24 h"
+        },
+        "energy_cost": {
+        "name": "Cost 24 h"
+        },
+      "price_tariff2": {
+        "name": "Price tariff 2"
+      },
+      "contract_type": {
+        "name": "Contract type"
+      },
+      "contract_tariff": {
+        "name": "Tariff"
+      },
+      "contract_option": {
+        "name": "Tariff option"
+      },
+      "contract_power": {
+        "name": "Subscribed power"
+      },
+      "peak_price": {
+        "name": "Peak price"
+      },
+      "off_peak_price": {
+        "name": "Off-peak price"
+      },
+      "current_tariff": {
+        "name": "Current tariff"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Legrand Energy",
+        "description": "Configure your Legrand Energy account."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Legrand Energy options",
+        "data": {
+          "web_token": "Netatmo Web Token"
+        },
+        "description": "Paste the Netatmo web token used to access the private API."
+      }
+    }
+  }
+}

@@ -52,3 +52,9 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
         )
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Return options flow."""
+        from .options_flow import LegrandEnergyOptionsFlow
+
+        return LegrandEnergyOptionsFlow(config_entry)

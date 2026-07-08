@@ -12,9 +12,15 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import LegrandEnergyApi, LegrandEnergyApiError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .contract_models import LegrandContract
+from .contract_parser import parse_contract
 from .models import LegrandModule
-from .parser import parse_energy_measure
 from .private_api import LegrandPrivateApi, LegrandPrivateApiError
+
+from .helpers.energy_accumulator import EnergyAccumulator
+from .helpers.module_statistics import ModuleStatistics
+from .helpers.private_measure_decoder import decode_energy_points
+from .helpers.statistics import total_cost, total_energy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +31,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
         self.entry = entry
-        self.hass = hass
+        self.contract: LegrandContract | None = None
 
         async def update_tokens(access_token: str, refresh_token: str) -> None:
             """Persist refreshed OAuth tokens."""
@@ -49,7 +55,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             token_update_callback=update_tokens,
         )
 
-        web_token = entry.data.get("web_token")
+        web_token = entry.options.get("web_token")
         self.private_api = (
             LegrandPrivateApi(session=session, web_token=web_token)
             if web_token
@@ -67,9 +73,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
         """Fetch data from APIs."""
         try:
             modules = await self.api.update()
+            home_id = self._get_home_id()
 
-            if self.private_api is not None:
-                await self._update_private_measures(modules)
+            if self.private_api is not None and home_id is not None:
+                await self._update_private_measures(modules, home_id)
+                await self._update_contract(home_id)
 
             return modules
 
@@ -79,13 +87,10 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
     async def _update_private_measures(
         self,
         modules: dict[str, LegrandModule],
+        home_id: str,
     ) -> None:
         """Update private electricity measures."""
         if self.private_api is None:
-            return
-
-        home_id = self._get_home_id()
-        if home_id is None:
             return
 
         now = int(time.time())
@@ -96,7 +101,6 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             if module.bridge is None:
                 continue
 
-            # Pour l'instant, on ne traite que les circuits électriques #0 à #5.
             try:
                 suffix = int(module.id.rsplit("#", 1)[1])
             except (IndexError, ValueError):
@@ -114,20 +118,43 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                     date_end=date_end,
                 )
             except LegrandPrivateApiError as err:
-                _LOGGER.debug(
-                    "Private measure failed for %s: %s",
-                    module.id,
-                    err,
-                )
+                _LOGGER.debug("Private measure failed for %s: %s", module.id, err)
                 continue
 
-            measure = parse_energy_measure(raw)
+            points = decode_energy_points(raw)
 
-            module.energy_tariff1 = measure.energy_tariff1
-            module.energy_tariff2 = measure.energy_tariff2
-            module.price_tariff1 = measure.price_tariff1
-            module.price_tariff2 = measure.price_tariff2
-            module.last_measure = measure.timestamp
+            accumulator = EnergyAccumulator()
+            for point in points:
+                accumulator.add(point)
+
+            module.statistics = ModuleStatistics(
+                points=points,
+                total_energy=total_energy(points),
+                total_cost=total_cost(points),
+                dashboard_total=accumulator.total,
+            )
+
+            if points:
+                last_point = points[-1]
+
+                module.energy_tariff1 = last_point.energy
+                module.energy_tariff2 = None
+                module.price_tariff1 = last_point.price
+                module.price_tariff2 = None
+                module.last_measure = int(last_point.timestamp.timestamp())
+
+    async def _update_contract(self, home_id: str) -> None:
+        """Update contract information."""
+        if self.private_api is None:
+            return
+
+        try:
+            raw = await self.private_api.getcontracts(home_id)
+        except LegrandPrivateApiError as err:
+            _LOGGER.debug("Private contract update failed: %s", err)
+            return
+
+        self.contract = parse_contract(raw)
 
     def _get_home_id(self) -> str | None:
         """Return first home id from cached homesdata."""

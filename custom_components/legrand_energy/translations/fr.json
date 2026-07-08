@@ -1,33 +1,62 @@
 {
+  "entity": {
+    "sensor": {
+      "energy_tariff1": {
+        "name": "Énergie tarif 1"
+      },
+      "energy_tariff2": {
+        "name": "Énergie tarif 2"
+      },
+      "price_tariff1": {
+        "name": "Coût tarif 1"
+      },
+      "price_tariff2": {
+        "name": "Coût tarif 2"
+      },
+      "contract_type": {
+        "name": "Type de contrat"
+      },
+      "contract_tariff": {
+        "name": "Tarif"
+      },
+      "contract_option": {
+        "name": "Option tarifaire"
+      },
+      "contract_power": {
+        "name": "Puissance souscrite"
+      },
+      "peak_price": {
+        "name": "Prix heures pleines"
+      },
+      "off_peak_price": {
+        "name": "Prix heures creuses"
+      },
+      "current_tariff": {
+        "name": "Tarif actuel"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Actualiser"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
         "title": "Legrand Energy",
-        "description": "Configurez les identifiants OAuth Legrand Energy.",
-        "data": {
-          "client_id": "Client ID",
-          "client_secret": "Client Secret",
-          "access_token": "Access Token",
-          "refresh_token": "Refresh Token",
-          "web_token": "Web Token"
-        }
+        "description": "Configurez votre compte Legrand Energy."
       }
     }
   },
-  "entity" :
-  {
-    "sensor": {
-      "energy_tariff1": {
-        "name": "Energie HP"
-      },
-      "energy_tariff2": {
-        "name": "Energy HC"
-      },
-      "price_tariff1": {
-        "name": "Cout HP"
-      },
-      "price_tariff2": {
-        "name": "Cout HC"
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Legrand Energy",
+        "data": {
+          "web_token": "Jeton Web Netatmo"
+        },
+        "description": "Collez le jeton Web Netatmo utilisé pour accéder à l'API privée."
       }
     }
   }
