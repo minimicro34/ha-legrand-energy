@@ -8,3 +8,6 @@ __pycache__/
 .coverage
 .pytest_cache/
 .DS_Store
+.ruff_cache/
+.mypy_cache/
+.venv/

@@ -8,8 +8,11 @@ from datetime import datetime
 
 @dataclass(slots=True)
 class EnergyPoint:
-    """One energy sample."""
+    """Energy measurement."""
 
     timestamp: datetime
     energy: float
-    price: float | None = None
+    price: float
+
+    tariff: str | None = None
+    zone_id: int | None = None

@@ -1,9 +1,11 @@
 {
   "entity": {
+    "binary_sensor": {
+      "off_peak": {
+        "name": "Off-peak hours"
+      }
+    },
     "sensor": {
-      "energy_tariff1": {
-        "name": "Energy tariff 1"
-      },
       "energy_tariff2": {
         "name": "Energy tariff 2"
       },
@@ -39,8 +41,19 @@
       },
       "current_tariff": {
         "name": "Current tariff"
+      },
+      "current_price": {
+        "name": "Current price"
+      },
+      "next_tariff_change": {
+        "name": "Next tariff change"
       }
     },
+    "energy_peak_today": { "name": "Peak energy today" },
+    "energy_off_peak_today": { "name": "Off-peak energy today" },
+    "cost_peak_today": { "name": "Peak cost today" },
+    "cost_off_peak_today": { "name": "Off-peak cost today" },
+    "projected_monthly_cost": { "name": "Projected monthly cost" },
     "button": {
       "refresh": {
         "name": "Refresh"

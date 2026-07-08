@@ -1,51 +1,56 @@
-"""Parser for getcontracts."""
+"""Parser for electricity contracts."""
 
 from __future__ import annotations
 
-from .contract_models import (
-    LegrandContract,
-    LegrandContractTimetableEntry,
-    LegrandContractZone,
-)
+from .contract_models import Contract, TariffPeriod, TariffZone
 
 
-def parse_contract(data: dict) -> LegrandContract | None:
-    """Parse getcontracts."""
+def parse_contract(data: dict) -> Contract | None:
+    """Parse the first electricity contract."""
     contracts = data.get("body", {}).get("contracts", [])
+
     if not contracts:
         return None
 
-    contract = contracts[0]
+    raw = contracts[0]
 
-    zones = [
-        LegrandContractZone(
+    peak_price = None
+    off_peak_price = None
+
+    zones: list[TariffZone] = []
+
+    for zone in raw.get("zones", []):
+        tariff_zone = TariffZone(
             id=zone["id"],
             price=zone["price"],
             price_type=zone["price_type"],
         )
-        for zone in contract.get("zones", [])
-    ]
+
+        zones.append(tariff_zone)
+
+        if tariff_zone.price_type == "peak":
+            peak_price = tariff_zone.price
+
+        elif tariff_zone.price_type == "off_peak":
+            off_peak_price = tariff_zone.price
 
     timetable = [
-        LegrandContractTimetableEntry(
+        TariffPeriod(
             zone_id=item["zone_id"],
-            m_offset=item["m_offset"],
+            minute_offset=item["m_offset"],
         )
-        for item in contract.get("timetable", [])
+        for item in raw.get("timetable", [])
     ]
 
-    peak = next((zone.price for zone in zones if zone.price_type == "peak"), None)
-    off_peak = next((zone.price for zone in zones if zone.price_type == "off_peak"), None)
-
-    return LegrandContract(
-        id=contract["id"],
-        type=contract["type"],
-        tariff=contract["tariff"],
-        tariff_option=contract["tariff_option"],
-        power_threshold=contract["power_threshold"],
-        power_unit=contract["contract_power_unit"],
-        peak_price=peak,
-        off_peak_price=off_peak,
+    return Contract(
+        id=raw["id"],
+        type=raw["type"],
+        tariff=raw["tariff"],
+        tariff_option=raw["tariff_option"],
+        power_threshold=raw["power_threshold"],
+        power_unit=raw["contract_power_unit"],
+        peak_price=peak_price,
+        off_peak_price=off_peak_price,
         zones=zones,
         timetable=timetable,
     )

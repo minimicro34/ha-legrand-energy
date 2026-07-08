@@ -1,11 +1,21 @@
 {
   "entity": {
+    "binary_sensor": {
+    "off_peak": {
+      "name": "Heures creuses"
+    },
     "sensor": {
       "energy_tariff1": {
         "name": "Énergie tarif 1"
       },
       "energy_tariff2": {
         "name": "Énergie tarif 2"
+      },
+      "energy_total": {
+        "name": "Énergie 24 h"
+      },
+      "energy_cost": {
+        "name": "Coût 24 h"
       },
       "price_tariff1": {
         "name": "Coût tarif 1"
@@ -33,6 +43,12 @@
       },
       "current_tariff": {
         "name": "Tarif actuel"
+      },
+      "current_price": {
+        "name": "Prix actuel"
+      },
+      "next_tariff_change": {
+        "name": "Prochain changement de tarif"
       }
     },
     "button": {

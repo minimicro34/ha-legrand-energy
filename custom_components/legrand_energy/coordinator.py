@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,16 +12,25 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import LegrandEnergyApi, LegrandEnergyApiError
+
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
-from .contract_models import LegrandContract
+
+from .contract_models import Contract
 from .contract_parser import parse_contract
+
 from .models import LegrandModule
+
 from .private_api import LegrandPrivateApi, LegrandPrivateApiError
 
 from .helpers.energy_accumulator import EnergyAccumulator
 from .helpers.module_statistics import ModuleStatistics
 from .helpers.private_measure_decoder import decode_energy_points
 from .helpers.statistics import total_cost, total_energy
+from .helpers.daily_statistics import compute_daily_statistics
+from .helpers.monthly_projection import project_month
+from .helpers.projections import project_today
+
+from .tariff_engine import TariffEngine
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +41,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
         self.entry = entry
-        self.contract: LegrandContract | None = None
+        self.contract: Contract | None = None
+        self.tariff_engine: TariffEngine | None = None
 
         async def update_tokens(access_token: str, refresh_token: str) -> None:
             """Persist refreshed OAuth tokens."""
@@ -122,16 +133,42 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                 continue
 
             points = decode_energy_points(raw)
+            engine = self.tariff_engine
+
+            if engine is not None:
+                for point in points:
+                    state = engine.state_at(point.timestamp)
+                    point.tariff = state.zone_name
+                    point.zone_id = state.zone_id
 
             accumulator = EnergyAccumulator()
+
             for point in points:
                 accumulator.add(point)
+
+            daily = compute_daily_statistics(points)
+            now = datetime.now()
+
+            projection = project_today(
+                energy=daily.total_energy,
+                cost=daily.total_cost,
+                now=now,
+            )
+
+            monthly = project_month(
+                energy=daily.total_energy,
+                cost=daily.total_cost,
+                now=now,
+            )
 
             module.statistics = ModuleStatistics(
                 points=points,
                 total_energy=total_energy(points),
                 total_cost=total_cost(points),
                 dashboard_total=accumulator.total,
+                daily=daily,
+                projection=projection,
+                monthly_projection=monthly,
             )
 
             if points:
@@ -154,7 +191,12 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             _LOGGER.debug("Private contract update failed: %s", err)
             return
 
-        self.contract = parse_contract(raw)
+            self.contract = parse_contract(raw)
+
+            if self.contract is not None:
+                self.tariff_engine = TariffEngine(self.contract)
+            else:
+                self.tariff_engine = None
 
     def _get_home_id(self) -> str | None:
         """Return first home id from cached homesdata."""
