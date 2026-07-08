@@ -1,8 +1,9 @@
 {
   "entity": {
     "binary_sensor": {
-    "off_peak": {
-      "name": "Heures creuses"
+      "off_peak": {
+        "name": "Heures creuses"
+      }
     },
     "sensor": {
       "energy_tariff1": {
@@ -49,6 +50,21 @@
       },
       "next_tariff_change": {
         "name": "Prochain changement de tarif"
+      },
+      "energy_peak_today": { 
+        "name": "Consommation HP aujourd'hui" 
+      },
+      "energy_off_peak_today": { 
+        "name": "Consommation HC aujourd'hui" 
+      },
+      "cost_peak_today": { 
+        "name": "Coût HP aujourd'hui"   
+      },
+      "cost_off_peak_today": { 
+        "name": "Coût HC aujourd'hui"   
+      },
+      "projected_monthly_cost": { 
+        "name": "Coût estimé ce mois" 
       }
     },
     "button": {
