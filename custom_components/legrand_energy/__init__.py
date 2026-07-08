@@ -15,6 +15,12 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
 ]
 
+async def async_update_options(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> None:
+    """Reload integration when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -28,6 +34,7 @@ async def async_setup_entry(
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     await hass.config_entries.async_forward_entry_setups(
         entry,
