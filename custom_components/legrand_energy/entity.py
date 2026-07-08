@@ -26,7 +26,7 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
     @property
     def module(self) -> LegrandModule:
         """Return module."""
-        return self.coordinator.data[self._module_id]
+        return self.coordinator.data["modules"][self._module_id]
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -46,5 +46,4 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
             "manufacturer": MANUFACTURER,
             "model": "EcoMeter Circuit",
             "name": module.name,
-            "via_device": (DOMAIN, module.bridge),
         }
