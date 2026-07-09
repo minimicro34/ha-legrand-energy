@@ -136,6 +136,66 @@ DAILY_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             else None
         ),
     ),
+    LegrandSensorDescription(
+        key="energy_peak_today",
+        translation_key="energy_peak_today",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda module: (
+            module.statistics.daily.peak_energy
+            if module.statistics and module.statistics.daily
+            else None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="energy_off_peak_today",
+        translation_key="energy_off_peak_today",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda module: (
+            module.statistics.daily.off_peak_energy
+            if module.statistics and module.statistics.daily
+            else None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="cost_peak_today",
+        translation_key="cost_peak_today",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="€",
+        value_fn=lambda module: (
+            module.statistics.daily.peak_cost
+            if module.statistics and module.statistics.daily
+            else None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="cost_off_peak_today",
+        translation_key="cost_off_peak_today",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="€",
+        value_fn=lambda module: (
+            module.statistics.daily.off_peak_cost
+            if module.statistics and module.statistics.daily
+            else None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="projected_monthly_cost",
+        translation_key="projected_monthly_cost",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="€",
+        value_fn=lambda module: (
+            module.statistics.monthly_projection.projected_cost
+            if module.statistics and module.statistics.monthly_projection
+            else None
+        ),
+    ),
 )
 
 CONTRACT_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
@@ -340,7 +400,6 @@ class LegrandContractSensor(LegrandBaseSensor):
         if contract is None or self.entity_description.contract_value_fn is None:
             return None
         return self.entity_description.contract_value_fn(contract)
-
 
 class LegrandTariffSensor(LegrandBaseSensor):
     """Tariff sensor."""

@@ -31,15 +31,17 @@ def compute_daily_statistics(
     stats = DailyStatistics(points=len(points))
 
     for point in points:
+        price = point.price or 0.0
+
         stats.total_energy += point.energy
-        stats.total_cost += point.price
+        stats.total_cost += price
 
         if point.tariff == "peak":
             stats.peak_energy += point.energy
-            stats.peak_cost += point.price
+            stats.peak_cost += price
 
         elif point.tariff == "off_peak":
             stats.off_peak_energy += point.energy
-            stats.off_peak_cost += point.price
+            stats.off_peak_cost += price
 
     return stats
