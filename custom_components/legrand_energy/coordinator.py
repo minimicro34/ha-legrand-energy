@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from datetime import datetime
+
+from .debug import debug
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -32,14 +33,12 @@ from .helpers.projections import project_today
 
 from .tariff_engine import TariffEngine
 
-_LOGGER = logging.getLogger(__name__)
-
-
 class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
     """Legrand Energy coordinator."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
+        debug.info("Coordinator update started")
         self.entry = entry
         self.contract: Contract | None = None
         self.tariff_engine: TariffEngine | None = None
@@ -75,12 +74,12 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
 
         super().__init__(
             hass,
-            _LOGGER,
             name=DOMAIN,
             update_interval=DEFAULT_SCAN_INTERVAL,
         )
 
     async def _async_update_data(self) -> dict[str, LegrandModule]:
+        debug.info("_async_update_data CALLED")
         """Fetch data from APIs."""
         try:
             modules = await self.api.update()
@@ -90,10 +89,13 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                 await self._update_contract(home_id)
                 await self._update_private_measures(modules, home_id)
 
-            _LOGGER.error(
-                "Coordinator OK: modules=%d contract=%s",
-                len(modules),
-                self.contract,
+            debug.info(
+                "Coordinator update finished",
+                {
+                    "modules": len(modules),
+                    "contract": self.contract is not None,
+                    "tariff_engine": self.tariff_engine is not None,
+                },
             )
             return modules
 
@@ -114,6 +116,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
         date_begin = now - 24 * 60 * 60
 
         for module in modules.values():
+            debug.info(f"Updating module {module.id}")
             if module.bridge is None:
                 continue
 
@@ -134,7 +137,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                     date_end=date_end,
                 )
             except LegrandPrivateApiError as err:
-                _LOGGER.debug("Private measure failed for %s: %s", module.id, err)
+                debug.error("Private API failed", err)
                 continue
 
             points = decode_energy_points(raw)
@@ -183,29 +186,28 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                 module.energy_tariff2 = None
                 module.price_tariff1 = last_point.price
                 module.price_tariff2 = None
-                module.last_measure = int(last_point.timestamp.timestamp())
-
+                module.last_measure = int(last_point.timestamp.timestamp()
+            )
     async def _update_contract(self, home_id: str) -> None:
         """Update contract information."""
-        _LOGGER.warning("Updating contract...")
+        debug.api("Contract JSON", raw=self.contract)
         if self.private_api is None:
             return
 
         try:
-            _LOGGER.error("Updating contract for home_id=%s", home_id)
+            debug.info("Updating contract for home_id", home_id)
             raw = await self.private_api.getcontracts(home_id)
         except LegrandPrivateApiError as err:
-            _LOGGER.debug("Private contract update failed: %s", err)
+            debug.error("Private API failed", err)
             return
 
             self.contract = parse_contract(raw)
-            _LOGGER.warning("Parsed contract: %s", self.contract)
+            debug.info("Parsed contract", self.contract)
 
             if self.contract is not None:
                 self.tariff_engine = TariffEngine(self.contract)
             else:
                 self.tariff_engine = None
-            _LOGGER.warning("Raw contract response: %s", raw)
 
     def _get_home_id(self) -> str | None:
         """Return first home id from cached homesdata."""

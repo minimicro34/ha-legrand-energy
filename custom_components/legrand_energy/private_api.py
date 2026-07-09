@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .debug.logger import debug
+
 import json
 from typing import Any
 
@@ -31,7 +33,6 @@ class LegrandPrivateApiError(Exception):
 
 class LegrandPrivateApi:
     """Legrand private API client."""
-
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -155,4 +156,8 @@ class LegrandPrivateApi:
             APP_API_BASE,
             "getcontracts",
             params={"home_id": home_id},
-            )
+            ),
+        debug.api(
+            "Private API /getcontracts",
+            params={"home_id": home_id},
+        )

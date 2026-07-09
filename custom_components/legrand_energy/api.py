@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import logging
+from .debug.logger import debug
+
 from typing import Any, Awaitable, Callable
 
 import aiohttp
 
 from .models import LegrandModule
-
-_LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
 SYNC_API_BASE = "https://app.netatmo.net/syncapi/v1"
@@ -36,7 +35,6 @@ class LegrandEnergyApiError(Exception):
 
 class LegrandEnergyApi:
     """Legrand Energy public API client."""
-
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -82,7 +80,7 @@ class LegrandEnergyApi:
         self._access_token = data["access_token"]
         self._refresh_token = data.get("refresh_token", self._refresh_token)
 
-        _LOGGER.info("Legrand Energy OAuth token refreshed")
+        debug.api("Legrand Energy OAuth token refreshed")
 
         if self._token_update_callback is not None:
             await self._token_update_callback(
@@ -120,7 +118,7 @@ class LegrandEnergyApi:
             )
 
         if response.status >= 400 or data.get("status") == "error" or "error" in data:
-            _LOGGER.debug("Legrand API %s returned %s", endpoint, data)
+            debug.api("Legrand API returned error", data)
             raise LegrandEnergyApiError(data)
 
         return data
@@ -157,7 +155,7 @@ class LegrandEnergyApi:
             )
 
         if response.status >= 400 or data.get("status") == "error" or "error" in data:
-            _LOGGER.debug("Legrand API POST %s returned %s", endpoint, data)
+            debug.api("Legrand API POST returned error", data)
             raise LegrandEnergyApiError(data)
 
         return data
@@ -187,6 +185,7 @@ class LegrandEnergyApi:
                 "app_type": "app_magellan",
             },
         )
+        
 
     async def contracts(self) -> dict[str, Any]:
         """Return contracts."""
