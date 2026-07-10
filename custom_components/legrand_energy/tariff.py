@@ -103,4 +103,4 @@ class TariffSchedule:
         if next_change <= now:
             next_change += timedelta(days=7)
 
-        return next_change
+        return next_change   
