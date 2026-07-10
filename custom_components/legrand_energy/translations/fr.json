@@ -7,22 +7,28 @@
     },
     "sensor": {
       "energy_tariff1": {
-        "name": "Énergie tarif 1"
+        "name": "Énergie du dernier intervalle HP"
       },
       "energy_tariff2": {
-        "name": "Énergie tarif 2"
+        "name": "Énergie du dernier intervalle HC"
+      },
+      "energy_today": {
+        "name": "Consommation aujourd'hui"
+      },
+      "cost_today": {
+        "name": "Coût aujourd'hui"
       },
       "energy_total": {
-        "name": "Énergie 24 h"
+        "name": "Consommation sur 24 h"
       },
       "energy_cost": {
-        "name": "Coût 24 h"
+        "name": "Coût sur 24 h"
       },
       "price_tariff1": {
-        "name": "Coût tarif 1"
+        "name": "Coût du dernier intervalle HP"
       },
       "price_tariff2": {
-        "name": "Coût tarif 2"
+        "name": "Coût du dernier intervalle HC"
       },
       "contract_type": {
         "name": "Type de contrat"
@@ -63,8 +69,11 @@
       "cost_off_peak_today": { 
         "name": "Coût HC aujourd'hui"   
       },
+      "projected_cost_today": { 
+        "name": "Projection du coût aujourd’hui"   
+      },
       "projected_monthly_cost": { 
-        "name": "Coût estimé ce mois" 
+        "name": "Projection mensuelle selon aujourd’hui" 
       }
     },
     "button": {

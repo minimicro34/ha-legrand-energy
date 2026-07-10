@@ -25,23 +25,30 @@ class DailyStatistics:
 
 def compute_daily_statistics(
     points: list[EnergyPoint],
+    peak_price: float,
+    off_peak_price: float,
 ) -> DailyStatistics:
     """Compute daily statistics."""
-
     stats = DailyStatistics(points=len(points))
 
     for point in points:
-        price = point.price or 0.0
+        energy_kwh = point.energy / 1000
 
         stats.total_energy += point.energy
-        stats.total_cost += price
 
         if point.tariff == "peak":
+            cost = energy_kwh * peak_price
             stats.peak_energy += point.energy
-            stats.peak_cost += price
+            stats.peak_cost += cost
 
         elif point.tariff == "off_peak":
+            cost = energy_kwh * off_peak_price
             stats.off_peak_energy += point.energy
-            stats.off_peak_cost += price
+            stats.off_peak_cost += cost
+
+        else:
+            cost = 0.0
+
+        stats.total_cost += cost
 
     return stats
