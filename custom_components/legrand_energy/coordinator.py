@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import time
-from datetime import datetime
 import logging
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import LegrandEnergyApi, LegrandEnergyApiError
 
@@ -103,20 +102,35 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             raise UpdateFailed(f"Legrand Energy update failed: {err}") from err
 
     async def _update_private_measures(
-        self,
-        modules: dict[str, LegrandModule],
-        home_id: str,
-    ) -> None:
+    self,
+    modules: dict[str, LegrandModule],
+    home_id: str,
+) -> None:
         """Update private electricity measures."""
         if self.private_api is None:
             return
 
-        now = int(time.time())
-        date_end = now
-        date_begin = now - 24 * 60 * 60
+        # Une seule référence temporelle pour tout le cycle de mise à jour.
+        now_dt = dt_util.now()
+        date_end = int(now_dt.timestamp())
+        date_begin = date_end - (24 * 60 * 60)
+
+        contract = self.contract
+        engine = self.tariff_engine
+
+        peak_price = (
+            contract.peak_price
+            if contract is not None and contract.peak_price is not None
+            else 0.0
+        )
+        off_peak_price = (
+            contract.off_peak_price
+            if contract is not None and contract.off_peak_price is not None
+            else 0.0
+        )
 
         for module in modules.values():
-            _LOGGER.error("Updating module %s private measures", module.id)
+            # Le bridge n'est pas un circuit de mesure.
             if module.bridge is None:
                 continue
 
@@ -125,11 +139,17 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             except (IndexError, ValueError):
                 continue
 
+            # Circuits électriques uniquement : #0 à #5.
             if suffix > 5:
                 continue
 
+            _LOGGER.debug(
+                "Updating private measures for module %s",
+                module.id,
+            )
+
             try:
-                raw = await self.private_api.get_electricity_measure(
+                result = await self.private_api.get_electricity_measure(
                     home_id=home_id,
                     module_id=module.id,
                     bridge=module.bridge,
@@ -137,36 +157,59 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                     date_end=date_end,
                 )
             except LegrandPrivateApiError as err:
-                _LOGGER.error("Private API failed", err)
+                _LOGGER.warning(
+                    "Private measure update failed for %s: %s",
+                    module.id,
+                    err,
+                )
                 continue
 
-            points = decode_energy_points(raw)
-            engine = self.tariff_engine
+            # Certaines méthodes de l'API privée peuvent renvoyer
+            # un tuple contenant le JSON et des métadonnées.
+            raw = result[0] if isinstance(result, tuple) else result
 
+            points = decode_energy_points(raw)
+
+            # Le timetable du contrat est exprimé en heure locale.
             if engine is not None:
                 for point in points:
-                    state = engine.state_at(point.timestamp)
+                    local_timestamp = dt_util.as_local(point.timestamp)
+                    state = engine.state_at(local_timestamp)
+
                     point.tariff = state.zone_name
                     point.zone_id = state.zone_id
 
+            # Statistiques glissantes sur les dernières 24 heures.
             accumulator = EnergyAccumulator()
 
             for point in points:
                 accumulator.add(point)
 
-            daily = compute_daily_statistics(points)
-            now = datetime.now()
+            # Statistiques de la journée civile locale, depuis minuit.
+            today_points = [
+                point
+                for point in points
+                if dt_util.as_local(point.timestamp).date() == now_dt.date()
+            ]
 
+            daily = compute_daily_statistics(
+                today_points,
+                peak_price=peak_price,
+                off_peak_price=off_peak_price,
+            )
+
+            # Projection de la journée à partir du cumul depuis minuit.
             projection = project_today(
                 energy=daily.total_energy,
                 cost=daily.total_cost,
-                now=now,
+                now=now_dt,
             )
 
+            # Projection mensuelle à partir d'une journée complète estimée.
             monthly = project_month(
-                energy=daily.total_energy,
-                cost=daily.total_cost,
-                now=now,
+                energy=projection.projected_energy,
+                cost=projection.projected_cost,
+                now=now_dt,
             )
 
             module.statistics = ModuleStatistics(
@@ -186,8 +229,9 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                 module.energy_tariff2 = None
                 module.price_tariff1 = last_point.price
                 module.price_tariff2 = None
-                module.last_measure = int(last_point.timestamp.timestamp()
-            )
+                module.last_measure = int(
+                    last_point.timestamp.timestamp()
+                )
 
     async def _update_contract(self, home_id: str) -> None:
         """Update contract information."""
