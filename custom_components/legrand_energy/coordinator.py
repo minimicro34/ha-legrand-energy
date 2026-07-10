@@ -188,9 +188,9 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                 module.price_tariff2 = None
                 module.last_measure = int(last_point.timestamp.timestamp()
             )
+
     async def _update_contract(self, home_id: str) -> None:
         """Update contract information."""
-        _LOGGER.error("Contract JSON %s", self.contract is not None)
         if self.private_api is None:
             return
 
@@ -198,16 +198,18 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             _LOGGER.error("Updating contract for home_id %s", home_id)
             raw = await self.private_api.getcontracts(home_id)
         except LegrandPrivateApiError as err:
-            _LOGGER.error("Private API failed %s", err)
+            _LOGGER.error("Private API failed: %s", err)
             return
 
-            self.contract = parse_contract(raw)
-            _LOGGER.error("Parsed contract %s", self.contract)
+        _LOGGER.error("Raw contract: %r", raw)
 
-            if self.contract is not None:
-                self.tariff_engine = TariffEngine(self.contract)
-            else:
-                self.tariff_engine = None
+        self.contract = parse_contract(raw)
+        _LOGGER.error("Parsed contract: %r", self.contract)
+
+        if self.contract is not None:
+            self.tariff_engine = TariffEngine(self.contract)
+        else:
+            self.tariff_engine = None
 
     def _get_home_id(self) -> str | None:
         """Return first home id from cached homesdata."""
