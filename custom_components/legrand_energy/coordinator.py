@@ -75,6 +75,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
 
         super().__init__(
             hass,
+            _LOGGER,
             name=DOMAIN,
             update_interval=DEFAULT_SCAN_INTERVAL,
         )
