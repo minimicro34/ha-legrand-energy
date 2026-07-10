@@ -196,12 +196,23 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
 
         try:
             _LOGGER.error("Updating contract for home_id %s", home_id)
-            raw = await self.private_api.getcontracts(home_id)
+
+            result = await self.private_api.getcontracts(home_id)
+
+            if isinstance(result, tuple):
+                raw = result[0]
+            else:
+                raw = result
+
         except LegrandPrivateApiError as err:
             _LOGGER.error("Private API failed: %s", err)
             return
 
-        _LOGGER.error("Raw contract: %r", raw)
+        _LOGGER.error(
+            "Raw contract type=%s value=%r",
+            type(raw).__name__,
+            raw,
+        )
 
         self.contract = parse_contract(raw)
         _LOGGER.error("Parsed contract: %r", self.contract)
