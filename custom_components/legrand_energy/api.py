@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from .debug.logger import debug
-
 from typing import Any, Awaitable, Callable
+from .models import LegrandModule
 
 import aiohttp
+import logging
 
-from .models import LegrandModule
+_LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
 SYNC_API_BASE = "https://app.netatmo.net/syncapi/v1"
@@ -80,7 +80,7 @@ class LegrandEnergyApi:
         self._access_token = data["access_token"]
         self._refresh_token = data.get("refresh_token", self._refresh_token)
 
-        debug.api("Legrand Energy OAuth token refreshed")
+        _LOGGER.error("Legrand Energy OAuth token refreshed")
 
         if self._token_update_callback is not None:
             await self._token_update_callback(
@@ -118,8 +118,7 @@ class LegrandEnergyApi:
             )
 
         if response.status >= 400 or data.get("status") == "error" or "error" in data:
-            debug.api("Legrand API returned error", data)
-            raise LegrandEnergyApiError(data)
+            _LOGGER.error("Legrand API returned error %s", data)
 
         return data
 
@@ -155,8 +154,7 @@ class LegrandEnergyApi:
             )
 
         if response.status >= 400 or data.get("status") == "error" or "error" in data:
-            debug.api("Legrand API POST returned error", data)
-            raise LegrandEnergyApiError(data)
+            _LOGGER.error("Legrand API POST returned error %s", data)
 
         return data
 

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from .debug.logger import debug
-
 import json
 from typing import Any
 
 import aiohttp
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
 SYNC_API_BASE = "https://app.netatmo.net/syncapi/v1"
@@ -157,7 +158,4 @@ class LegrandPrivateApi:
             "getcontracts",
             params={"home_id": home_id},
             ),
-        debug.api(
-            "Private API /getcontracts",
-            params={"home_id": home_id},
-        )
+        _LOGGER.error("Private API /getcontracts=%s", home_id)

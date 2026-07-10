@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-
-from .debug import debug
+import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -33,12 +32,14 @@ from .helpers.projections import project_today
 
 from .tariff_engine import TariffEngine
 
+_LOGGER = logging.getLogger(__name__)
+
 class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
     """Legrand Energy coordinator."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
-        debug.info("Coordinator update started")
+        _LOGGER.error("Coordinator update started")
         self.entry = entry
         self.contract: Contract | None = None
         self.tariff_engine: TariffEngine | None = None
@@ -79,7 +80,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
         )
 
     async def _async_update_data(self) -> dict[str, LegrandModule]:
-        debug.info("_async_update_data CALLED")
+        _LOGGER.error("_async_update_data CALLED")
         """Fetch data from APIs."""
         try:
             modules = await self.api.update()
@@ -89,13 +90,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                 await self._update_contract(home_id)
                 await self._update_private_measures(modules, home_id)
 
-            debug.info(
-                "Coordinator update finished",
-                {
-                    "modules": len(modules),
-                    "contract": self.contract is not None,
-                    "tariff_engine": self.tariff_engine is not None,
-                },
+            _LOGGER.error(
+                "Coordinator state: modules=%d contract=%s tariff_engine=%s",
+                len(modules),
+                self.contract is not None,
+                self.tariff_engine is not None,
             )
             return modules
 
@@ -116,7 +115,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
         date_begin = now - 24 * 60 * 60
 
         for module in modules.values():
-            debug.info(f"Updating module {module.id}")
+            _LOGGER.error("Updating module %s private measures", module.id)
             if module.bridge is None:
                 continue
 
@@ -137,7 +136,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
                     date_end=date_end,
                 )
             except LegrandPrivateApiError as err:
-                debug.error("Private API failed", err)
+                _LOGGER.error("Private API failed", err)
                 continue
 
             points = decode_energy_points(raw)
@@ -190,19 +189,19 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[dict[str, LegrandModule]]):
             )
     async def _update_contract(self, home_id: str) -> None:
         """Update contract information."""
-        debug.api("Contract JSON", raw=self.contract)
+        _LOGGER.error("Contract JSON %s", self.contract is not None)
         if self.private_api is None:
             return
 
         try:
-            debug.info("Updating contract for home_id", home_id)
+            _LOGGER.error("Updating contract for home_id %s", home_id)
             raw = await self.private_api.getcontracts(home_id)
         except LegrandPrivateApiError as err:
-            debug.error("Private API failed", err)
+            _LOGGER.error("Private API failed %s", err)
             return
 
             self.contract = parse_contract(raw)
-            debug.info("Parsed contract", self.contract)
+            _LOGGER.error("Parsed contract %s", self.contract)
 
             if self.contract is not None:
                 self.tariff_engine = TariffEngine(self.contract)
