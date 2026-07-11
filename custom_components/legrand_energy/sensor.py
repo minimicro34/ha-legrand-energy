@@ -151,13 +151,10 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
-            data.measurements.energy_today
-            if data.measurements is not None
-            else None
+            data.measurements.energy_today if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.energy_today is not None
+            data.measurements is not None and data.measurements.energy_today is not None
         ),
     ),
     LegrandSensorDescription(
@@ -202,13 +199,10 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
-            data.measurements.energy_week
-            if data.measurements is not None
-            else None
+            data.measurements.energy_week if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.energy_week is not None
+            data.measurements is not None and data.measurements.energy_week is not None
         ),
     ),
     LegrandSensorDescription(
@@ -219,13 +213,10 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
-            data.measurements.energy_month
-            if data.measurements is not None
-            else None
+            data.measurements.energy_month if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.energy_month is not None
+            data.measurements is not None and data.measurements.energy_month is not None
         ),
     ),
     LegrandSensorDescription(
@@ -236,13 +227,10 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
-            data.measurements.energy_year
-            if data.measurements is not None
-            else None
+            data.measurements.energy_year if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.energy_year is not None
+            data.measurements is not None and data.measurements.energy_year is not None
         ),
     ),
     LegrandSensorDescription(
@@ -253,13 +241,10 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
-            data.measurements.cost_today
-            if data.measurements is not None
-            else None
+            data.measurements.cost_today if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.cost_today is not None
+            data.measurements is not None and data.measurements.cost_today is not None
         ),
     ),
     LegrandSensorDescription(
@@ -270,9 +255,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
-            data.measurements.cost_peak_today
-            if data.measurements is not None
-            else None
+            data.measurements.cost_peak_today if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
             data.measurements is not None
@@ -307,8 +290,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             data.measurements.cost_week if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.cost_week is not None
+            data.measurements is not None and data.measurements.cost_week is not None
         ),
     ),
     LegrandSensorDescription(
@@ -319,13 +301,10 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
-            data.measurements.cost_month
-            if data.measurements is not None
-            else None
+            data.measurements.cost_month if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.cost_month is not None
+            data.measurements is not None and data.measurements.cost_month is not None
         ),
     ),
     LegrandSensorDescription(
@@ -339,8 +318,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             data.measurements.cost_year if data.measurements is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.measurements is not None
-            and data.measurements.cost_year is not None
+            data.measurements is not None and data.measurements.cost_year is not None
         ),
     ),
     LegrandSensorDescription(
@@ -351,9 +329,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
-            data.projections.energy_end_of_day
-            if data.projections is not None
-            else None
+            data.projections.energy_end_of_day if data.projections is not None else None
         ),
         available_fn=lambda data, _module: (
             data.projections is not None
@@ -385,9 +361,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
-            data.projections.cost_end_of_day
-            if data.projections is not None
-            else None
+            data.projections.cost_end_of_day if data.projections is not None else None
         ),
         available_fn=lambda data, _module: (
             data.projections is not None
@@ -402,9 +376,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
-            data.projections.cost_end_of_month
-            if data.projections is not None
-            else None
+            data.projections.cost_end_of_month if data.projections is not None else None
         ),
         available_fn=lambda data, _module: (
             data.projections is not None
@@ -449,9 +421,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         ),
         available_fn=lambda data, _module: data.contract is not None,
         attributes_fn=lambda data, _module: (
-            {"unit": data.contract.power_unit}
-            if data.contract is not None
-            else None
+            {"unit": data.contract.power_unit} if data.contract is not None else None
         ),
     ),
     LegrandSensorDescription(
@@ -477,8 +447,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             data.contract.off_peak_price if data.contract is not None else None
         ),
         available_fn=lambda data, _module: (
-            data.contract is not None
-            and data.contract.off_peak_price is not None
+            data.contract is not None and data.contract.off_peak_price is not None
         ),
     ),
 )
