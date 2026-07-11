@@ -7,7 +7,6 @@ from typing import Any
 
 from .energy_series import EnergyPoint
 
-
 # Format court utilisé actuellement :
 # 0 sum_energy_elec
 # 1 sum_energy_elec$0

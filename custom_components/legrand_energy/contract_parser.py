@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .contract_models import Contract, TariffPeriod, TariffZone
 
 
-def parse_contract(data: dict) -> Contract | None:
+def parse_contract(data: dict[str, Any]) -> Contract | None:
     """Parse the first electricity contract."""
     contracts = data.get("body", {}).get("contracts", [])
 

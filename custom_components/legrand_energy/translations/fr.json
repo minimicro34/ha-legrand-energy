@@ -6,6 +6,15 @@
       }
     },
     "sensor": {
+      "module_type": {
+        "name": "Type de module"
+      },
+      "room": {
+        "name": "Pièce"
+      },
+      "setup_date": {
+        "name": "Date d’installation"
+      },
       "energy_tariff1": {
         "name": "Énergie du dernier intervalle HP"
       },
@@ -69,11 +78,14 @@
       "cost_off_peak_today": { 
         "name": "Coût HC aujourd'hui"   
       },
-      "projected_cost_today": { 
-        "name": "Projection du coût aujourd’hui"   
+      "projected_energy_today": {
+        "name": "Projection de consommation aujourd'hui"
       },
-      "projected_monthly_cost": { 
-        "name": "Projection mensuelle selon aujourd’hui" 
+      "projected_cost_today": {
+        "name": "Projection du coût aujourd'hui"
+      },
+      "projected_monthly_cost": {
+        "name": "Projection mensuelle selon aujourd'hui"
       }
     },
     "button": {

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+import logging
+from typing import Any, cast
 
 import aiohttp
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ class LegrandPrivateApiError(Exception):
 
 class LegrandPrivateApi:
     """Legrand private API client."""
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -70,10 +71,10 @@ class LegrandPrivateApi:
         ) as response:
             data = await response.json(content_type=None)
 
-        if response.status >= 400 or data.get("status") == "error" or "error" in data:
-            raise LegrandPrivateApiError(data)
+        if not isinstance(data, dict):
+            raise LegrandPrivateApiError("Unexpected private API response")
 
-        return data
+        return cast(dict[str, Any], data)
 
     async def homestatus(self, home_id: str) -> dict[str, Any]:
         """Return private home status."""
@@ -150,12 +151,13 @@ class LegrandPrivateApi:
                 "date_end": date_end,
             },
         )
-    
+
     async def getcontracts(self, home_id: str) -> dict[str, Any]:
         """Return private energy contracts."""
+        _LOGGER.error("Private API /getcontracts=%s", home_id)
+
         return await self._get(
             APP_API_BASE,
             "getcontracts",
             params={"home_id": home_id},
-            ),
-        _LOGGER.error("Private API /getcontracts=%s", home_id)
+        )

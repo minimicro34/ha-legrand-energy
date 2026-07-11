@@ -6,6 +6,15 @@
       }
     },
     "sensor": {
+      "module_type": {
+        "name": "Module type"
+      },
+      "room": {
+        "name": "Room"
+      },
+      "setup_date": {
+        "name": "Setup date"
+      },
       "energy_tariff1": {
         "name": "Energy tariff 1"
       },
@@ -14,6 +23,12 @@
       },
       "price_tariff1": {
         "name": "Price tariff 1"
+      },
+      "energy_today": {
+        "name": "Energy today"
+      },
+      "cost_today": {
+        "name": "Cost today"
       },
       "energy_total": {
         "name": "Energy 24 h"

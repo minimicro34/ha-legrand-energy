@@ -7,7 +7,6 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/minimicro34/ha-legrand-energy/issues",
-  "loggers": ["custom_components.legrand_energy"],
   "requirements": [],
-  "version": "0.1.0"
+  "version": "1.0.0"
 }

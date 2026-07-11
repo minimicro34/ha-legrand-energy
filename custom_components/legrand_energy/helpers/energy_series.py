@@ -12,7 +12,7 @@ class EnergyPoint:
 
     timestamp: datetime
     energy: float
-    price: float
+    price: float | None = None
 
     tariff: str | None = None
     zone_id: int | None = None

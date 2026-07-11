@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from calendar import monthrange
 from dataclasses import dataclass
 from datetime import datetime
-from calendar import monthrange
+
 
 @dataclass(slots=True)
 class MonthlyProjection:

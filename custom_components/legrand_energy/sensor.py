@@ -1,9 +1,11 @@
-"""Sensors for Legrand Energy."""
+"""Sensor platform for Legrand Energy."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from datetime import datetime, timedelta
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,133 +14,177 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy
+from homeassistant.const import (
+    CURRENCY_EURO,
+    EntityCategory,
+    UnitOfEnergy,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
 from .entity import LegrandEntity
-from .models import LegrandModule
-from .tariff_engine import TariffEngine
+from .models import LegrandEnergyData, LegrandModule
+
+SensorValue = str | int | float | datetime | None
+ValueFn = Callable[[LegrandEnergyData, LegrandModule | None], SensorValue]
+AvailableFn = Callable[[LegrandEnergyData, LegrandModule | None], bool]
+AttributesFn = Callable[
+    [LegrandEnergyData, LegrandModule | None],
+    dict[str, Any],
+]
 
 
 @dataclass(frozen=True, kw_only=True)
 class LegrandSensorDescription(SensorEntityDescription):
-    """Legrand sensor description."""
+    """Describe a Legrand Energy sensor."""
 
-    value_fn: Callable[[LegrandModule], Any] | None = None
-    contract_value_fn: Callable[[Any], Any] | None = None
-    tariff_value_fn: Callable[[TariffEngine], Any] | None = None
+    module: bool = False
+    value_fn: ValueFn
+    available_fn: AvailableFn = lambda _data, _module: True
+    attributes_fn: AttributesFn | None = None
 
 
-#
-# Dernier intervalle reçu
-#
-# Ces valeurs ne sont pas des compteurs croissants.
-# On ne définit donc pas de state_class.
-#
+def _format_remaining(remaining: timedelta | None) -> str | None:
+    """Format a remaining duration as HH:MM."""
+    if remaining is None:
+        return None
 
-ENERGY_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    total_seconds = max(0, int(remaining.total_seconds()))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, _seconds = divmod(remainder, 60)
+
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _remaining_until(next_change: datetime | None) -> timedelta | None:
+    """Return the remaining duration until the next change."""
+    if next_change is None:
+        return None
+
+    now = datetime.now(next_change.tzinfo)
+    return max(next_change - now, timedelta())
+
+
+def _tariff_attributes(
+    data: LegrandEnergyData,
+    _module: LegrandModule | None,
+) -> dict[str, Any]:
+    """Return attributes for the current tariff sensor."""
+    if data.tariff is None:
+        return {}
+
+    return {
+        "next_change": data.tariff.next_change,
+        "remaining": _format_remaining(_remaining_until(data.tariff.next_change)),
+    }
+
+
+SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
-        key="energy_tariff1",
-        translation_key="energy_tariff1",
-        device_class=SensorDeviceClass.ENERGY,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=3,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda module: (
-            module.energy_tariff1 / 1000
-            if module.energy_tariff1 is not None
-            else None
+        key="current_tariff",
+        translation_key="current_tariff",
+        icon="mdi:clock-outline",
+        value_fn=lambda data, _module: (
+            data.tariff.price_type if data.tariff is not None else None
         ),
+        available_fn=lambda data, _module: data.tariff is not None,
+        attributes_fn=_tariff_attributes,
     ),
     LegrandSensorDescription(
-        key="energy_tariff2",
-        translation_key="energy_tariff2",
-        device_class=SensorDeviceClass.ENERGY,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=3,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda module: (
-            module.energy_tariff2 / 1000
-            if module.energy_tariff2 is not None
-            else None
-        ),
-    ),
-    LegrandSensorDescription(
-        key="price_tariff1",
-        translation_key="price_tariff1",
+        key="current_price",
+        translation_key="current_price",
         device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="€",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
         suggested_display_precision=4,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda module: module.price_tariff1,
-    ),
-    LegrandSensorDescription(
-        key="price_tariff2",
-        translation_key="price_tariff2",
-        device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="€",
-        suggested_display_precision=4,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda module: module.price_tariff2,
-    ),
-)
-
-
-#
-# Fenêtre glissante des dernières 24 heures
-#
-
-STATISTICS_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
-    LegrandSensorDescription(
-        key="energy_total",
-        translation_key="energy_total",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.total_energy / 1000
-            if module.statistics is not None
-            else None
+        value_fn=lambda data, _module: (
+            data.tariff.price if data.tariff is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.tariff is not None and data.tariff.price is not None
         ),
     ),
     LegrandSensorDescription(
-        key="energy_cost",
-        translation_key="energy_cost",
-        device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="€",
-        suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.total_cost
-            if module.statistics is not None
-            else None
+        key="next_tariff_change",
+        translation_key="next_tariff_change",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data, _module: (
+            data.tariff.next_change if data.tariff is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.tariff is not None and data.tariff.next_change is not None
         ),
     ),
-)
-
-
-#
-# Journée civile locale depuis minuit
-#
-
-DAILY_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    LegrandSensorDescription(
+        key="power",
+        translation_key="power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data, _module: (
+            data.measurements.power if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.power is not None
+        ),
+    ),
     LegrandSensorDescription(
         key="energy_today",
         translation_key="energy_today",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.daily.total_energy / 1000
-            if module.statistics is not None
-            and module.statistics.daily is not None
-            else None
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.measurements.energy_today if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.energy_today is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="energy_week",
+        translation_key="energy_week",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.measurements.energy_week if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.energy_week is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="energy_month",
+        translation_key="energy_month",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.measurements.energy_month if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.energy_month is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="energy_year",
+        translation_key="energy_year",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.measurements.energy_year if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.energy_year is not None
         ),
     ),
     LegrandSensorDescription(
@@ -146,185 +192,224 @@ DAILY_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="cost_today",
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="€",
+        native_unit_of_measurement=CURRENCY_EURO,
         suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.daily.total_cost
-            if module.statistics is not None
-            and module.statistics.daily is not None
-            else None
+        value_fn=lambda data, _module: (
+            data.measurements.cost_today if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.cost_today is not None
         ),
     ),
     LegrandSensorDescription(
-        key="energy_peak_today",
-        translation_key="energy_peak_today",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.daily.peak_energy / 1000
-            if module.statistics is not None
-            and module.statistics.daily is not None
-            else None
-        ),
-    ),
-    LegrandSensorDescription(
-        key="energy_off_peak_today",
-        translation_key="energy_off_peak_today",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.daily.off_peak_energy / 1000
-            if module.statistics is not None
-            and module.statistics.daily is not None
-            else None
-        ),
-    ),
-    LegrandSensorDescription(
-        key="cost_peak_today",
-        translation_key="cost_peak_today",
+        key="cost_week",
+        translation_key="cost_week",
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="€",
+        native_unit_of_measurement=CURRENCY_EURO,
         suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.daily.peak_cost
-            if module.statistics is not None
-            and module.statistics.daily is not None
-            else None
+        value_fn=lambda data, _module: (
+            data.measurements.cost_week if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.cost_week is not None
         ),
     ),
     LegrandSensorDescription(
-        key="cost_off_peak_today",
-        translation_key="cost_off_peak_today",
+        key="cost_month",
+        translation_key="cost_month",
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="€",
+        native_unit_of_measurement=CURRENCY_EURO,
         suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.daily.off_peak_cost
-            if module.statistics is not None
-            and module.statistics.daily is not None
-            else None
+        value_fn=lambda data, _module: (
+            data.measurements.cost_month if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.cost_month is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="cost_year",
+        translation_key="cost_year",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data, _module: (
+            data.measurements.cost_year if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None and data.measurements.cost_year is not None
         ),
     ),
     LegrandSensorDescription(
         key="projected_energy_today",
         translation_key="projected_energy_today",
         device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.projection.projected_energy / 1000
-            if module.statistics is not None
-            and module.statistics.projection is not None
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.projections.energy_end_of_day if data.projections is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.projections is not None
+            and data.projections.energy_end_of_day is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="projected_energy_month",
+        translation_key="projected_energy_month",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.projections.energy_end_of_month
+            if data.projections is not None
             else None
+        ),
+        available_fn=lambda data, _module: (
+            data.projections is not None
+            and data.projections.energy_end_of_month is not None
         ),
     ),
     LegrandSensorDescription(
         key="projected_cost_today",
         translation_key="projected_cost_today",
         device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="€",
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
         suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.projection.projected_cost
-            if module.statistics is not None
-            and module.statistics.projection is not None
-            else None
+        value_fn=lambda data, _module: (
+            data.projections.cost_end_of_day if data.projections is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.projections is not None
+            and data.projections.cost_end_of_day is not None
         ),
     ),
     LegrandSensorDescription(
-        key="projected_monthly_cost",
-        translation_key="projected_monthly_cost",
+        key="projected_cost_month",
+        translation_key="projected_cost_month",
         device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="€",
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
         suggested_display_precision=2,
-        value_fn=lambda module: (
-            module.statistics.monthly_projection.projected_cost
-            if module.statistics is not None
-            and module.statistics.monthly_projection is not None
-            else None
+        value_fn=lambda data, _module: (
+            data.projections.cost_end_of_month if data.projections is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.projections is not None
+            and data.projections.cost_end_of_month is not None
         ),
     ),
-)
-
-
-#
-# Contrat
-#
-
-CONTRACT_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
         key="contract_type",
         translation_key="contract_type",
         entity_category=EntityCategory.DIAGNOSTIC,
-        contract_value_fn=lambda contract: contract.type,
+        icon="mdi:file-document-outline",
+        value_fn=lambda data, _module: (
+            data.contract.type if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: data.contract is not None,
     ),
     LegrandSensorDescription(
         key="contract_tariff",
         translation_key="contract_tariff",
         entity_category=EntityCategory.DIAGNOSTIC,
-        contract_value_fn=lambda contract: contract.tariff,
+        icon="mdi:cash-clock",
+        value_fn=lambda data, _module: (
+            data.contract.tariff if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: data.contract is not None,
     ),
     LegrandSensorDescription(
         key="contract_option",
         translation_key="contract_option",
         entity_category=EntityCategory.DIAGNOSTIC,
-        contract_value_fn=lambda contract: contract.tariff_option,
+        icon="mdi:tune",
+        value_fn=lambda data, _module: (
+            data.contract.tariff_option if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: data.contract is not None,
     ),
     LegrandSensorDescription(
         key="contract_power",
         translation_key="contract_power",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement="kVA",
-        suggested_display_precision=0,
-        contract_value_fn=lambda contract: contract.power_threshold,
+        icon="mdi:transmission-tower",
+        value_fn=lambda data, _module: (
+            data.contract.power_threshold if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and data.contract.power_threshold is not None
+        ),
     ),
     LegrandSensorDescription(
         key="peak_price",
         translation_key="peak_price",
         entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="€/kWh",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
         suggested_display_precision=4,
-        contract_value_fn=lambda contract: contract.peak_price,
+        value_fn=lambda data, _module: (
+            data.contract.peak_price if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and data.contract.peak_price is not None
+        ),
     ),
     LegrandSensorDescription(
         key="off_peak_price",
         translation_key="off_peak_price",
         entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="€/kWh",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
         suggested_display_precision=4,
-        contract_value_fn=lambda contract: contract.off_peak_price,
-    ),
-)
-
-
-#
-# Tarif actuel
-#
-
-TARIFF_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
-    LegrandSensorDescription(
-        key="current_tariff",
-        translation_key="current_tariff",
-        tariff_value_fn=lambda engine: engine.current_zone(),
+        value_fn=lambda data, _module: (
+            data.contract.off_peak_price if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and data.contract.off_peak_price is not None
+        ),
     ),
     LegrandSensorDescription(
-        key="current_price",
-        translation_key="current_price",
-        native_unit_of_measurement="€/kWh",
-        suggested_display_precision=4,
-        tariff_value_fn=lambda engine: engine.current_price(),
+        key="module_type",
+        translation_key="module_type",
+        module=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:identifier",
+        value_fn=lambda _data, module: module.type if module is not None else None,
+        available_fn=lambda _data, module: module is not None and bool(module.type),
     ),
     LegrandSensorDescription(
-        key="next_tariff_change",
-        translation_key="next_tariff_change",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        tariff_value_fn=lambda engine: engine.next_change(),
+        key="room",
+        translation_key="room",
+        module=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:home-outline",
+        value_fn=lambda _data, module: module.room if module is not None else None,
+        available_fn=lambda _data, module: (
+            module is not None and module.room is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="setup_date",
+        translation_key="setup_date",
+        module=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:calendar-clock",
+        value_fn=lambda _data, module: (
+            module.setup_date if module is not None else None
+        ),
+        available_fn=lambda _data, module: (
+            module is not None and module.setup_date is not None
+        ),
     ),
 )
 
@@ -332,85 +417,42 @@ TARIFF_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Legrand Energy sensors."""
-    coordinator: LegrandEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
-
-    entities: list[SensorEntity] = []
-
-    for module_id, module in coordinator.data.items():
-        if module.bridge is None:
-            continue
-
-        try:
-            suffix = int(module_id.rsplit("#", 1)[1])
-        except (IndexError, ValueError):
-            continue
-
-        if suffix > 5:
-            continue
-
-        for description in ENERGY_DESCRIPTIONS:
-            entities.append(
-                LegrandEnergySensor(
-                    coordinator=coordinator,
-                    module_id=module_id,
-                    description=description,
-                )
-            )
-
-        for description in STATISTICS_DESCRIPTIONS:
-            entities.append(
-                LegrandStatisticsSensor(
-                    coordinator=coordinator,
-                    module_id=module_id,
-                    description=description,
-                )
-            )
-
-        for description in DAILY_DESCRIPTIONS:
-            entities.append(
-                LegrandStatisticsSensor(
-                    coordinator=coordinator,
-                    module_id=module_id,
-                    description=description,
-                )
-            )
+    """Set up Legrand Energy sensors from a config entry."""
+    coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
     bridge_id = next(
         (
             module_id
-            for module_id, module in coordinator.data.items()
+            for module_id, module in coordinator.data.modules.items()
             if module.bridge is None
         ),
         None,
     )
 
-    if bridge_id is not None:
-        for description in CONTRACT_DESCRIPTIONS:
-            entities.append(
-                LegrandContractSensor(
-                    coordinator=coordinator,
-                    module_id=bridge_id,
-                    description=description,
-                )
-            )
+    if bridge_id is None:
+        return
 
-        for description in TARIFF_DESCRIPTIONS:
-            entities.append(
-                LegrandTariffSensor(
-                    coordinator=coordinator,
-                    module_id=bridge_id,
-                    description=description,
-                )
+    entities: list[LegrandSensor] = []
+
+    for description in SENSOR_DESCRIPTIONS:
+        module_ids = coordinator.data.modules if description.module else (bridge_id,)
+
+        entities.extend(
+            LegrandSensor(
+                coordinator=coordinator,
+                module_id=module_id,
+                description=description,
             )
+            for module_id in module_ids
+        )
 
     async_add_entities(entities)
 
 
-class LegrandBaseSensor(LegrandEntity, SensorEntity):
-    """Base Legrand sensor."""
+class LegrandSensor(LegrandEntity, SensorEntity):
+    """Represent a Legrand Energy sensor."""
 
     entity_description: LegrandSensorDescription
 
@@ -420,95 +462,38 @@ class LegrandBaseSensor(LegrandEntity, SensorEntity):
         module_id: str,
         description: LegrandSensorDescription,
     ) -> None:
-        """Initialize sensor."""
+        """Initialize the sensor."""
         super().__init__(coordinator, module_id)
 
         self.entity_description = description
-        self._attr_has_entity_name = True
-
-        safe_module_id = module_id.replace(":", "_").replace("#", "_")
-        self._attr_unique_id = (
-            f"{DOMAIN}_{safe_module_id}_{description.key}"
-        )
-
-
-class LegrandEnergySensor(LegrandBaseSensor):
-    """Last interval energy sensor."""
+        self._attr_unique_id = f"{module_id}_{description.key}"
 
     @property
-    def native_value(self) -> Any:
-        """Return the sensor value."""
-        value_fn = self.entity_description.value_fn
+    def native_value(self) -> SensorValue:
+        """Return the current sensor value."""
+        return self.entity_description.value_fn(
+            self.coordinator.data,
+            self.module,
+        )
 
-        if value_fn is None:
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return additional state attributes."""
+        attributes_fn = self.entity_description.attributes_fn
+
+        if attributes_fn is None:
             return None
 
-        return value_fn(self.module)
-
-
-class LegrandStatisticsSensor(LegrandBaseSensor):
-    """Calculated statistics sensor."""
+        attributes = attributes_fn(
+            self.coordinator.data,
+            self.module,
+        )
+        return attributes or None
 
     @property
     def available(self) -> bool:
-        """Return availability."""
-        return (
-            super().available
-            and self.module.statistics is not None
+        """Return whether the sensor is available."""
+        return super().available and self.entity_description.available_fn(
+            self.coordinator.data,
+            self.module,
         )
-
-    @property
-    def native_value(self) -> Any:
-        """Return the sensor value."""
-        value_fn = self.entity_description.value_fn
-
-        if value_fn is None:
-            return None
-
-        return value_fn(self.module)
-
-
-class LegrandContractSensor(LegrandBaseSensor):
-    """Contract sensor."""
-
-    @property
-    def available(self) -> bool:
-        """Return availability."""
-        return (
-            super().available
-            and self.coordinator.contract is not None
-        )
-
-    @property
-    def native_value(self) -> Any:
-        """Return the contract value."""
-        contract = self.coordinator.contract
-        value_fn = self.entity_description.contract_value_fn
-
-        if contract is None or value_fn is None:
-            return None
-
-        return value_fn(contract)
-
-
-class LegrandTariffSensor(LegrandBaseSensor):
-    """Current tariff sensor."""
-
-    @property
-    def available(self) -> bool:
-        """Return availability."""
-        return (
-            super().available
-            and self.coordinator.tariff_engine is not None
-        )
-
-    @property
-    def native_value(self) -> Any:
-        """Return the tariff value."""
-        engine = self.coordinator.tariff_engine
-        value_fn = self.entity_description.tariff_value_fn
-
-        if engine is None or value_fn is None:
-            return None
-
-        return value_fn(engine)

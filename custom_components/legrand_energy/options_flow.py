@@ -2,26 +2,29 @@
 
 from __future__ import annotations
 
-import voluptuous as vol
+from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 
 
 class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
     """Handle options for Legrand Energy."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize options flow."""
         self._config_entry = config_entry
 
-    async def async_step_init(self, user_input=None):
+    async def async_step_init(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
         """Manage options."""
         if user_input is not None:
             return self.async_create_entry(
-                title="",
-                data={
-                    "web_token": user_input.get("web_token", ""),
-                },
+                title=self._config_entry.title,
+                data=user_input,
             )
 
         return self.async_show_form(

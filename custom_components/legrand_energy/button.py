@@ -21,7 +21,11 @@ async def async_setup_entry(
     coordinator: LegrandEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     bridge_id = next(
-        (module_id for module_id, module in coordinator.data.items() if module.bridge is None),
+        (
+            module_id
+            for module_id, module in coordinator.data.modules.items()
+            if module.bridge is None
+        ),
         None,
     )
 

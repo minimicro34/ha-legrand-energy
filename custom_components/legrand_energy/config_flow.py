@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-import voluptuous as vol
+from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 
 from .const import DOMAIN
+from .options_flow import LegrandEnergyOptionsFlow
 
 
 class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -14,7 +17,10 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
 
         errors: dict[str, str] = {}
@@ -52,9 +58,10 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
         )
-    @staticmethod
-    def async_get_options_flow(config_entry):
-        """Return options flow."""
-        from .options_flow import LegrandEnergyOptionsFlow
 
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Return the options flow."""
         return LegrandEnergyOptionsFlow(config_entry)

@@ -30,9 +30,7 @@ def test_price() -> None:
 
     engine = TariffEngine(contract)
 
-    state = engine.state_at(
-        datetime(2026, 7, 6, 23, 0, tzinfo=UTC)
-    )
+    state = engine.state_at(datetime(2026, 7, 6, 23, 0, tzinfo=UTC))
 
     assert state.price == 0.10
     assert state.zone_name == "off_peak"
