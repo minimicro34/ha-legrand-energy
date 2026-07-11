@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from calendar import monthrange
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -22,6 +24,7 @@ from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_models import Contract
 from .contract_parser import parse_contract
 from .helpers.daily_statistics import compute_daily_statistics
+from .helpers.energy_series import EnergyPoint
 from .helpers.private_measure_decoder import decode_energy_points_by_module
 from .helpers.projections import project_today
 from .models import (
@@ -34,8 +37,6 @@ from .private_api import LegrandPrivateApi, LegrandPrivateApiError
 from .tariff_engine import TariffEngine, TariffState
 
 _LOGGER = logging.getLogger(__name__)
-
-SECONDS_PER_DAY = 24 * 60 * 60
 
 
 class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
@@ -125,6 +126,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
         try:
             raw = await self.private_api.getcontracts(home_id)
+
         except LegrandPrivateApiError as err:
             _LOGGER.warning(
                 "Unable to update electricity contract: %s",
@@ -145,7 +147,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         dict[str, LegrandMeasurements],
         LegrandProjections | None,
     ]:
-        """Fetch measurements for all electricity circuits."""
+        """Fetch and calculate measurements for all electricity circuits."""
         if self.private_api is None:
             return None, {}, None
 
@@ -155,25 +157,43 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             return None, {}, None
 
         now = dt_util.now()
-        date_end = int(now.timestamp())
-        date_begin = date_end - SECONDS_PER_DAY
 
-        _LOGGER.warning(
-            "Requesting measurements for modules: %s",
-            [module.id for module in circuits],
+        today_start = now.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
         )
+
+        week_start = today_start - timedelta(days=today_start.weekday())
+
+        month_start = today_start.replace(
+            day=1,
+        )
+
+        year_start = today_start.replace(
+            month=1,
+            day=1,
+        )
+
+        date_begin = int(year_start.timestamp())
+        date_end = int(now.timestamp())
 
         try:
             raw = await self.private_api.get_electricity_measures(
                 home_id=home_id,
                 modules=[
-                    (module.id, module.bridge)
+                    (
+                        module.id,
+                        module.bridge,
+                    )
                     for module in circuits
                     if module.bridge is not None
                 ],
                 date_begin=date_begin,
                 date_end=date_end,
             )
+
         except LegrandPrivateApiError as err:
             _LOGGER.warning(
                 "Unable to update private measurements: %s",
@@ -182,21 +202,21 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             return None, {}, None
 
         points_by_module = decode_energy_points_by_module(raw)
-        _LOGGER.warning(
-            "Measurements returned for modules: %s",
-            {module_id: len(points) for module_id, points in points_by_module.items()},
-        )
-        measurements_by_module: dict[str, LegrandMeasurements] = {}
+
+        measurements_by_module: dict[
+            str,
+            LegrandMeasurements,
+        ] = {}
 
         peak_price = (
             contract.peak_price
-            if contract is not None and contract.peak_price is not None
+            if (contract is not None and contract.peak_price is not None)
             else 0.0
         )
 
         off_peak_price = (
             contract.off_peak_price
-            if contract is not None and contract.off_peak_price is not None
+            if (contract is not None and contract.off_peak_price is not None)
             else 0.0
         )
 
@@ -210,14 +230,29 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     except ValueError:
                         continue
 
-                    point.tariff = state.zone_name
+                    point.tariff = "HC" if state.is_off_peak else "HP"
+
                     point.zone_id = state.zone_id
 
-            today_points = [
-                point
-                for point in points
-                if dt_util.as_local(point.timestamp).date() == now.date()
-            ]
+            today_points = self._points_since(
+                points,
+                today_start,
+            )
+
+            week_points = self._points_since(
+                points,
+                week_start,
+            )
+
+            month_points = self._points_since(
+                points,
+                month_start,
+            )
+
+            year_points = self._points_since(
+                points,
+                year_start,
+            )
 
             if not today_points:
                 continue
@@ -228,9 +263,43 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 off_peak_price,
             )
 
+            weekly = compute_daily_statistics(
+                week_points,
+                peak_price,
+                off_peak_price,
+            )
+
+            monthly = compute_daily_statistics(
+                month_points,
+                peak_price,
+                off_peak_price,
+            )
+
+            yearly = compute_daily_statistics(
+                year_points,
+                peak_price,
+                off_peak_price,
+            )
+
+            peak_energy_wh = sum(
+                point.energy for point in today_points if point.tariff == "HP"
+            )
+
+            off_peak_energy_wh = sum(
+                point.energy for point in today_points if point.tariff == "HC"
+            )
+
             measurements_by_module[module_id] = LegrandMeasurements(
-                energy_today=daily.total_energy / 1000,
+                energy_today=(daily.total_energy / 1000),
+                energy_week=(weekly.total_energy / 1000),
+                energy_month=(monthly.total_energy / 1000),
+                energy_year=(yearly.total_energy / 1000),
                 cost_today=daily.total_cost,
+                cost_peak_today=(peak_energy_wh / 1000) * peak_price,
+                cost_off_peak_today=(off_peak_energy_wh / 1000) * off_peak_price,
+                cost_week=weekly.total_cost,
+                cost_month=monthly.total_cost,
+                cost_year=yearly.total_cost,
             )
 
         total_module = self._find_total_module(modules)
@@ -244,21 +313,74 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         projections: LegrandProjections | None = None
 
         if measurements is not None:
-            projection = project_today(
+            today_projection = project_today(
                 (measurements.energy_today or 0.0) * 1000,
                 measurements.cost_today or 0.0,
                 now,
             )
 
+            (
+                projected_energy_month,
+                projected_cost_month,
+            ) = self._project_month(
+                now=now,
+                energy_month=(measurements.energy_month),
+                cost_month=(measurements.cost_month),
+            )
+
             projections = LegrandProjections(
-                energy_end_of_day=projection.projected_energy / 1000,
-                cost_end_of_day=projection.projected_cost,
+                energy_end_of_day=(today_projection.projected_energy / 1000),
+                energy_end_of_month=(projected_energy_month),
+                cost_end_of_day=(today_projection.projected_cost),
+                cost_end_of_month=(projected_cost_month),
             )
 
         return (
             measurements,
             measurements_by_module,
             projections,
+        )
+
+    @staticmethod
+    def _points_since(
+        points: list[EnergyPoint],
+        start: datetime,
+    ) -> list[EnergyPoint]:
+        """Return points at or after a local datetime."""
+        return [point for point in points if dt_util.as_local(point.timestamp) >= start]
+
+    @staticmethod
+    def _project_month(
+        *,
+        now: datetime,
+        energy_month: float | None,
+        cost_month: float | None,
+    ) -> tuple[
+        float | None,
+        float | None,
+    ]:
+        """Project current month totals from elapsed month time."""
+        days_in_month = monthrange(
+            now.year,
+            now.month,
+        )[1]
+
+        seconds_today = now.hour * 3600 + now.minute * 60 + now.second
+
+        elapsed_days = now.day - 1 + seconds_today / 86400
+
+        if elapsed_days <= 0:
+            return None, None
+
+        factor = days_in_month / elapsed_days
+
+        projected_energy = energy_month * factor if energy_month is not None else None
+
+        projected_cost = cost_month * factor if cost_month is not None else None
+
+        return (
+            projected_energy,
+            projected_cost,
         )
 
     def _get_home_id(self) -> str | None:
@@ -269,19 +391,42 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             return None
 
         body = homesdata.get("body")
-        if not isinstance(body, dict):
+
+        if not isinstance(
+            body,
+            dict,
+        ):
             return None
 
         homes = body.get("homes")
-        if not isinstance(homes, list) or not homes:
+
+        if (
+            not isinstance(
+                homes,
+                list,
+            )
+            or not homes
+        ):
             return None
 
         home = homes[0]
-        if not isinstance(home, dict):
+
+        if not isinstance(
+            home,
+            dict,
+        ):
             return None
 
         home_id = home.get("id")
-        return home_id if isinstance(home_id, str) else None
+
+        return (
+            home_id
+            if isinstance(
+                home_id,
+                str,
+            )
+            else None
+        )
 
     @staticmethod
     def _find_total_module(

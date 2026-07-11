@@ -239,6 +239,38 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         ),
     ),
     LegrandSensorDescription(
+        key="cost_peak_today",
+        translation_key="cost_peak_today",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data, _module: (
+            data.measurements.cost_peak_today if data.measurements is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None
+            and data.measurements.cost_peak_today is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="cost_off_peak_today",
+        translation_key="cost_off_peak_today",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data, _module: (
+            data.measurements.cost_off_peak_today
+            if data.measurements is not None
+            else None
+        ),
+        available_fn=lambda data, _module: (
+            data.measurements is not None
+            and data.measurements.cost_off_peak_today is not None
+        ),
+    ),
+    LegrandSensorDescription(
         key="cost_week",
         translation_key="cost_week",
         device_class=SensorDeviceClass.MONETARY,
@@ -459,6 +491,54 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             else None
         ),
         available_fn=_module_cost_available,
+    ),
+    LegrandSensorDescription(
+        key="circuit_cost_peak_today",
+        translation_key="circuit_cost_peak_today",
+        module=True,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data, module: (
+            measurements.cost_peak_today
+            if (
+                measurements := _module_measurements(
+                    data,
+                    module,
+                )
+            )
+            is not None
+            else None
+        ),
+        available_fn=lambda data, module: (
+            (measurements := _module_measurements(data, module)) is not None
+            and measurements.cost_peak_today is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="circuit_cost_off_peak_today",
+        translation_key="circuit_cost_off_peak_today",
+        module=True,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data, module: (
+            measurements.cost_off_peak_today
+            if (
+                measurements := _module_measurements(
+                    data,
+                    module,
+                )
+            )
+            is not None
+            else None
+        ),
+        available_fn=lambda data, module: (
+            (measurements := _module_measurements(data, module)) is not None
+            and measurements.cost_off_peak_today is not None
+        ),
     ),
     # Module diagnostics
     LegrandSensorDescription(

@@ -15,36 +15,66 @@
       "setup_date": {
         "name": "Date d’installation"
       },
-      "circuit_energy_today": {
+
+      "current_tariff": {
+        "name": "Tarif actuel"
+      },
+      "current_price": {
+        "name": "Prix actuel"
+      },
+      "next_tariff_change": {
+        "name": "Prochain changement de tarif"
+      },
+
+      "power": {
+        "name": "Puissance"
+      },
+
+      "energy_today": {
         "name": "Consommation aujourd’hui"
       },
-      "circuit_cost_today": {
+      "energy_week": {
+        "name": "Consommation cette semaine"
+      },
+      "energy_month": {
+        "name": "Consommation ce mois"
+      },
+      "energy_year": {
+        "name": "Consommation cette année"
+      },
+
+      "cost_today": {
         "name": "Coût aujourd’hui"
       },
-      "energy_tariff1": {
-        "name": "Énergie du dernier intervalle HP"
+      "cost_peak_today": {
+        "name": "Coût HP aujourd’hui"
       },
-      "energy_tariff2": {
-        "name": "Énergie du dernier intervalle HC"
+      "cost_off_peak_today": {
+        "name": "Coût HC aujourd’hui"
       },
-      "energy_today": {
-        "name": "Consommation aujourd'hui"
+      "cost_week": {
+        "name": "Coût cette semaine"
       },
-      "cost_today": {
-        "name": "Coût aujourd'hui"
+      "cost_month": {
+        "name": "Coût ce mois"
       },
-      "energy_total": {
-        "name": "Consommation sur 24 h"
+      "cost_year": {
+        "name": "Coût cette année"
       },
-      "energy_cost": {
-        "name": "Coût sur 24 h"
+
+      "projected_energy_today": {
+        "name": "Projection de consommation aujourd’hui"
       },
-      "price_tariff1": {
-        "name": "Coût du dernier intervalle HP"
+      "projected_energy_month": {
+        "name": "Projection de consommation ce mois"
       },
-      "price_tariff2": {
-        "name": "Coût du dernier intervalle HC"
+      "projected_cost_today": {
+        "name": "Projection du coût aujourd’hui"
       },
+      "projected_cost_month": {
+        "name": "Projection du coût ce mois"
+      },
+
       "contract_type": {
         "name": "Type de contrat"
       },
@@ -63,35 +93,18 @@
       "off_peak_price": {
         "name": "Prix heures creuses"
       },
-      "current_tariff": {
-        "name": "Tarif actuel"
+
+      "circuit_energy_today": {
+        "name": "Consommation aujourd’hui"
       },
-      "current_price": {
-        "name": "Prix actuel"
+      "circuit_cost_today": {
+        "name": "Coût aujourd’hui"
       },
-      "next_tariff_change": {
-        "name": "Prochain changement de tarif"
+      "circuit_cost_peak_today": {
+        "name": "Coût HP aujourd’hui"
       },
-      "energy_peak_today": { 
-        "name": "Consommation HP aujourd'hui" 
-      },
-      "energy_off_peak_today": { 
-        "name": "Consommation HC aujourd'hui" 
-      },
-      "cost_peak_today": { 
-        "name": "Coût HP aujourd'hui"   
-      },
-      "cost_off_peak_today": { 
-        "name": "Coût HC aujourd'hui"   
-      },
-      "projected_energy_today": {
-        "name": "Projection de consommation aujourd'hui"
-      },
-      "projected_cost_today": {
-        "name": "Projection du coût aujourd'hui"
-      },
-      "projected_monthly_cost": {
-        "name": "Projection mensuelle selon aujourd'hui"
+      "circuit_cost_off_peak_today": {
+        "name": "Coût HC aujourd’hui"
       }
     },
     "button": {
@@ -115,7 +128,7 @@
         "data": {
           "web_token": "Jeton Web Netatmo"
         },
-        "description": "Collez le jeton Web Netatmo utilisé pour accéder à l'API privée."
+        "description": "Collez le jeton Web Netatmo utilisé pour accéder à l’API privée."
       }
     }
   }

@@ -15,36 +15,66 @@
       "setup_date": {
         "name": "Setup date"
       },
-      "circuit_energy_today": {
-        "name": "Circuit energy today"
+
+      "current_tariff": {
+        "name": "Current tariff"
       },
-      "circuit_cost_today": {
-        "name": "Circuit cost today"
+      "current_price": {
+        "name": "Current price"
       },
-      "energy_tariff1": {
-        "name": "Energy tariff 1"
+      "next_tariff_change": {
+        "name": "Next tariff change"
       },
-      "energy_tariff2": {
-        "name": "Energy tariff 2"
+
+      "power": {
+        "name": "Power"
       },
-      "price_tariff1": {
-        "name": "Price tariff 1"
-      },
+
       "energy_today": {
         "name": "Energy today"
       },
+      "energy_week": {
+        "name": "Energy this week"
+      },
+      "energy_month": {
+        "name": "Energy this month"
+      },
+      "energy_year": {
+        "name": "Energy this year"
+      },
+
       "cost_today": {
         "name": "Cost today"
       },
-      "energy_total": {
-        "name": "Energy 24 h"
-        },
-        "energy_cost": {
-        "name": "Cost 24 h"
-        },
-      "price_tariff2": {
-        "name": "Price tariff 2"
+      "cost_peak_today": {
+        "name": "Peak cost today"
       },
+      "cost_off_peak_today": {
+        "name": "Off-peak cost today"
+      },
+      "cost_week": {
+        "name": "Cost this week"
+      },
+      "cost_month": {
+        "name": "Cost this month"
+      },
+      "cost_year": {
+        "name": "Cost this year"
+      },
+
+      "projected_energy_today": {
+        "name": "Projected energy today"
+      },
+      "projected_energy_month": {
+        "name": "Projected energy this month"
+      },
+      "projected_cost_today": {
+        "name": "Projected cost today"
+      },
+      "projected_cost_month": {
+        "name": "Projected cost this month"
+      },
+
       "contract_type": {
         "name": "Contract type"
       },
@@ -63,29 +93,18 @@
       "off_peak_price": {
         "name": "Off-peak price"
       },
-      "current_tariff": {
-        "name": "Current tariff"
+
+      "circuit_energy_today": {
+        "name": "Energy today"
       },
-      "current_price": {
-        "name": "Current price"
+      "circuit_cost_today": {
+        "name": "Cost today"
       },
-      "next_tariff_change": {
-        "name": "Next tariff change"
+      "circuit_cost_peak_today": {
+        "name": "Peak cost today"
       },
-      "energy_peak_today": { 
-        "name": "Tariff1 consumption today" 
-      },
-      "energy_off_peak_today": { 
-        "name": "Off-peak consumption today" 
-      },
-      "cost_peak_today": { 
-        "name": "Peak cost today"   
-      },
-      "cost_off_peak_today": { 
-        "name": "Off-peak cost today"   
-      },
-      "projected_monthly_cost": { 
-        "name": "Projected monthly cost" 
+      "circuit_cost_off_peak_today": {
+        "name": "Off-peak cost today"
       }
     },
     "button": {

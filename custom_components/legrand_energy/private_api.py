@@ -40,7 +40,7 @@ class LegrandPrivateApi:
         session: aiohttp.ClientSession,
         web_token: str,
     ) -> None:
-        """Initialize private API."""
+        """Initialize the private API client."""
         self._session = session
         self._web_token = web_token
 
@@ -60,23 +60,45 @@ class LegrandPrivateApi:
         endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """GET helper."""
-        url = f"{base_url}/{endpoint}"
+        """Perform a private API GET request."""
+        url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
-        async with self._session.get(
-            url,
-            headers=self.headers,
-            params=params,
-            timeout=API_TIMEOUT,
-        ) as response:
-            data = await response.json(content_type=None)
+        try:
+            async with self._session.get(
+                url,
+                headers=self.headers,
+                params=params,
+                timeout=API_TIMEOUT,
+            ) as response:
+                status = response.status
+                data = await response.json(content_type=None)
+
+        except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+            raise LegrandPrivateApiError(
+                f"Unable to fetch private API endpoint {endpoint}"
+            ) from err
 
         if not isinstance(data, dict):
-            raise LegrandPrivateApiError("Unexpected private API response")
+            raise LegrandPrivateApiError(
+                f"Unexpected private API response type for {endpoint}"
+            )
+
+        if status >= 400:
+            raise LegrandPrivateApiError(
+                f"Private API request to {endpoint} failed with HTTP status {status}"
+            )
+
+        if data.get("status") == "error" or data.get("error") is not None:
+            raise LegrandPrivateApiError(
+                f"Private API returned an error for {endpoint}"
+            )
 
         return cast(dict[str, Any], data)
 
-    async def homestatus(self, home_id: str) -> dict[str, Any]:
+    async def homestatus(
+        self,
+        home_id: str,
+    ) -> dict[str, Any]:
         """Return private home status."""
         return await self._get(
             SYNC_API_BASE,
@@ -111,7 +133,10 @@ class LegrandPrivateApi:
             APP_API_BASE,
             "gethomemeasure",
             params={
-                "home": json.dumps(home_payload, separators=(",", ":")),
+                "home": json.dumps(
+                    home_payload,
+                    separators=(",", ":"),
+                ),
                 "real_time": "true",
                 "scale": "5min",
                 "date_begin": date_begin,
@@ -180,7 +205,10 @@ class LegrandPrivateApi:
             APP_API_BASE,
             "gethomemeasure",
             params={
-                "home": json.dumps(home_payload, separators=(",", ":")),
+                "home": json.dumps(
+                    home_payload,
+                    separators=(",", ":"),
+                ),
                 "real_time": "true",
                 "scale": "5min",
                 "date_begin": date_begin,
@@ -188,12 +216,20 @@ class LegrandPrivateApi:
             },
         )
 
-    async def getcontracts(self, home_id: str) -> dict[str, Any]:
+    async def getcontracts(
+        self,
+        home_id: str,
+    ) -> dict[str, Any]:
         """Return private energy contracts."""
-        _LOGGER.error("Private API /getcontracts=%s", home_id)
+        _LOGGER.debug(
+            "Fetching private energy contracts for home %s",
+            home_id,
+        )
 
         return await self._get(
             APP_API_BASE,
             "getcontracts",
-            params={"home_id": home_id},
+            params={
+                "home_id": home_id,
+            },
         )

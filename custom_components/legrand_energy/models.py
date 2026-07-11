@@ -32,6 +32,9 @@ class LegrandMeasurements:
     energy_year: float | None = None
 
     cost_today: float | None = None
+    cost_peak_today: float | None = None
+    cost_off_peak_today: float | None = None
+
     cost_week: float | None = None
     cost_month: float | None = None
     cost_year: float | None = None
@@ -39,11 +42,10 @@ class LegrandMeasurements:
 
 @dataclass(frozen=True, slots=True)
 class LegrandProjections:
-    """Represent projected energy consumption and cost."""
+    """Represent projected energy values."""
 
     energy_end_of_day: float | None = None
     energy_end_of_month: float | None = None
-
     cost_end_of_day: float | None = None
     cost_end_of_month: float | None = None
 
@@ -52,10 +54,7 @@ class LegrandProjections:
 class LegrandEnergyData:
     """Represent all data exposed by the coordinator."""
 
-    """Represent all data exposed by the coordinator."""
-
     modules: dict[str, LegrandModule]
-
     contract: Contract | None = None
     tariff: TariffState | None = None
     measurements: LegrandMeasurements | None = None
