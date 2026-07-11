@@ -176,7 +176,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             day=1,
         )
 
-        date_begin = int(year_start.timestamp())
+        date_begin = int(today_start.timestamp())
         date_end = int(now.timestamp())
 
         try:
