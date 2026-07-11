@@ -15,6 +15,12 @@
       "setup_date": {
         "name": "Setup date"
       },
+      "circuit_energy_today": {
+        "name": "Circuit energy today"
+      },
+      "circuit_cost_today": {
+        "name": "Circuit cost today"
+      },
       "energy_tariff1": {
         "name": "Energy tariff 1"
       },

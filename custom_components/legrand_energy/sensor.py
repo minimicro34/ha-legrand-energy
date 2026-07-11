@@ -25,7 +25,11 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import LegrandEnergyCoordinator
 from .entity import LegrandEntity, get_main_module_id
-from .models import LegrandEnergyData, LegrandModule
+from .models import (
+    LegrandEnergyData,
+    LegrandMeasurements,
+    LegrandModule,
+)
 
 SensorValue = str | int | float | datetime | None
 ValueFn = Callable[[LegrandEnergyData, LegrandModule | None], SensorValue]
@@ -81,7 +85,39 @@ def _tariff_attributes(
     }
 
 
+def _module_measurements(
+    data: LegrandEnergyData,
+    module: LegrandModule | None,
+) -> LegrandMeasurements | None:
+    """Return measurements for a module."""
+    if module is None:
+        return None
+
+    return data.measurements_by_module.get(module.id)
+
+
+def _module_energy_available(
+    data: LegrandEnergyData,
+    module: LegrandModule | None,
+) -> bool:
+    """Return whether energy data is available for a module."""
+    measurements = _module_measurements(data, module)
+
+    return measurements is not None and measurements.energy_today is not None
+
+
+def _module_cost_available(
+    data: LegrandEnergyData,
+    module: LegrandModule | None,
+) -> bool:
+    """Return whether cost data is available for a module."""
+    measurements = _module_measurements(data, module)
+
+    return measurements is not None and measurements.cost_today is not None
+
+
 SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    # Global tariff sensors
     LegrandSensorDescription(
         key="current_tariff",
         translation_key="current_tariff",
@@ -117,6 +153,7 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             data.tariff is not None and data.tariff.next_change is not None
         ),
     ),
+    # Global measurements
     LegrandSensorDescription(
         key="power",
         translation_key="power",
@@ -243,6 +280,7 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             data.measurements is not None and data.measurements.cost_year is not None
         ),
     ),
+    # Global projections
     LegrandSensorDescription(
         key="projected_energy_today",
         translation_key="projected_energy_today",
@@ -305,6 +343,7 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             and data.projections.cost_end_of_month is not None
         ),
     ),
+    # Contract diagnostics
     LegrandSensorDescription(
         key="contract_type",
         translation_key="contract_type",
@@ -378,6 +417,50 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
             data.contract is not None and data.contract.off_peak_price is not None
         ),
     ),
+    # Circuit measurements
+    LegrandSensorDescription(
+        key="circuit_energy_today",
+        translation_key="circuit_energy_today",
+        module=True,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda data, module: (
+            measurements.energy_today
+            if (
+                measurements := _module_measurements(
+                    data,
+                    module,
+                )
+            )
+            is not None
+            else None
+        ),
+        available_fn=_module_energy_available,
+    ),
+    LegrandSensorDescription(
+        key="circuit_cost_today",
+        translation_key="circuit_cost_today",
+        module=True,
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data, module: (
+            measurements.cost_today
+            if (
+                measurements := _module_measurements(
+                    data,
+                    module,
+                )
+            )
+            is not None
+            else None
+        ),
+        available_fn=_module_cost_available,
+    ),
+    # Module diagnostics
     LegrandSensorDescription(
         key="module_type",
         translation_key="module_type",

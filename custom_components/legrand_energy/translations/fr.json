@@ -15,6 +15,12 @@
       "setup_date": {
         "name": "Date d’installation"
       },
+      "circuit_energy_today": {
+        "name": "Consommation aujourd’hui"
+      },
+      "circuit_cost_today": {
+        "name": "Coût aujourd’hui"
+      },
       "energy_tariff1": {
         "name": "Énergie du dernier intervalle HP"
       },
