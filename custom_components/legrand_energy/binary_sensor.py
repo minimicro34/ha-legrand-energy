@@ -50,7 +50,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up binary sensors."""
-    coordinator: LegrandEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
     bridge_id = next(
         (

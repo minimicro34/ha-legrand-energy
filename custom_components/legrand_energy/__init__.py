@@ -9,8 +9,21 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import LegrandEnergyApi
 from .coordinator import LegrandEnergyCoordinator
+from .private_api import LegrandPrivateApi
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+]
+
+
+async def async_update_options(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> None:
+    """Reload the integration when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(
@@ -43,21 +56,26 @@ async def async_setup_entry(
         token_update_callback=async_update_tokens,
     )
 
+    web_token = entry.options.get("web_token")
+    private_api = (
+        LegrandPrivateApi(session=session, web_token=web_token)
+        if isinstance(web_token, str) and web_token
+        else None
+    )
+
     coordinator = LegrandEnergyCoordinator(
         hass=hass,
         config_entry=entry,
         api=api,
+        private_api=private_api,
     )
 
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
-    await hass.config_entries.async_forward_entry_setups(
-        entry,
-        PLATFORMS,
-    )
-
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
@@ -66,7 +84,4 @@ async def async_unload_entry(
     entry: ConfigEntry,
 ) -> bool:
     """Unload a Legrand Energy config entry."""
-    return await hass.config_entries.async_unload_platforms(
-        entry,
-        PLATFORMS,
-    )
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
