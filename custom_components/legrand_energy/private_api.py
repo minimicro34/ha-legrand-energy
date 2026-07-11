@@ -108,6 +108,25 @@ class LegrandPrivateApi:
             },
         )
 
+    async def get_measure(
+        self,
+        home_id: str,
+        module_id: str,
+        measure_type: str,
+    ) -> dict[str, Any]:
+        """Fetch a raw private measure."""
+        return await self._get(
+            APP_API_BASE,
+            "gethomemeasure",
+            {
+                "home_id": home_id,
+                "module_id": module_id,
+                "scale": "max",
+                "type": measure_type,
+                "date_end": "last",
+            },
+        )
+
     async def get_electricity_measure(
         self,
         home_id: str,

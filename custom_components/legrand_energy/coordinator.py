@@ -76,6 +76,37 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             projections: LegrandProjections | None = None
 
             home_id = self._get_home_id()
+
+            if self.private_api is not None and home_id is not None:
+                # TEMPORARY: test possible TIC power measure types.
+                for measure_type in (
+                    "power",
+                    "power_current",
+                    "apparent_power",
+                    "instantaneous_power",
+                    "papp",
+                    "sinsts",
+                ):
+                    try:
+                        result = await self.private_api.get_measure(
+                            home_id=home_id,
+                            module_id="00:04:74:12:24:d4",
+                            measure_type=measure_type,
+                        )
+                        _LOGGER.warning(
+                            "POWER TEST %s: %s",
+                            measure_type,
+                            result,
+                        )
+                    except LegrandPrivateApiError as err:
+                        _LOGGER.warning(
+                            "POWER TEST %s failed: %s",
+                            measure_type,
+                            err,
+                        )
+
+                contract = await self._async_get_contract(home_id)
+
             if self.private_api is not None and home_id is not None:
                 homestatus = await self.private_api.homestatus(home_id)
                 _LOGGER.warning("PRIVATE HOMESTATUS: %s", homestatus)
