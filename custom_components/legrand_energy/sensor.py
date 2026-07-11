@@ -33,7 +33,7 @@ ValueFn = Callable[[LegrandEnergyData, LegrandModule | None], SensorValue]
 AvailableFn = Callable[[LegrandEnergyData, LegrandModule | None], bool]
 AttributesFn = Callable[
     [LegrandEnergyData, LegrandModule | None],
-    dict[str, Any],
+    dict[str, Any] | None,
 ]
 
 
@@ -87,12 +87,30 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
         key="current_tariff",
         translation_key="current_tariff",
-        icon="mdi:clock-outline",
         value_fn=lambda data, _module: (
-            data.tariff.price_type if data.tariff is not None else None
+            {
+                "peak": "HP",
+                "off_peak": "HC",
+            }.get(
+                data.tariff.price_type,
+                data.tariff.price_type,
+            )
+            if data.tariff is not None
+            else None
         ),
         available_fn=lambda data, _module: data.tariff is not None,
-        attributes_fn=_tariff_attributes,
+        attributes_fn=lambda data, _module: (
+            {
+                "zone_id": data.tariff.zone_id,
+                "zone_name": data.tariff.zone_name,
+                "next_change": data.tariff.next_change,
+                "remaining": _format_remaining(
+                    _remaining_until(data.tariff.next_change)
+                ),
+            }
+            if data.tariff is not None
+            else {}
+        ),
     ),
     LegrandSensorDescription(
         key="current_price",
@@ -117,6 +135,24 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         ),
         available_fn=lambda data, _module: (
             data.tariff is not None and data.tariff.next_change is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="contract_option",
+        translation_key="contract_option",
+        value_fn=lambda data, _module: (
+            {
+                "peak_and_off_peak": "HP/HC",
+                "base": "Base",
+            }.get(
+                data.contract.tariff_option,
+                data.contract.tariff_option,
+            )
+            if data.contract is not None
+            else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and bool(data.contract.tariff_option)
         ),
     ),
     LegrandSensorDescription(
