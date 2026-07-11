@@ -87,6 +87,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     "papp",
                     "sinsts",
                 ):
+                    _LOGGER.warning("POWER TEST START %s", measure_type)
+
                     try:
                         result = await self.private_api.get_measure(
                             home_id=home_id,
@@ -98,10 +100,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                             measure_type,
                             result,
                         )
-                    except LegrandPrivateApiError as err:
+                    except Exception as err:  # noqa: BLE001
                         _LOGGER.warning(
-                            "POWER TEST %s failed: %s",
+                            "POWER TEST %s exception %s: %s",
                             measure_type,
+                            type(err).__name__,
                             err,
                         )
 
