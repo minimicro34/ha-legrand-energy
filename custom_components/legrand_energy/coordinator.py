@@ -207,7 +207,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     if module.bridge is not None
                 ],
                 date_begin=int(
-                    year_start.timestamp()
+                    today_start.timestamp()
                 ),
                 date_end=int(
                     now.timestamp()
