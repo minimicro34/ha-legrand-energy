@@ -113,16 +113,28 @@ class LegrandPrivateApi:
         home_id: str,
         module_id: str,
         measure_type: str,
+        bridge: str | None = None,
     ) -> dict[str, Any]:
         """Fetch a raw private measure."""
+        module_payload: dict[str, Any] = {
+            "id": module_id,
+            "type": measure_type,
+        }
+
+        if bridge is not None:
+            module_payload["bridge"] = bridge
+
+        home_payload = {
+            "id": home_id,
+            "modules": [module_payload],
+        }
+
         return await self._get(
             APP_API_BASE,
             "gethomemeasure",
             {
-                "home_id": home_id,
-                "module_id": module_id,
+                "home": json.dumps(home_payload),
                 "scale": "max",
-                "type": measure_type,
                 "date_end": "last",
             },
         )
