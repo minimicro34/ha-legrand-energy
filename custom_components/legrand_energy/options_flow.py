@@ -33,7 +33,10 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         "web_token",
-                        default=self._config_entry.options.get("web_token", ""),
+                        default=self._config_entry.options.get(
+                            "web_token",
+                            self._config_entry.data.get("web_token", ""),
+                        ),
                     ): str,
                 }
             ),

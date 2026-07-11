@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
-from .entity import LegrandEntity
+from .entity import LegrandEntity, get_bridge_module_id
 from .models import LegrandEnergyData
 
 
@@ -52,14 +52,7 @@ async def async_setup_entry(
     """Set up binary sensors."""
     coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
-    bridge_id = next(
-        (
-            module_id
-            for module_id, module in coordinator.data.modules.items()
-            if module.bridge is None
-        ),
-        None,
-    )
+    bridge_id = get_bridge_module_id(coordinator)
 
     if bridge_id is None:
         return

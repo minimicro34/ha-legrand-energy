@@ -10,6 +10,33 @@ from .coordinator import LegrandEnergyCoordinator
 from .models import LegrandModule
 
 
+def get_bridge_module_id(coordinator: LegrandEnergyCoordinator) -> str | None:
+    """Return the physical EcoMeter bridge module ID."""
+    modules = coordinator.data.modules
+
+    # Child circuits reference the physical EcoMeter through their ``bridge``
+    # field. Prefer that relationship over relying on ``bridge is None``,
+    # which is not consistent across all homesdata payloads.
+    referenced_bridges = {
+        module.bridge for module in modules.values() if module.bridge is not None
+    }
+    for module_id in modules:
+        if module_id in referenced_bridges:
+            return module_id
+
+    # NLE circuit IDs are normally suffixed with ``#<channel>``. The
+    # unsuffixed module is therefore the physical EcoMeter.
+    for module_id in modules:
+        if "#" not in module_id:
+            return module_id
+
+    # Fallback for payloads that explicitly mark the bridge with no parent.
+    return next(
+        (module_id for module_id, module in modules.items() if module.bridge is None),
+        None,
+    )
+
+
 class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
     """Base entity for a Legrand Energy module."""
 
