@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .contract_models import Contract
 from .tariff_engine import TariffState
@@ -52,9 +52,12 @@ class LegrandProjections:
 class LegrandEnergyData:
     """Represent all data exposed by the coordinator."""
 
+    """Represent all data exposed by the coordinator."""
+
     modules: dict[str, LegrandModule]
 
     contract: Contract | None = None
     tariff: TariffState | None = None
     measurements: LegrandMeasurements | None = None
+    measurements_by_module: dict[str, LegrandMeasurements] = field(default_factory=dict)
     projections: LegrandProjections | None = None

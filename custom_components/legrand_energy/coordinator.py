@@ -19,7 +19,9 @@ from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_models import Contract
 from .contract_parser import parse_contract
 from .helpers.daily_statistics import compute_daily_statistics
-from .helpers.private_measure_decoder import decode_energy_points
+from .helpers.private_measure_decoder import (
+    decode_energy_points,
+)
 from .helpers.projections import project_today
 from .models import (
     LegrandEnergyData,

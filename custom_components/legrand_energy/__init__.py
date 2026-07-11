@@ -56,7 +56,7 @@ async def async_setup_entry(
         token_update_callback=async_update_tokens,
     )
 
-    web_token = entry.options.get("web_token", entry.data.get("web_token"))
+    web_token = entry.options.get("web_token") or entry.data.get("web_token")
     private_api = (
         LegrandPrivateApi(session=session, web_token=web_token)
         if isinstance(web_token, str) and web_token

@@ -10,31 +10,28 @@ from .coordinator import LegrandEnergyCoordinator
 from .models import LegrandModule
 
 
-def get_bridge_module_id(coordinator: LegrandEnergyCoordinator) -> str | None:
-    """Return the physical EcoMeter bridge module ID."""
+def get_main_module_id(
+    coordinator: LegrandEnergyCoordinator,
+) -> str | None:
+    """Return the physical EcoMeter module ID."""
     modules = coordinator.data.modules
 
-    # Child circuits reference the physical EcoMeter through their ``bridge``
-    # field. Prefer that relationship over relying on ``bridge is None``,
-    # which is not consistent across all homesdata payloads.
+    # The physical EcoMeter has the unsuffixed module ID.
+    # Circuits use IDs such as <bridge>#0, <bridge>#1, etc.
+    for module_id, module in modules.items():
+        if module.type == "NLE" and "#" not in module_id:
+            return module_id
+
+    # Fallback: find a module referenced as the bridge by a child circuit.
     referenced_bridges = {
         module.bridge for module in modules.values() if module.bridge is not None
     }
+
     for module_id in modules:
         if module_id in referenced_bridges:
             return module_id
 
-    # NLE circuit IDs are normally suffixed with ``#<channel>``. The
-    # unsuffixed module is therefore the physical EcoMeter.
-    for module_id in modules:
-        if "#" not in module_id:
-            return module_id
-
-    # Fallback for payloads that explicitly mark the bridge with no parent.
-    return next(
-        (module_id for module_id, module in modules.items() if module.bridge is None),
-        None,
-    )
+    return None
 
 
 class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
@@ -51,17 +48,24 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
         super().__init__(coordinator)
 
         self._module_id = module_id
+
         module = coordinator.data.modules[module_id]
+        main_module_id = get_main_module_id(coordinator)
+
+        is_main_module = module_id == main_module_id
 
         device_info = DeviceInfo(
             identifiers={(DOMAIN, module.id)},
             manufacturer=MANUFACTURER,
-            model=("EcoMeter Circuit" if module.bridge is not None else "EcoMeter"),
+            model=("EcoMeter" if is_main_module else "EcoMeter Circuit"),
             name=module.name,
         )
 
-        if module.bridge is not None:
-            device_info["via_device"] = (DOMAIN, module.bridge)
+        if not is_main_module and module.bridge is not None:
+            device_info["via_device"] = (
+                DOMAIN,
+                module.bridge,
+            )
 
         self._attr_device_info = device_info
 

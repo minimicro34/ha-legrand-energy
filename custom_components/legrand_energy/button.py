@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
-from .entity import LegrandEntity, get_bridge_module_id
+from .entity import LegrandEntity, get_main_module_id
 
 
 async def async_setup_entry(
@@ -20,10 +20,17 @@ async def async_setup_entry(
     """Set up Legrand Energy buttons."""
     coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
-    bridge_id = get_bridge_module_id(coordinator)
+    main_module_id = get_main_module_id(coordinator)
 
-    if bridge_id is not None:
-        async_add_entities([LegrandRefreshButton(coordinator, bridge_id)])
+    if main_module_id is not None:
+        async_add_entities(
+            [
+                LegrandRefreshButton(
+                    coordinator,
+                    main_module_id,
+                )
+            ]
+        )
 
 
 class LegrandRefreshButton(LegrandEntity, ButtonEntity):

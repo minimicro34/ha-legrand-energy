@@ -24,7 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import LegrandEnergyCoordinator
-from .entity import LegrandEntity, get_bridge_module_id
+from .entity import LegrandEntity, get_main_module_id
 from .models import LegrandEnergyData, LegrandModule
 
 SensorValue = str | int | float | datetime | None
@@ -422,15 +422,17 @@ async def async_setup_entry(
     """Set up Legrand Energy sensors from a config entry."""
     coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
-    bridge_id = get_bridge_module_id(coordinator)
+    main_module_id = get_main_module_id(coordinator)
 
-    if bridge_id is None:
+    if main_module_id is None:
         return
 
     entities: list[LegrandSensor] = []
 
     for description in SENSOR_DESCRIPTIONS:
-        module_ids = coordinator.data.modules if description.module else (bridge_id,)
+        module_ids = (
+            coordinator.data.modules if description.module else (main_module_id,)
+        )
 
         entities.extend(
             LegrandSensor(
