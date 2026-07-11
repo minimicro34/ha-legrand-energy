@@ -105,6 +105,18 @@
       },
       "circuit_cost_off_peak_today": {
         "name": "Coût HC aujourd’hui"
+      }, 
+      "circuit_energy_peak_today": {
+        "name": "Conso circuit HP aujourd’hui"
+      },
+      "circuit_energy_off_peak_today": {
+        "name": "Conso circuit HC aujourd’hui"
+      }, 
+      "energy_peak_today": {
+        "name": "Consommation HP aujourd’hui"
+      },
+      "energy_off_peak_today": {
+        "name": "Consommation HC aujourd’hui"
       }
     },
     "button": {

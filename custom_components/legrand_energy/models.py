@@ -27,6 +27,9 @@ class LegrandMeasurements:
     power: float | None = None
 
     energy_today: float | None = None
+    energy_peak_today: float | None = None
+    energy_off_peak_today: float | None = None
+
     energy_week: float | None = None
     energy_month: float | None = None
     energy_year: float | None = None

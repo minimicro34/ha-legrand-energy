@@ -28,10 +28,12 @@ class TariffState:
     @property
     def is_off_peak(self) -> bool:
         """Return whether the current tariff is off-peak."""
-        return self.zone_name.casefold() in {
+        value = self.zone_name.casefold().replace("-", "_").replace(" ", "_")
+
+        return value in {
             "hc",
-            "heures creuses",
-            "off-peak",
+            "heures_creuses",
+            "off_peak",
         }
 
 
@@ -125,14 +127,14 @@ class TariffEngine:
         when: datetime | None = None,
     ) -> bool:
         """Return True if the current period is off peak."""
-        return self.current_zone(when) == "off_peak"
+        return self.current_state(when).is_off_peak
 
     def is_peak(
         self,
         when: datetime | None = None,
     ) -> bool:
         """Return True if the current period is peak."""
-        return self.current_zone(when) == "peak"
+        return not self.current_state(when).is_off_peak
 
     def next_change(
         self,
