@@ -7,7 +7,10 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 from homeassistant.util import dt as dt_util
 
 from .api import (
@@ -19,9 +22,7 @@ from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_models import Contract
 from .contract_parser import parse_contract
 from .helpers.daily_statistics import compute_daily_statistics
-from .helpers.private_measure_decoder import (
-    decode_energy_points,
-)
+from .helpers.private_measure_decoder import decode_energy_points_by_module
 from .helpers.projections import project_today
 from .models import (
     LegrandEnergyData,
@@ -33,6 +34,8 @@ from .private_api import LegrandPrivateApi, LegrandPrivateApiError
 from .tariff_engine import TariffEngine, TariffState
 
 _LOGGER = logging.getLogger(__name__)
+
+SECONDS_PER_DAY = 24 * 60 * 60
 
 
 class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
@@ -55,6 +58,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             name=DOMAIN,
             update_interval=DEFAULT_SCAN_INTERVAL,
         )
+
         self.api = api
         self.private_api = private_api
 
@@ -62,45 +66,59 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         """Fetch and assemble the latest Legrand Energy data."""
         try:
             modules = await self.api.discover_modules()
+
             contract: Contract | None = None
             tariff: TariffState | None = None
             measurements: LegrandMeasurements | None = None
+            measurements_by_module: dict[str, LegrandMeasurements] = {}
             projections: LegrandProjections | None = None
 
             home_id = self._get_home_id()
+
             if self.private_api is not None and home_id is not None:
                 contract = await self._async_get_contract(home_id)
 
-                engine = TariffEngine(contract) if contract is not None else None
-                if engine is not None:
-                    try:
-                        tariff = engine.current_state(dt_util.now())
-                    except ValueError as err:
-                        _LOGGER.warning("Unable to determine current tariff: %s", err)
+                tariff_engine = TariffEngine(contract) if contract is not None else None
 
-                total_module = self._find_total_module(modules)
-                if total_module is not None:
-                    measurements, projections = await self._async_get_measurements(
-                        home_id,
-                        total_module,
-                        contract,
-                        engine,
-                    )
+                if tariff_engine is not None:
+                    try:
+                        tariff = tariff_engine.current_state(dt_util.now())
+                    except ValueError as err:
+                        _LOGGER.warning(
+                            "Unable to determine current tariff: %s",
+                            err,
+                        )
+
+                (
+                    measurements,
+                    measurements_by_module,
+                    projections,
+                ) = await self._async_get_all_measurements(
+                    home_id=home_id,
+                    modules=modules,
+                    contract=contract,
+                    tariff_engine=tariff_engine,
+                )
 
             return LegrandEnergyData(
                 modules=modules,
                 contract=contract,
                 tariff=tariff,
                 measurements=measurements,
+                measurements_by_module=measurements_by_module,
                 projections=projections,
             )
 
         except LegrandEnergyAuthenticationError as err:
             raise ConfigEntryAuthFailed("Legrand Energy authentication failed") from err
+
         except LegrandEnergyApiError as err:
             raise UpdateFailed(f"Unable to update Legrand Energy data: {err}") from err
 
-    async def _async_get_contract(self, home_id: str) -> Contract | None:
+    async def _async_get_contract(
+        self,
+        home_id: str,
+    ) -> Contract | None:
         """Fetch and parse the electricity contract."""
         if self.private_api is None:
             return None
@@ -108,81 +126,153 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         try:
             raw = await self.private_api.getcontracts(home_id)
         except LegrandPrivateApiError as err:
-            _LOGGER.warning("Unable to update electricity contract: %s", err)
+            _LOGGER.warning(
+                "Unable to update electricity contract: %s",
+                err,
+            )
             return None
 
         return parse_contract(raw)
 
-    async def _async_get_measurements(
+    async def _async_get_all_measurements(
         self,
         home_id: str,
-        module: LegrandModule,
+        modules: dict[str, LegrandModule],
         contract: Contract | None,
-        engine: TariffEngine | None,
-    ) -> tuple[LegrandMeasurements | None, LegrandProjections | None]:
-        """Fetch measurements for the total electricity module."""
-        if self.private_api is None or module.bridge is None:
-            return None, None
+        tariff_engine: TariffEngine | None,
+    ) -> tuple[
+        LegrandMeasurements | None,
+        dict[str, LegrandMeasurements],
+        LegrandProjections | None,
+    ]:
+        """Fetch measurements for all electricity circuits."""
+        if self.private_api is None:
+            return None, {}, None
+
+        circuits = [module for module in modules.values() if module.bridge is not None]
+
+        if not circuits:
+            return None, {}, None
 
         now = dt_util.now()
         date_end = int(now.timestamp())
-        date_begin = date_end - 24 * 60 * 60
+        date_begin = date_end - SECONDS_PER_DAY
+
+        _LOGGER.warning(
+            "Requesting measurements for modules: %s",
+            [module.id for module in circuits],
+        )
 
         try:
-            raw = await self.private_api.get_electricity_measure(
+            raw = await self.private_api.get_electricity_measures(
                 home_id=home_id,
-                module_id=module.id,
-                bridge=module.bridge,
+                modules=[
+                    (module.id, module.bridge)
+                    for module in circuits
+                    if module.bridge is not None
+                ],
                 date_begin=date_begin,
                 date_end=date_end,
             )
         except LegrandPrivateApiError as err:
-            _LOGGER.warning("Unable to update private measurements: %s", err)
-            return None, None
+            _LOGGER.warning(
+                "Unable to update private measurements: %s",
+                err,
+            )
+            return None, {}, None
 
-        points = decode_energy_points(raw)
-        if not points:
-            return None, None
+        points_by_module = decode_energy_points_by_module(raw)
+        _LOGGER.warning(
+            "Measurements returned for modules: %s",
+            {module_id: len(points) for module_id, points in points_by_module.items()},
+        )
+        measurements_by_module: dict[str, LegrandMeasurements] = {}
 
-        if engine is not None:
-            for point in points:
-                try:
-                    state = engine.state_at(dt_util.as_local(point.timestamp))
-                except ValueError:
-                    continue
-                point.tariff = state.zone_name
-                point.zone_id = state.zone_id
+        peak_price = (
+            contract.peak_price
+            if contract is not None and contract.peak_price is not None
+            else 0.0
+        )
 
-        today_points = [
-            point
-            for point in points
-            if dt_util.as_local(point.timestamp).date() == now.date()
-        ]
-
-        peak_price = contract.peak_price if contract and contract.peak_price else 0.0
         off_peak_price = (
-            contract.off_peak_price if contract and contract.off_peak_price else 0.0
+            contract.off_peak_price
+            if contract is not None and contract.off_peak_price is not None
+            else 0.0
         )
-        daily = compute_daily_statistics(today_points, peak_price, off_peak_price)
-        projection = project_today(daily.total_energy, daily.total_cost, now)
 
-        measurements = LegrandMeasurements(
-            energy_today=daily.total_energy / 1000,
-            cost_today=daily.total_cost,
+        for module_id, points in points_by_module.items():
+            if tariff_engine is not None:
+                for point in points:
+                    try:
+                        state = tariff_engine.state_at(
+                            dt_util.as_local(point.timestamp)
+                        )
+                    except ValueError:
+                        continue
+
+                    point.tariff = state.zone_name
+                    point.zone_id = state.zone_id
+
+            today_points = [
+                point
+                for point in points
+                if dt_util.as_local(point.timestamp).date() == now.date()
+            ]
+
+            if not today_points:
+                continue
+
+            daily = compute_daily_statistics(
+                today_points,
+                peak_price,
+                off_peak_price,
+            )
+
+            measurements_by_module[module_id] = LegrandMeasurements(
+                energy_today=daily.total_energy / 1000,
+                cost_today=daily.total_cost,
+            )
+
+        total_module = self._find_total_module(modules)
+
+        measurements = (
+            measurements_by_module.get(total_module.id)
+            if total_module is not None
+            else None
         )
-        projections = LegrandProjections(
-            energy_end_of_day=projection.projected_energy / 1000,
-            cost_end_of_day=projection.projected_cost,
+
+        projections: LegrandProjections | None = None
+
+        if measurements is not None:
+            projection = project_today(
+                (measurements.energy_today or 0.0) * 1000,
+                measurements.cost_today or 0.0,
+                now,
+            )
+
+            projections = LegrandProjections(
+                energy_end_of_day=projection.projected_energy / 1000,
+                cost_end_of_day=projection.projected_cost,
+            )
+
+        return (
+            measurements,
+            measurements_by_module,
+            projections,
         )
-        return measurements, projections
 
     def _get_home_id(self) -> str | None:
         """Return the first home ID from cached topology data."""
         homesdata = self.api._homes_cache  # noqa: SLF001
+
         if homesdata is None:
             return None
 
-        homes = homesdata.get("body", {}).get("homes", [])
+        body = homesdata.get("body")
+        if not isinstance(body, dict):
+            return None
+
+        homes = body.get("homes")
         if not isinstance(homes, list) or not homes:
             return None
 
@@ -197,7 +287,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
     def _find_total_module(
         modules: dict[str, LegrandModule],
     ) -> LegrandModule | None:
-        """Return the total electricity module, when available."""
+        """Return the total electricity module."""
         circuits = [module for module in modules.values() if module.bridge is not None]
 
         for module in circuits:

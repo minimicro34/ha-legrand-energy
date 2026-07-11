@@ -119,6 +119,42 @@ class LegrandPrivateApi:
             },
         )
 
+    async def get_electricity_measures(
+        self,
+        home_id: str,
+        modules: list[tuple[str, str]],
+        date_begin: int,
+        date_end: int,
+    ) -> dict[str, Any]:
+        """Return electricity measures for multiple modules."""
+        home_payload = {
+            "id": home_id,
+            "modules": [
+                {
+                    "id": module_id,
+                    "bridge": bridge,
+                    "type": PRIVATE_MEASURE_TYPE_ELECTRICITY,
+                }
+                for module_id, bridge in modules
+            ],
+            "rooms": [],
+        }
+
+        return await self._get(
+            APP_API_BASE,
+            "gethomemeasure",
+            params={
+                "home": json.dumps(
+                    home_payload,
+                    separators=(",", ":"),
+                ),
+                "real_time": "true",
+                "scale": "5min",
+                "date_begin": date_begin,
+                "date_end": date_end,
+            },
+        )
+
     async def get_fluid_measure(
         self,
         home_id: str,
