@@ -93,7 +93,6 @@
       "off_peak_price": {
         "name": "Prix heures creuses"
       },
-
       "circuit_energy_today": {
         "name": "Consommation aujourd’hui"
       },
@@ -107,10 +106,10 @@
         "name": "Coût HC aujourd’hui"
       }, 
       "circuit_energy_peak_today": {
-        "name": "Conso circuit HP aujourd’hui"
+        "name": "Consommation aujourd’hui HP"
       },
       "circuit_energy_off_peak_today": {
-        "name": "Conso circuit HC aujourd’hui"
+        "name": "Consommation aujourd’hui HC"
       }, 
       "energy_peak_today": {
         "name": "Consommation HP aujourd’hui"
