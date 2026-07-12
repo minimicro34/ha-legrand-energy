@@ -14,7 +14,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, UnitOfPower
+from homeassistant.const import (
+    CURRENCY_EURO,
+    EntityCategory,
+    UnitOfEnergy,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -172,33 +177,6 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL,
         precision=3,
     ),
-    _global_measurement_description(
-        key="energy_week",
-        translation_key="energy_week",
-        field="energy_week",
-        device_class=SensorDeviceClass.ENERGY,
-        unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
-        precision=3,
-    ),
-    _global_measurement_description(
-        key="energy_month",
-        translation_key="energy_month",
-        field="energy_month",
-        device_class=SensorDeviceClass.ENERGY,
-        unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
-        precision=3,
-    ),
-    _global_measurement_description(
-        key="energy_year",
-        translation_key="energy_year",
-        field="energy_year",
-        device_class=SensorDeviceClass.ENERGY,
-        unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
-        precision=3,
-    ),
     LegrandSensorDescription(
         key="projected_energy_today",
         translation_key="projected_energy_today",
@@ -232,6 +210,33 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         ),
     ),
     _global_measurement_description(
+        key="energy_week",
+        translation_key="energy_week",
+        field="energy_week",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
+        precision=3,
+    ),
+    _global_measurement_description(
+        key="energy_month",
+        translation_key="energy_month",
+        field="energy_month",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
+        precision=3,
+    ),
+    _global_measurement_description(
+        key="energy_year",
+        translation_key="energy_year",
+        field="energy_year",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
+        precision=3,
+    ),
+    _global_measurement_description(
         key="cost_today",
         translation_key="cost_today",
         field="cost_today",
@@ -253,33 +258,6 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         key="cost_off_peak_today",
         translation_key="cost_off_peak_today",
         field="cost_off_peak_today",
-        device_class=SensorDeviceClass.MONETARY,
-        unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
-        precision=2,
-    ),
-    _global_measurement_description(
-        key="cost_week",
-        translation_key="cost_week",
-        field="cost_week",
-        device_class=SensorDeviceClass.MONETARY,
-        unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
-        precision=2,
-    ),
-    _global_measurement_description(
-        key="cost_month",
-        translation_key="cost_month",
-        field="cost_month",
-        device_class=SensorDeviceClass.MONETARY,
-        unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
-        precision=2,
-    ),
-    _global_measurement_description(
-        key="cost_year",
-        translation_key="cost_year",
-        field="cost_year",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
@@ -316,6 +294,33 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         ),
     ),
     _global_measurement_description(
+        key="cost_week",
+        translation_key="cost_week",
+        field="cost_week",
+        device_class=SensorDeviceClass.MONETARY,
+        unit=CURRENCY_EURO,
+        state_class=SensorStateClass.TOTAL,
+        precision=2,
+    ),
+    _global_measurement_description(
+        key="cost_month",
+        translation_key="cost_month",
+        field="cost_month",
+        device_class=SensorDeviceClass.MONETARY,
+        unit=CURRENCY_EURO,
+        state_class=SensorStateClass.TOTAL,
+        precision=2,
+    ),
+    _global_measurement_description(
+        key="cost_year",
+        translation_key="cost_year",
+        field="cost_year",
+        device_class=SensorDeviceClass.MONETARY,
+        unit=CURRENCY_EURO,
+        state_class=SensorStateClass.TOTAL,
+        precision=2,
+    ),
+    _global_measurement_description(
         key="power",
         translation_key="power",
         field="power",
@@ -325,8 +330,83 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         precision=0,
     ),
     LegrandSensorDescription(
+        key="contract_option",
+        translation_key="contract_option",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data, _module: (
+            {
+                "peak_and_off_peak": "HP/HC",
+                "base": "Base",
+            }.get(
+                data.contract.tariff_option,
+                data.contract.tariff_option,
+            )
+            if data.contract is not None
+            else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and bool(data.contract.tariff_option)
+        ),
+    ),
+    LegrandSensorDescription(
+        key="off_peak_price",
+        translation_key="off_peak_price",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
+        suggested_display_precision=4,
+        value_fn=lambda data, _module: (
+            data.contract.off_peak_price if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and data.contract.off_peak_price is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="peak_price",
+        translation_key="peak_price",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
+        suggested_display_precision=4,
+        value_fn=lambda data, _module: (
+            data.contract.peak_price if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and data.contract.peak_price is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="contract_power",
+        translation_key="contract_power",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="kVA",
+        suggested_display_precision=0,
+        value_fn=lambda data, _module: (
+            data.contract.power_threshold if data.contract is not None else None
+        ),
+        available_fn=lambda data, _module: data.contract is not None,
+    ),
+    LegrandSensorDescription(
+        key="contract_tariff",
+        translation_key="contract_tariff",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data, _module: (
+            {"custom": "Personnalisé"}.get(
+                data.contract.tariff,
+                data.contract.tariff,
+            )
+            if data.contract is not None
+            else None
+        ),
+        available_fn=lambda data, _module: (
+            data.contract is not None and bool(data.contract.tariff)
+        ),
+    ),
+    LegrandSensorDescription(
         key="current_tariff",
         translation_key="current_tariff",
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data, _module: (
             {"peak": "HP", "off_peak": "HC"}.get(
                 data.tariff.price_type,
@@ -376,6 +456,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
         key="contract_type",
         translation_key="contract_type",
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data, _module: (
             {"electricity": "Électricité"}.get(data.contract.type, data.contract.type)
             if data.contract is not None
@@ -386,72 +467,36 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         ),
     ),
     LegrandSensorDescription(
-        key="contract_tariff",
-        translation_key="contract_tariff",
-        value_fn=lambda data, _module: (
-            {"custom": "Personnalisé"}.get(
-                data.contract.tariff,
-                data.contract.tariff,
-            )
-            if data.contract is not None
+        key="module_type",
+        translation_key="module_type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda _data, module: module.type if module is not None else None,
+        available_fn=lambda _data, module: module is not None and bool(module.type),
+    ),
+    LegrandSensorDescription(
+        key="room",
+        translation_key="room",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda _data, module: module.room if module is not None else None,
+        available_fn=lambda _data, module: (
+            module is not None and module.room is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="setup_date",
+        translation_key="setup_date",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
+        value_fn=lambda _data, module: (
+            dt_util.utc_from_timestamp(module.setup_date)
+            if module is not None and module.setup_date is not None
             else None
         ),
-        available_fn=lambda data, _module: (
-            data.contract is not None and bool(data.contract.tariff)
-        ),
-    ),
-    LegrandSensorDescription(
-        key="contract_option",
-        translation_key="contract_option",
-        value_fn=lambda data, _module: (
-            {
-                "peak_and_off_peak": "HP/HC",
-                "base": "Base",
-            }.get(
-                data.contract.tariff_option,
-                data.contract.tariff_option,
-            )
-            if data.contract is not None
-            else None
-        ),
-        available_fn=lambda data, _module: (
-            data.contract is not None and bool(data.contract.tariff_option)
-        ),
-    ),
-    LegrandSensorDescription(
-        key="contract_power",
-        translation_key="contract_power",
-        native_unit_of_measurement="kVA",
-        suggested_display_precision=0,
-        value_fn=lambda data, _module: (
-            data.contract.power_threshold if data.contract is not None else None
-        ),
-        available_fn=lambda data, _module: data.contract is not None,
-    ),
-    LegrandSensorDescription(
-        key="peak_price",
-        translation_key="peak_price",
-        device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
-        suggested_display_precision=4,
-        value_fn=lambda data, _module: (
-            data.contract.peak_price if data.contract is not None else None
-        ),
-        available_fn=lambda data, _module: (
-            data.contract is not None and data.contract.peak_price is not None
-        ),
-    ),
-    LegrandSensorDescription(
-        key="off_peak_price",
-        translation_key="off_peak_price",
-        device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
-        suggested_display_precision=4,
-        value_fn=lambda data, _module: (
-            data.contract.off_peak_price if data.contract is not None else None
-        ),
-        available_fn=lambda data, _module: (
-            data.contract is not None and data.contract.off_peak_price is not None
+        available_fn=lambda _data, module: (
+            module is not None and module.setup_date is not None
         ),
     ),
 )
@@ -515,6 +560,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
         key="module_type",
         translation_key="module_type",
+        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         value_fn=lambda _data, module: module.type if module is not None else None,
         available_fn=lambda _data, module: module is not None and bool(module.type),
@@ -522,6 +568,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
         key="room",
         translation_key="room",
+        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         value_fn=lambda _data, module: module.room if module is not None else None,
         available_fn=lambda _data, module: (
@@ -531,6 +578,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
     LegrandSensorDescription(
         key="setup_date",
         translation_key="setup_date",
+        entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_registry_enabled_default=False,
         value_fn=lambda _data, module: (
