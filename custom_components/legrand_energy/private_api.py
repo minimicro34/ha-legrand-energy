@@ -264,25 +264,21 @@ class LegrandPrivateApi:
         self,
         *,
         refresh_token: str,
-        laravel_session: str | None = None,
-        mail_cookie: str | None = None,
-        authorize_state: str | None = None,
+        laravel_session: str,
+        mail_cookie: str,
+        authorize_state: str,
+        xsrf_token: str,
         locale: str = "fr-FR",
     ) -> str:
         """Refresh the Netatmo private web access token."""
-        cookies: dict[str, str] = {
+        cookies = {
             "authnetatmocomrefresh_token": refresh_token,
+            "authnetatmocomlaravel_session": laravel_session,
+            "authnetatmocommail_cookie": mail_cookie,
+            "authnetatmocomauthorize_state": authorize_state,
+            "XSRF-TOKEN": xsrf_token,
             "netatmocomlocale": locale,
         }
-
-        if laravel_session is not None:
-            cookies["authnetatmocomlaravel_session"] = laravel_session
-
-        if mail_cookie is not None:
-            cookies["authnetatmocommail_cookie"] = mail_cookie
-
-        if authorize_state is not None:
-            cookies["authnetatmocomauthorize_state"] = authorize_state
 
         url = (
             f"{AUTH_BASE}/access/checklogin"
@@ -290,8 +286,6 @@ class LegrandPrivateApi:
             "https%3A%2F%2Fhome.netatmo.com"
             "%2Fcontrol%2Fdashboard"
         )
-
-        new_web_token: str | None = None
 
         try:
             async with self._session.get(
@@ -301,8 +295,7 @@ class LegrandPrivateApi:
                 timeout=API_TIMEOUT,
                 headers={
                     "Accept": (
-                        "text/html,application/xhtml+xml,"
-                        "application/xml;q=0.9,*/*;q=0.8"
+                        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
                     ),
                     "User-Agent": (
                         "Mozilla/5.0 "
@@ -322,14 +315,12 @@ class LegrandPrivateApi:
                 access_cookie = response.cookies.get("netatmocomaccess_token")
 
                 if access_cookie is None:
-                    set_cookie_headers = response.headers.getall(
-                        "Set-Cookie",
-                        [],
-                    )
-
                     cookie_names = [
                         header.split("=", 1)[0]
-                        for header in set_cookie_headers
+                        for header in response.headers.getall(
+                            "Set-Cookie",
+                            [],
+                        )
                         if "=" in header
                     ]
 
@@ -344,6 +335,11 @@ class LegrandPrivateApi:
 
                 new_web_token = unquote(str(access_cookie.value))
 
+                if new_web_token.casefold() == "deleted" or len(new_web_token) < 20:
+                    raise LegrandPrivateApiAuthenticationError(
+                        "Netatmo did not return a valid web access token"
+                    )
+
         except LegrandPrivateApiError:
             raise
 
@@ -354,11 +350,6 @@ class LegrandPrivateApi:
             raise LegrandPrivateApiError(
                 f"Netatmo web-token refresh failed: {err}"
             ) from err
-
-        if new_web_token is None or not new_web_token:
-            raise LegrandPrivateApiAuthenticationError(
-                "Netatmo returned an empty web token"
-            )
 
         _LOGGER.warning(
             "Netatmo token diagnostics: length=%s pipe=%s encoded_pipe=%s",
