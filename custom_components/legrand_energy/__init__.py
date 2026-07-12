@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -17,13 +19,14 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
 ]
 
-
-async def async_update_options(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> None:
-    """Reload the integration when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
+PRIVATE_AUTH_KEYS = (
+    "web_token",
+    "refresh_token_web",
+    "laravel_session",
+    "mail_cookie",
+    "authorize_state",
+    "xsrf_token",
+)
 
 
 async def async_setup_entry(
@@ -37,7 +40,7 @@ async def async_setup_entry(
         access_token: str,
         refresh_token: str,
     ) -> None:
-        """Store refreshed OAuth tokens."""
+        """Store refreshed public OAuth tokens."""
         hass.config_entries.async_update_entry(
             entry,
             data={
@@ -46,6 +49,14 @@ async def async_setup_entry(
                 "refresh_token": refresh_token,
             },
         )
+
+    async def async_update_private_auth(
+        auth_data: dict[str, str],
+    ) -> None:
+        """Persist refreshed private Netatmo authentication data."""
+        new_data: dict[str, Any] = dict(entry.data)
+        new_data.update(auth_data)
+        hass.config_entries.async_update_entry(entry, data=new_data)
 
     api = LegrandEnergyApi(
         session=session,
@@ -56,10 +67,29 @@ async def async_setup_entry(
         token_update_callback=async_update_tokens,
     )
 
-    web_token = entry.options.get("web_token") or entry.data.get("web_token")
+    def private_value(key: str) -> str | None:
+        """Return persisted private value with options fallback."""
+        value = entry.data.get(key)
+        if isinstance(value, str) and value:
+            return value
+
+        option_value = entry.options.get(key)
+        return option_value if isinstance(option_value, str) and option_value else None
+
+    web_token = private_value("web_token")
+
     private_api = (
-        LegrandPrivateApi(session=session, web_token=web_token)
-        if isinstance(web_token, str) and web_token
+        LegrandPrivateApi(
+            session=session,
+            web_token=web_token,
+            refresh_token=private_value("refresh_token_web"),
+            laravel_session=private_value("laravel_session"),
+            mail_cookie=private_value("mail_cookie"),
+            authorize_state=private_value("authorize_state"),
+            xsrf_token=private_value("xsrf_token"),
+            auth_update_callback=async_update_private_auth,
+        )
+        if web_token is not None
         else None
     )
 
@@ -71,9 +101,33 @@ async def async_setup_entry(
     )
 
     await coordinator.async_config_entry_first_refresh()
-
     entry.runtime_data = coordinator
-    entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+    async def async_entry_updated(
+        hass: HomeAssistant,
+        updated_entry: ConfigEntry,
+    ) -> None:
+        """Apply user-updated options and reload the integration."""
+        new_data: dict[str, Any] = dict(updated_entry.data)
+
+        for key in PRIVATE_AUTH_KEYS:
+            option_value = updated_entry.options.get(key)
+
+            if isinstance(option_value, str):
+                if option_value:
+                    new_data[key] = option_value
+                else:
+                    new_data.pop(key, None)
+
+        if new_data != updated_entry.data:
+            hass.config_entries.async_update_entry(
+                updated_entry,
+                data=new_data,
+            )
+
+        await hass.config_entries.async_reload(updated_entry.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(async_entry_updated))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

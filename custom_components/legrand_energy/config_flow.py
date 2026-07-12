@@ -1,4 +1,4 @@
-"""Config flow for Legrand Energy."""
+"""Options flow for Legrand Energy."""
 
 from __future__ import annotations
 
@@ -8,60 +8,64 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 
-from .const import DOMAIN
-from .options_flow import LegrandEnergyOptionsFlow
 
+class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
+    """Handle options for Legrand Energy."""
 
-class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Legrand Energy."""
+    def __init__(self, config_entry: ConfigEntry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
 
-    VERSION = 1
+    def _current_value(self, key: str) -> str:
+        """Return the current value from options or persisted data."""
+        option_value = self._config_entry.options.get(key)
 
-    async def async_step_user(
+        if isinstance(option_value, str):
+            return option_value
+
+        data_value = self._config_entry.data.get(key)
+
+        return data_value if isinstance(data_value, str) else ""
+
+    async def async_step_init(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
-
-        errors: dict[str, str] = {}
-
+        """Manage options."""
         if user_input is not None:
-            await self.async_set_unique_id("legrand_energy")
-            self._abort_if_unique_id_configured()
-
             return self.async_create_entry(
-                title="Legrand Energy",
-                data={
-                    "client_id": user_input["client_id"],
-                    "client_secret": user_input["client_secret"],
-                    "access_token": user_input["access_token"],
-                    "refresh_token": user_input["refresh_token"],
-                    "web_token": user_input["web_token"],
-                },
+                title=self._config_entry.title,
+                data=user_input,
             )
 
-        schema = vol.Schema(
-            {
-                vol.Required("client_id"): str,
-                vol.Required("client_secret"): str,
-                vol.Required("access_token"): str,
-                vol.Required("refresh_token"): str,
-                vol.Optional(
-                    "web_token",
-                    default=user_input.get("web_token", "") if user_input else "",
-                ): str,
-            }
-        )
-
         return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
-            errors=errors,
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        "web_token",
+                        default=self._current_value("web_token"),
+                    ): str,
+                    vol.Optional(
+                        "refresh_token_web",
+                        default=self._current_value("refresh_token_web"),
+                    ): str,
+                    vol.Optional(
+                        "laravel_session",
+                        default=self._current_value("laravel_session"),
+                    ): str,
+                    vol.Optional(
+                        "mail_cookie",
+                        default=self._current_value("mail_cookie"),
+                    ): str,
+                    vol.Optional(
+                        "authorize_state",
+                        default=self._current_value("authorize_state"),
+                    ): str,
+                    vol.Optional(
+                        "xsrf_token",
+                        default=self._current_value("xsrf_token"),
+                    ): str,
+                }
+            ),
         )
-
-    @staticmethod
-    def async_get_options_flow(
-        config_entry: ConfigEntry,
-    ) -> config_entries.OptionsFlow:
-        """Return the options flow."""
-        return LegrandEnergyOptionsFlow(config_entry)
