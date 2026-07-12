@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any, cast
 from urllib.parse import unquote
+
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -246,37 +247,6 @@ class LegrandPrivateApi:
             },
         )
 
-    async def get_fluid_measure(
-        self,
-        home_id: str,
-        module_id: str,
-        bridge: str,
-        date_begin: int,
-        date_end: int,
-    ) -> dict[str, Any]:
-        """Return fluid measurements for one module."""
-        home_payload = {
-            "id": home_id,
-            "modules": [
-                {
-                    "id": module_id,
-                    "bridge": bridge,
-                    "type": PRIVATE_MEASURE_TYPE_FLUID,
-                },
-            ],
-        }
-
-        return await self._get(
-            APP_API_BASE,
-            "gethomemeasure",
-            {
-                "home": json.dumps(home_payload),
-                "scale": "5min",
-                "date_begin": date_begin,
-                "date_end": date_end,
-            },
-        )
-
     async def getcontracts(
         self,
         home_id: str,
@@ -299,26 +269,19 @@ class LegrandPrivateApi:
         authorize_state: str | None = None,
         locale: str = "fr-FR",
     ) -> str:
-        """Test refreshing the Netatmo private web token.
-
-        This method calls the private authentication endpoint identified
-        through the Netatmo web application.
-
-        It updates the token in memory but does not yet save it in the
-        Home Assistant ConfigEntry.
-        """
+        """Refresh the Netatmo private web access token."""
         cookies: dict[str, str] = {
             "authnetatmocomrefresh_token": refresh_token,
             "netatmocomlocale": locale,
         }
 
-        if laravel_session:
+        if laravel_session is not None:
             cookies["authnetatmocomlaravel_session"] = laravel_session
 
-        if mail_cookie:
+        if mail_cookie is not None:
             cookies["authnetatmocommail_cookie"] = mail_cookie
 
-        if authorize_state:
+        if authorize_state is not None:
             cookies["authnetatmocomauthorize_state"] = authorize_state
 
         url = (
@@ -327,6 +290,8 @@ class LegrandPrivateApi:
             "https%3A%2F%2Fhome.netatmo.com"
             "%2Fcontrol%2Fdashboard"
         )
+
+        new_web_token: str | None = None
 
         try:
             async with self._session.get(
@@ -377,8 +342,8 @@ class LegrandPrivateApi:
                         "Netatmo checklogin did not return netatmocomaccess_token"
                     )
 
-                    new_web_token = unquote(access_cookie.value)
-        
+                new_web_token = unquote(str(access_cookie.value))
+
         except LegrandPrivateApiError:
             raise
 
@@ -390,10 +355,17 @@ class LegrandPrivateApi:
                 f"Netatmo web-token refresh failed: {err}"
             ) from err
 
-        if not new_web_token:
+        if new_web_token is None or not new_web_token:
             raise LegrandPrivateApiAuthenticationError(
                 "Netatmo returned an empty web token"
             )
+
+        _LOGGER.warning(
+            "Netatmo token diagnostics: length=%s pipe=%s encoded_pipe=%s",
+            len(new_web_token),
+            "|" in new_web_token,
+            "%7C" in new_web_token.upper(),
+        )
 
         self.set_web_token(new_web_token)
 

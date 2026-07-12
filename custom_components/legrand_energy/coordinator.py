@@ -78,39 +78,6 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             home_id = self._get_home_id()
 
             if self.private_api is not None and home_id is not None:
-                # TEMPORARY: test possible TIC power measure types.
-                for measure_type in (
-                    "power",
-                    "power_current",
-                    "apparent_power",
-                    "instantaneous_power",
-                    "papp",
-                    "sinsts",
-                ):
-                    _LOGGER.warning("POWER TEST START %s", measure_type)
-
-                    try:
-                        result = await self.private_api.get_measure(
-                            home_id=home_id,
-                            module_id="00:04:74:12:24:d4",
-                            measure_type=measure_type,
-                        )
-                        _LOGGER.warning(
-                            "POWER TEST %s: %s",
-                            measure_type,
-                            result,
-                        )
-                    except Exception as err:  # noqa: BLE001
-                        _LOGGER.warning(
-                            "POWER TEST %s exception %s: %s",
-                            measure_type,
-                            type(err).__name__,
-                            err,
-                        )
-
-                contract = await self._async_get_contract(home_id)
-
-            if self.private_api is not None and home_id is not None:
                 homestatus = await self.private_api.homestatus(home_id)
                 _LOGGER.warning("PRIVATE HOMESTATUS: %s", homestatus)
 
