@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any, cast
-
+from urllib.parse import unquote
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -377,8 +377,8 @@ class LegrandPrivateApi:
                         "Netatmo checklogin did not return netatmocomaccess_token"
                     )
 
-                new_web_token = access_cookie.value
-
+                    new_web_token = unquote(access_cookie.value)
+        
         except LegrandPrivateApiError:
             raise
 
