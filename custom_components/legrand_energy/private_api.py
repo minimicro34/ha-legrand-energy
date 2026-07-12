@@ -12,7 +12,6 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
-SYNC_API_BASE = "https://app.netatmo.net/syncapi/v1"
 AUTH_BASE = "https://auth.netatmo.com"
 
 API_TIMEOUT = aiohttp.ClientTimeout(total=30)
@@ -253,7 +252,7 @@ class LegrandPrivateApi:
     ) -> dict[str, Any]:
         """Return the electricity contract."""
         return await self._get(
-            SYNC_API_BASE,
+            APP_API_BASE,
             "getcontracts",
             {
                 "home_id": home_id,
