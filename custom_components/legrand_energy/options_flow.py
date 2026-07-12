@@ -16,6 +16,17 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         self._config_entry = config_entry
 
+    def _current_value(self, key: str) -> str:
+        """Return the current value from options or persisted data."""
+        option_value = self._config_entry.options.get(key)
+
+        if isinstance(option_value, str):
+            return option_value
+
+        data_value = self._config_entry.data.get(key)
+
+        return data_value if isinstance(data_value, str) else ""
+
     async def async_step_init(
         self,
         user_input: dict[str, Any] | None = None,
@@ -33,10 +44,33 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         "web_token",
-                        default=self._config_entry.options.get(
-                            "web_token",
-                            self._config_entry.data.get("web_token", ""),
+                        default=self._current_value("web_token"),
+                    ): str,
+                    vol.Optional(
+                        "refresh_token_web",
+                        default=self._current_value(
+                            "refresh_token_web"
                         ),
+                    ): str,
+                    vol.Optional(
+                        "laravel_session",
+                        default=self._current_value(
+                            "laravel_session"
+                        ),
+                    ): str,
+                    vol.Optional(
+                        "mail_cookie",
+                        default=self._current_value("mail_cookie"),
+                    ): str,
+                    vol.Optional(
+                        "authorize_state",
+                        default=self._current_value(
+                            "authorize_state"
+                        ),
+                    ): str,
+                    vol.Optional(
+                        "xsrf_token",
+                        default=self._current_value("xsrf_token"),
                     ): str,
                 }
             ),

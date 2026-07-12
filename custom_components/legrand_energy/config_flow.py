@@ -1,4 +1,4 @@
-"""Options flow for Legrand Energy."""
+"""Config flow for Legrand Energy."""
 
 from __future__ import annotations
 
@@ -8,64 +8,70 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 
+from .const import DOMAIN
+from .options_flow import LegrandEnergyOptionsFlow
 
-class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
-    """Handle options for Legrand Energy."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self._config_entry = config_entry
+class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Legrand Energy."""
 
-    def _current_value(self, key: str) -> str:
-        """Return the current value from options or persisted data."""
-        option_value = self._config_entry.options.get(key)
+    VERSION = 1
 
-        if isinstance(option_value, str):
-            return option_value
-
-        data_value = self._config_entry.data.get(key)
-
-        return data_value if isinstance(data_value, str) else ""
-
-    async def async_step_init(
+    async def async_step_user(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Manage options."""
+        """Handle the initial step."""
         if user_input is not None:
+            await self.async_set_unique_id("legrand_energy")
+            self._abort_if_unique_id_configured()
+
             return self.async_create_entry(
-                title=self._config_entry.title,
-                data=user_input,
+                title="Legrand Energy",
+                data={
+                    "client_id": user_input["client_id"],
+                    "client_secret": user_input["client_secret"],
+                    "access_token": user_input["access_token"],
+                    "refresh_token": user_input["refresh_token"],
+                    "web_token": user_input.get("web_token", ""),
+                    "refresh_token_web": user_input.get(
+                        "refresh_token_web",
+                        "",
+                    ),
+                    "laravel_session": user_input.get(
+                        "laravel_session",
+                        "",
+                    ),
+                    "mail_cookie": user_input.get("mail_cookie", ""),
+                    "authorize_state": user_input.get(
+                        "authorize_state",
+                        "",
+                    ),
+                    "xsrf_token": user_input.get("xsrf_token", ""),
+                },
             )
 
         return self.async_show_form(
-            step_id="init",
+            step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        "web_token",
-                        default=self._current_value("web_token"),
-                    ): str,
-                    vol.Optional(
-                        "refresh_token_web",
-                        default=self._current_value("refresh_token_web"),
-                    ): str,
-                    vol.Optional(
-                        "laravel_session",
-                        default=self._current_value("laravel_session"),
-                    ): str,
-                    vol.Optional(
-                        "mail_cookie",
-                        default=self._current_value("mail_cookie"),
-                    ): str,
-                    vol.Optional(
-                        "authorize_state",
-                        default=self._current_value("authorize_state"),
-                    ): str,
-                    vol.Optional(
-                        "xsrf_token",
-                        default=self._current_value("xsrf_token"),
-                    ): str,
+                    vol.Required("client_id"): str,
+                    vol.Required("client_secret"): str,
+                    vol.Required("access_token"): str,
+                    vol.Required("refresh_token"): str,
+                    vol.Optional("web_token", default=""): str,
+                    vol.Optional("refresh_token_web", default=""): str,
+                    vol.Optional("laravel_session", default=""): str,
+                    vol.Optional("mail_cookie", default=""): str,
+                    vol.Optional("authorize_state", default=""): str,
+                    vol.Optional("xsrf_token", default=""): str,
                 }
             ),
         )
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Return the options flow."""
+        return LegrandEnergyOptionsFlow(config_entry)
