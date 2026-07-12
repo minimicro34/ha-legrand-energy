@@ -116,7 +116,6 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         key="current_price",
         translation_key="current_price",
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
         suggested_display_precision=4,
         value_fn=lambda data, _module: (
@@ -364,16 +363,6 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         available_fn=lambda data, _module: data.contract is not None,
     ),
     LegrandSensorDescription(
-        key="contract_option",
-        translation_key="contract_option",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:tune",
-        value_fn=lambda data, _module: (
-            data.contract.tariff_option if data.contract is not None else None
-        ),
-        available_fn=lambda data, _module: data.contract is not None,
-    ),
-    LegrandSensorDescription(
         key="contract_power",
         translation_key="contract_power",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -391,7 +380,6 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="peak_price",
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
         suggested_display_precision=4,
         value_fn=lambda data, _module: (
@@ -406,7 +394,6 @@ SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="off_peak_price",
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=f"{CURRENCY_EURO}/kWh",
         suggested_display_precision=4,
         value_fn=lambda data, _module: (
