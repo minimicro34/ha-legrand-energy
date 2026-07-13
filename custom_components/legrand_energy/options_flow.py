@@ -17,15 +17,15 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
         self._config_entry = config_entry
 
     def _current_value(self, key: str) -> str:
-        """Return the current value from options or persisted data."""
-        option_value = self._config_entry.options.get(key)
-
-        if isinstance(option_value, str):
-            return option_value
-
+        """Return the current persisted value."""
         data_value = self._config_entry.data.get(key)
 
-        return data_value if isinstance(data_value, str) else ""
+        if isinstance(data_value, str) and data_value:
+            return data_value
+
+        option_value = self._config_entry.options.get(key)
+
+        return option_value if isinstance(option_value, str) else ""
 
     async def async_step_init(
         self,
@@ -48,15 +48,11 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
                     ): str,
                     vol.Optional(
                         "refresh_token_web",
-                        default=self._current_value(
-                            "refresh_token_web"
-                        ),
+                        default=self._current_value("refresh_token_web"),
                     ): str,
                     vol.Optional(
                         "laravel_session",
-                        default=self._current_value(
-                            "laravel_session"
-                        ),
+                        default=self._current_value("laravel_session"),
                     ): str,
                     vol.Optional(
                         "mail_cookie",
@@ -64,9 +60,7 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
                     ): str,
                     vol.Optional(
                         "authorize_state",
-                        default=self._current_value(
-                            "authorize_state"
-                        ),
+                        default=self._current_value("authorize_state"),
                     ): str,
                     vol.Optional(
                         "xsrf_token",

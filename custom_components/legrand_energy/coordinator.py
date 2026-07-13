@@ -32,7 +32,11 @@ from .models import (
     LegrandModule,
     LegrandProjections,
 )
-from .private_api import LegrandPrivateApi, LegrandPrivateApiError
+from .private_api import (
+    LegrandPrivateApi,
+    LegrandPrivateApiError,
+    LegrandPrivateApiRateLimitError,
+)
 from .tariff_engine import TariffEngine, TariffState
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +67,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
         self.api = api
         self.private_api = private_api
+        self._contract: Contract | None = None
+        self._contract_last_update: datetime | None = None
 
     async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""
@@ -76,10 +82,6 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             projections: LegrandProjections | None = None
 
             home_id = self._get_home_id()
-
-            if self.private_api is not None and home_id is not None:
-                homestatus = await self.private_api.homestatus(home_id)
-                _LOGGER.warning("PRIVATE HOMESTATUS: %s", homestatus)
 
             if self.private_api is not None and home_id is not None:
                 contract = await self._async_get_contract(home_id)
@@ -115,6 +117,14 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 projections=projections,
             )
 
+        except LegrandPrivateApiRateLimitError as err:
+            _LOGGER.warning("Netatmo API rate limit reached, keeping previous values")
+
+            if self.data is not None:
+                return self.data
+
+            raise UpdateFailed("Netatmo API rate limit exceeded") from err
+
         except LegrandEnergyAuthenticationError as err:
             raise ConfigEntryAuthFailed("Legrand Energy authentication failed") from err
 
@@ -125,21 +135,36 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         self,
         home_id: str,
     ) -> Contract | None:
-        """Fetch and parse the electricity contract."""
+        """Return the cached contract and refresh it once per hour."""
         if self.private_api is None:
-            return None
+            return self._contract
+
+        now = dt_util.now()
+
+        if (
+            self._contract is not None
+            and self._contract_last_update is not None
+            and now - self._contract_last_update < timedelta(hours=1)
+        ):
+            return self._contract
 
         try:
             raw = await self.private_api.getcontracts(home_id)
 
+        except LegrandPrivateApiRateLimitError:
+            raise
+
         except LegrandPrivateApiError as err:
             _LOGGER.warning(
-                "Unable to update electricity contract: %s",
+                "Unable to update electricity contract, keeping cached data: %s",
                 err,
             )
-            return None
+            return self._contract
 
-        return parse_contract(raw)
+        self._contract = parse_contract(raw)
+        self._contract_last_update = now
+
+        return self._contract
 
     async def _async_get_all_measurements(
         self,
@@ -193,6 +218,9 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 date_begin=int(today_start.timestamp()),
                 date_end=int(now.timestamp()),
             )
+
+        except LegrandPrivateApiRateLimitError:
+            raise
 
         except LegrandPrivateApiError as err:
             _LOGGER.warning(

@@ -42,6 +42,10 @@ class LegrandPrivateApiAuthenticationError(LegrandPrivateApiError):
     """Private API authentication error."""
 
 
+class LegrandPrivateApiRateLimitError(LegrandPrivateApiError):
+    """Private API rate limit exceeded."""
+
+
 class LegrandPrivateApi:
     """Client for the private Netatmo API."""
 
@@ -127,6 +131,14 @@ class LegrandPrivateApi:
                     raise LegrandPrivateApiAuthenticationError(
                         f"Private API request to {endpoint} "
                         f"failed with HTTP status {response.status}"
+                    )
+
+                if response.status == 429:
+                    response_text = await response.text()
+
+                    raise LegrandPrivateApiRateLimitError(
+                        f"Private API rate limit exceeded for {endpoint}: "
+                        f"{response_text[:300]}"
                     )
 
                 if response.status >= 400:
