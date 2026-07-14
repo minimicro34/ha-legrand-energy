@@ -11,6 +11,7 @@ from typing import Any, cast
 from urllib.parse import unquote
 
 import aiohttp
+from yarl import URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -310,15 +311,6 @@ class LegrandPrivateApi:
         """Refresh the Netatmo private web access token."""
         _LOGGER.warning("Entering refresh_web_token()")
         async with self._refresh_lock:
-            _LOGGER.warning(
-                "can_refresh=%s refresh=%s laravel=%s mail=%s authorize=%s xsrf=%s",
-                self._can_refresh(),
-                self._refresh_token is not None,
-                self._laravel_session is not None,
-                self._mail_cookie is not None,
-                self._authorize_state is not None,
-                self._xsrf_token is not None,
-            )
             if not self._can_refresh():
                 raise LegrandPrivateApiAuthenticationError(
                     "Netatmo private refresh credentials are incomplete"
@@ -329,17 +321,6 @@ class LegrandPrivateApi:
             assert self._mail_cookie is not None
             assert self._authorize_state is not None
             assert self._xsrf_token is not None
-
-            _LOGGER.warning(
-                "REFRESH INPUT COOKIES: %s",
-                {
-                    "refresh_token": self._cookie_debug_value(self._refresh_token),
-                    "laravel_session": self._cookie_debug_value(self._laravel_session),
-                    "mail_cookie": self._cookie_debug_value(self._mail_cookie),
-                    "authorize_state": self._cookie_debug_value(self._authorize_state),
-                    "xsrf_token": self._cookie_debug_value(self._xsrf_token),
-                },
-            )
 
             cookies = {
                 "authnetatmocomrefresh_token": self._refresh_token,
@@ -374,6 +355,12 @@ class LegrandPrivateApi:
                     access_cookie = response.cookies.get("netatmocomaccess_token")
 
                     if access_cookie is None:
+                        home_cookies = self._session.cookie_jar.filter_cookies(
+                            URL("https://home.netatmo.com")
+                        )
+                        access_cookie = home_cookies.get("netatmocomaccess_token")
+
+                    if access_cookie is None:
                         raise LegrandPrivateApiAuthenticationError(
                             "Netatmo checklogin did not return netatmocomaccess_token"
                         )
@@ -385,7 +372,7 @@ class LegrandPrivateApi:
                             "Netatmo did not return a valid web access token"
                         )
 
-                    self._update_rotated_cookies(response.cookies)
+                    # self._update_rotated_cookies(response.cookies)
 
             except LegrandPrivateApiError:
                 raise
