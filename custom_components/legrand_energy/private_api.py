@@ -11,6 +11,7 @@ from typing import Any, cast
 from urllib.parse import unquote
 
 import aiohttp
+from yarl import URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -310,7 +311,7 @@ class LegrandPrivateApi:
         )
 
     async def test_keychain(self) -> None:
-        """Test Netatmo keychain flow without changing current auth data."""
+        """Test the complete Netatmo keychain redirect flow."""
         if not self._can_refresh():
             raise LegrandPrivateApiAuthenticationError(
                 "Netatmo keychain test credentials are incomplete"
@@ -339,8 +340,9 @@ class LegrandPrivateApi:
             async with self._session.get(
                 url,
                 cookies=cookies,
-                allow_redirects=False,
+                allow_redirects=True,
                 timeout=API_TIMEOUT,
+                max_redirects=10,
                 headers={
                     "Accept": (
                         "text/html,application/xhtml+xml,"
@@ -349,12 +351,53 @@ class LegrandPrivateApi:
                     "User-Agent": USER_AGENT,
                 },
             ) as response:
-                _LOGGER.warning(
-                    "KEYCHAIN status=%s location=%s cookies=%s",
-                    response.status,
-                    response.headers.get("Location"),
-                    list(response.cookies.keys()),
+                home_cookies = self._session.cookie_jar.filter_cookies(
+                    URL("https://home.netatmo.com")
                 )
+
+                auth_cookies = self._session.cookie_jar.filter_cookies(
+                    URL("https://auth.netatmo.com")
+                )
+
+                _LOGGER.warning(
+                    "KEYCHAIN final_status=%s final_url=%s history=%s",
+                    response.status,
+                    str(response.url),
+                    [
+                        {
+                            "status": redirect.status,
+                            "location": redirect.headers.get("Location"),
+                        }
+                        for redirect in response.history
+                    ],
+                )
+
+                _LOGGER.warning(
+                    "KEYCHAIN home_cookie_names=%s auth_cookie_names=%s",
+                    list(home_cookies.keys()),
+                    list(auth_cookies.keys()),
+                )
+
+                access_cookie = home_cookies.get("netatmocomaccess_token")
+
+                if access_cookie is None:
+                    _LOGGER.warning("KEYCHAIN did not produce netatmocomaccess_token")
+                    return
+
+                token = unquote(str(access_cookie.value))
+
+                _LOGGER.warning(
+                    "KEYCHAIN access_token length=%s deleted=%s prefix=%s suffix=%s",
+                    len(token),
+                    token.casefold() == "deleted",
+                    token[:6],
+                    token[-4:],
+                )
+
+        except aiohttp.TooManyRedirects as err:
+            raise LegrandPrivateApiError(
+                "Netatmo keychain test exceeded the redirect limit"
+            ) from err
 
         except TimeoutError as err:
             raise LegrandPrivateApiError("Netatmo keychain test timed out") from err
