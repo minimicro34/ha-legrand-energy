@@ -415,7 +415,7 @@ class LegrandPrivateApi:
             if cookie is None:
                 continue
 
-            value = str(cookie.value)
+            value = unquote(str(cookie.value))
 
             if not value or value.casefold() == "deleted":
                 continue
