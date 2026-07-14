@@ -392,7 +392,7 @@ class LegrandPrivateApi:
             self.set_web_token(new_web_token)
             await self._persist_private_auth()
 
-            _LOGGER.info("Netatmo private web token refreshed successfully")
+            _LOGGER.warning("Netatmo private web token refreshed successfully")
 
             return new_web_token
 
@@ -415,7 +415,7 @@ class LegrandPrivateApi:
             if cookie is None:
                 continue
 
-            value = unquote(str(cookie.value))
+            value = str(cookie.value)
 
             if not value or value.casefold() == "deleted":
                 continue
