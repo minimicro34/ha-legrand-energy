@@ -19,7 +19,6 @@ from homeassistant.util import dt as dt_util
 from .api import (
     LegrandEnergyApi,
     LegrandEnergyApiError,
-    LegrandEnergyAuthenticationError,
 )
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_models import Contract
@@ -85,11 +84,6 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
             home_id = self._get_home_id()
 
-            home_id = self._get_home_id()
-
-            if self.private_api is not None and home_id is not None:
-                await self.private_api.test_keychain()
-
             if self.private_api is not None and home_id is not None:
                 contract = await self._async_get_contract(home_id)
 
@@ -133,10 +127,10 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             raise UpdateFailed("Netatmo API rate limit exceeded") from err
 
         except LegrandPrivateApiAuthenticationError as err:
-            raise UpdateFailed(f"Netatmo private authentication failed: {err}") from err
-
-        except LegrandEnergyAuthenticationError as err:
-            raise ConfigEntryAuthFailed("Legrand Energy authentication failed") from err
+            raise ConfigEntryAuthFailed(
+                "La session Web Netatmo a expiré. "
+                "Mettez à jour les cookies privés dans les options."
+            ) from err
 
         except LegrandEnergyApiError as err:
             raise UpdateFailed(f"Unable to update Legrand Energy data: {err}") from err

@@ -11,7 +11,6 @@ from typing import Any, cast
 from urllib.parse import unquote
 
 import aiohttp
-from yarl import URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -310,106 +309,21 @@ class LegrandPrivateApi:
             {"home_id": home_id},
         )
 
-    async def test_keychain(self) -> None:
-        """Test the complete Netatmo keychain redirect flow."""
-        if not self._can_refresh():
-            raise LegrandPrivateApiAuthenticationError(
-                "Netatmo keychain test credentials are incomplete"
-            )
-
-        assert self._refresh_token is not None
-        assert self._laravel_session is not None
-        assert self._mail_cookie is not None
-        assert self._authorize_state is not None
-        assert self._state_cookie is not None
-        assert self._xsrf_token is not None
-
-        cookies = {
-            "authnetatmocomrefresh_token": self._refresh_token,
-            "authnetatmocomlaravel_session": self._laravel_session,
-            "authnetatmocommail_cookie": self._mail_cookie,
-            "authnetatmocomauthorize_state": self._authorize_state,
-            "authnetatmocomstate": self._state_cookie,
-            "XSRF-TOKEN": self._xsrf_token,
-            "netatmocomlocale": "fr-FR",
-        }
-
-        url = f"{AUTH_BASE}/access/keychain?next_url=https%3A%2F%2Fhome.netatmo.com"
-
-        try:
-            async with self._session.get(
-                url,
-                cookies=cookies,
-                allow_redirects=True,
-                timeout=API_TIMEOUT,
-                max_redirects=10,
-                headers={
-                    "Accept": (
-                        "text/html,application/xhtml+xml,"
-                        "application/xml;q=0.9,*/*;q=0.8"
-                    ),
-                    "User-Agent": USER_AGENT,
-                },
-            ) as response:
-                home_cookies = self._session.cookie_jar.filter_cookies(
-                    URL("https://home.netatmo.com")
-                )
-
-                auth_cookies = self._session.cookie_jar.filter_cookies(
-                    URL("https://auth.netatmo.com")
-                )
-
-                _LOGGER.warning(
-                    "KEYCHAIN final_status=%s final_url=%s history=%s",
-                    response.status,
-                    str(response.url),
-                    [
-                        {
-                            "status": redirect.status,
-                            "location": redirect.headers.get("Location"),
-                        }
-                        for redirect in response.history
-                    ],
-                )
-
-                _LOGGER.warning(
-                    "KEYCHAIN home_cookie_names=%s auth_cookie_names=%s",
-                    list(home_cookies.keys()),
-                    list(auth_cookies.keys()),
-                )
-
-                access_cookie = home_cookies.get("netatmocomaccess_token")
-
-                if access_cookie is None:
-                    _LOGGER.warning("KEYCHAIN did not produce netatmocomaccess_token")
-                    return
-
-                token = unquote(str(access_cookie.value))
-
-                _LOGGER.warning(
-                    "KEYCHAIN access_token length=%s deleted=%s prefix=%s suffix=%s",
-                    len(token),
-                    token.casefold() == "deleted",
-                    token[:6],
-                    token[-4:],
-                )
-
-        except aiohttp.TooManyRedirects as err:
-            raise LegrandPrivateApiError(
-                "Netatmo keychain test exceeded the redirect limit"
-            ) from err
-
-        except TimeoutError as err:
-            raise LegrandPrivateApiError("Netatmo keychain test timed out") from err
-
-        except aiohttp.ClientError as err:
-            raise LegrandPrivateApiError(
-                f"Netatmo keychain test failed: {err}"
-            ) from err
-
     async def refresh_web_token(self) -> str:
         """Refresh the Netatmo private web access token."""
+        _LOGGER.warning("Entering refresh_web_token()")
         async with self._refresh_lock:
+            _LOGGER.warning(
+                "can_refresh=%s refresh=%s laravel=%s "
+                "mail=%s authorize=%s state=%s xsrf=%s",
+                self._can_refresh(),
+                self._refresh_token is not None,
+                self._laravel_session is not None,
+                self._mail_cookie is not None,
+                self._authorize_state is not None,
+                self._state_cookie is not None,
+                self._xsrf_token is not None,
+            )
             if not self._can_refresh():
                 raise LegrandPrivateApiAuthenticationError(
                     "Netatmo private refresh credentials are incomplete"
@@ -455,27 +369,12 @@ class LegrandPrivateApi:
                 ) as response:
                     access_cookie = response.cookies.get("netatmocomaccess_token")
 
-                    _LOGGER.warning(
-                        "checklogin HTTP=%s Location=%s",
-                        response.status,
-                        response.headers.get("Location"),
-                    )
-
                     if access_cookie is None:
                         raise LegrandPrivateApiAuthenticationError(
                             "Netatmo checklogin did not return netatmocomaccess_token"
                         )
 
                     new_web_token = unquote(str(access_cookie.value))
-
-                    _LOGGER.warning(
-                        "Netatmo refresh diagnostics: "
-                        "length=%s deleted=%s prefix=%s suffix=%s",
-                        len(new_web_token),
-                        new_web_token.casefold() == "deleted",
-                        new_web_token[:6],
-                        new_web_token[-4:],
-                    )
 
                     if new_web_token.casefold() == "deleted" or len(new_web_token) < 20:
                         raise LegrandPrivateApiAuthenticationError(
