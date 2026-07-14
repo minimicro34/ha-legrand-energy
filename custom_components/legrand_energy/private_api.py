@@ -344,6 +344,12 @@ class LegrandPrivateApi:
                 ) as response:
                     access_cookie = response.cookies.get("netatmocomaccess_token")
 
+                    _LOGGER.warning(
+                        "checklogin HTTP=%s Location=%s",
+                        response.status,
+                        response.headers.get("Location"),
+                    )
+
                     if access_cookie is None:
                         raise LegrandPrivateApiAuthenticationError(
                             "Netatmo checklogin did not return netatmocomaccess_token"
@@ -351,13 +357,31 @@ class LegrandPrivateApi:
 
                     new_web_token = unquote(str(access_cookie.value))
 
+                    _LOGGER.warning(
+                        "Netatmo refresh diagnostics: "
+                        "length=%s deleted=%s prefix=%s suffix=%s",
+                        len(new_web_token),
+                        new_web_token.casefold() == "deleted",
+                        new_web_token[:6],
+                        new_web_token[-4:],
+                    )
+
                     if new_web_token.casefold() == "deleted" or len(new_web_token) < 20:
                         raise LegrandPrivateApiAuthenticationError(
                             "Netatmo did not return a valid web access token"
                         )
 
+                    _LOGGER.warning(
+                        "Netatmo refresh returned cookies: %s",
+                        list(response.cookies.keys()),
+                    )
+
                     self._update_rotated_cookies(response.cookies)
 
+                    _LOGGER.warning(
+                        "Netatmo refresh returned cookies: %s",
+                        list(response.cookies.keys()),
+                    )
             except LegrandPrivateApiError:
                 raise
             except TimeoutError as err:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from calendar import monthrange
 from datetime import datetime, timedelta
+from typing import cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -34,6 +35,7 @@ from .models import (
 )
 from .private_api import (
     LegrandPrivateApi,
+    LegrandPrivateApiAuthenticationError,
     LegrandPrivateApiError,
     LegrandPrivateApiRateLimitError,
 )
@@ -125,6 +127,9 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
             raise UpdateFailed("Netatmo API rate limit exceeded") from err
 
+        except LegrandPrivateApiAuthenticationError as err:
+            raise UpdateFailed(f"Netatmo private authentication failed: {err}") from err
+
         except LegrandEnergyAuthenticationError as err:
             raise ConfigEntryAuthFailed("Legrand Energy authentication failed") from err
 
@@ -141,15 +146,20 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
         now = dt_util.now()
 
-        if (
+        cache_is_valid = (
             self._contract is not None
             and self._contract_last_update is not None
             and now - self._contract_last_update < timedelta(hours=1)
-        ):
+        )
+
+        if cache_is_valid:
             return self._contract
 
         try:
             raw = await self.private_api.getcontracts(home_id)
+
+        except LegrandPrivateApiAuthenticationError:
+            raise
 
         except LegrandPrivateApiRateLimitError:
             raise
@@ -161,10 +171,12 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             )
             return self._contract
 
-        self._contract = parse_contract(raw)
+        contract = parse_contract(raw)
+
+        self._contract = contract
         self._contract_last_update = now
 
-        return self._contract
+        return contract
 
     async def _async_get_all_measurements(
         self,
@@ -219,14 +231,30 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 date_end=int(now.timestamp()),
             )
 
-        except LegrandPrivateApiRateLimitError:
+        except (
+            LegrandPrivateApiAuthenticationError,
+            LegrandPrivateApiRateLimitError,
+        ):
             raise
 
         except LegrandPrivateApiError as err:
             _LOGGER.warning(
-                "Unable to update private measurements: %s",
+                "Unable to update private measurements, keeping cached data: %s",
                 err,
             )
+
+            previous_data = cast(
+                LegrandEnergyData | None,
+                getattr(self, "data", None),
+            )
+
+            if previous_data is not None:
+                return (
+                    previous_data.measurements,
+                    previous_data.measurements_by_module,
+                    previous_data.projections,
+                )
+
             return None, {}, None
 
         points_by_module = decode_energy_points_by_module(raw)
