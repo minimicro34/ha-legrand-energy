@@ -85,6 +85,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
             home_id = self._get_home_id()
 
+            home_id = self._get_home_id()
+
+            if self.private_api is not None and home_id is not None:
+                await self.private_api.test_keychain()
+
             if self.private_api is not None and home_id is not None:
                 contract = await self._async_get_contract(home_id)
 

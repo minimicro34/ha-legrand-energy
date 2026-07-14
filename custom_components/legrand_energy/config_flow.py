@@ -42,12 +42,22 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "laravel_session",
                         "",
                     ),
-                    "mail_cookie": user_input.get("mail_cookie", ""),
+                    "mail_cookie": user_input.get(
+                        "mail_cookie",
+                        "",
+                    ),
                     "authorize_state": user_input.get(
                         "authorize_state",
                         "",
                     ),
-                    "xsrf_token": user_input.get("xsrf_token", ""),
+                    "state_cookie": user_input.get(
+                        "state_cookie",
+                        "",
+                    ),
+                    "xsrf_token": user_input.get(
+                        "xsrf_token",
+                        "",
+                    ),
                 },
             )
 
@@ -64,6 +74,7 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional("laravel_session", default=""): str,
                     vol.Optional("mail_cookie", default=""): str,
                     vol.Optional("authorize_state", default=""): str,
+                    vol.Optional("state_cookie", default=""): str,
                     vol.Optional("xsrf_token", default=""): str,
                 }
             ),

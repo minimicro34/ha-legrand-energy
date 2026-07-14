@@ -25,6 +25,7 @@ PRIVATE_AUTH_KEYS = (
     "laravel_session",
     "mail_cookie",
     "authorize_state",
+    "state_cookie",
     "xsrf_token",
 )
 
@@ -56,7 +57,11 @@ async def async_setup_entry(
         """Persist refreshed private Netatmo authentication data."""
         new_data: dict[str, Any] = dict(entry.data)
         new_data.update(auth_data)
-        hass.config_entries.async_update_entry(entry, data=new_data)
+
+        hass.config_entries.async_update_entry(
+            entry,
+            data=new_data,
+        )
 
     api = LegrandEnergyApi(
         session=session,
@@ -70,10 +75,12 @@ async def async_setup_entry(
     def private_value(key: str) -> str | None:
         """Return persisted private value with options fallback."""
         value = entry.data.get(key)
+
         if isinstance(value, str) and value:
             return value
 
         option_value = entry.options.get(key)
+
         return option_value if isinstance(option_value, str) and option_value else None
 
     web_token = private_value("web_token")
@@ -86,6 +93,7 @@ async def async_setup_entry(
             laravel_session=private_value("laravel_session"),
             mail_cookie=private_value("mail_cookie"),
             authorize_state=private_value("authorize_state"),
+            state_cookie=private_value("state_cookie"),
             xsrf_token=private_value("xsrf_token"),
             auth_update_callback=async_update_private_auth,
         )
@@ -129,7 +137,11 @@ async def async_setup_entry(
 
     entry.async_on_unload(entry.add_update_listener(async_entry_updated))
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(
+        entry,
+        PLATFORMS,
+    )
+
     return True
 
 
@@ -138,4 +150,7 @@ async def async_unload_entry(
     entry: ConfigEntry,
 ) -> bool:
     """Unload a Legrand Energy config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return await hass.config_entries.async_unload_platforms(
+        entry,
+        PLATFORMS,
+    )

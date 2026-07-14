@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import Awaitable, Callable
-from http.cookies import BaseCookie, Morsel
+from collections.abc import Awaitable, Callable, Mapping
+from http.cookies import Morsel
 from typing import Any, cast
 from urllib.parse import unquote
 
@@ -18,6 +18,14 @@ APP_API_BASE = "https://app.netatmo.net/api"
 AUTH_BASE = "https://auth.netatmo.com"
 
 API_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
+USER_AGENT = (
+    "Mozilla/5.0 "
+    "(Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 "
+    "(KHTML, like Gecko) "
+    "Chrome/150.0.0.0 Safari/537.36"
+)
 
 PRIVATE_MEASURE_TYPE_ELECTRICITY = (
     "sum_energy_elec,"
@@ -58,17 +66,21 @@ class LegrandPrivateApi:
         laravel_session: str | None = None,
         mail_cookie: str | None = None,
         authorize_state: str | None = None,
+        state_cookie: str | None = None,
         xsrf_token: str | None = None,
         auth_update_callback: PrivateAuthUpdateCallback | None = None,
     ) -> None:
         """Initialize the private API client."""
         self._session = session
         self._web_token = web_token
+
         self._refresh_token = refresh_token
         self._laravel_session = laravel_session
         self._mail_cookie = mail_cookie
         self._authorize_state = authorize_state
+        self._state_cookie = state_cookie
         self._xsrf_token = xsrf_token
+
         self._auth_update_callback = auth_update_callback
         self._refresh_lock = asyncio.Lock()
 
@@ -96,6 +108,7 @@ class LegrandPrivateApi:
                 self._laravel_session,
                 self._mail_cookie,
                 self._authorize_state,
+                self._state_cookie,
                 self._xsrf_token,
             )
         )
@@ -121,6 +134,7 @@ class LegrandPrivateApi:
                 if response.status in (401, 403):
                     if retry_auth and self._can_refresh():
                         await self.refresh_web_token()
+
                         return await self._get(
                             base_url,
                             endpoint,
@@ -143,6 +157,7 @@ class LegrandPrivateApi:
 
                 if response.status >= 400:
                     response_text = await response.text()
+
                     raise LegrandPrivateApiError(
                         f"Private API request to {endpoint} "
                         f"failed with HTTP status {response.status}: "
@@ -161,10 +176,12 @@ class LegrandPrivateApi:
 
         except LegrandPrivateApiError:
             raise
+
         except TimeoutError as err:
             raise LegrandPrivateApiError(
                 f"Private API request to {endpoint} timed out"
             ) from err
+
         except aiohttp.ClientError as err:
             raise LegrandPrivateApiError(
                 f"Private API request to {endpoint} failed: {err}"
@@ -292,6 +309,61 @@ class LegrandPrivateApi:
             {"home_id": home_id},
         )
 
+    async def test_keychain(self) -> None:
+        """Test Netatmo keychain flow without changing current auth data."""
+        if not self._can_refresh():
+            raise LegrandPrivateApiAuthenticationError(
+                "Netatmo keychain test credentials are incomplete"
+            )
+
+        assert self._refresh_token is not None
+        assert self._laravel_session is not None
+        assert self._mail_cookie is not None
+        assert self._authorize_state is not None
+        assert self._state_cookie is not None
+        assert self._xsrf_token is not None
+
+        cookies = {
+            "authnetatmocomrefresh_token": self._refresh_token,
+            "authnetatmocomlaravel_session": self._laravel_session,
+            "authnetatmocommail_cookie": self._mail_cookie,
+            "authnetatmocomauthorize_state": self._authorize_state,
+            "authnetatmocomstate": self._state_cookie,
+            "XSRF-TOKEN": self._xsrf_token,
+            "netatmocomlocale": "fr-FR",
+        }
+
+        url = f"{AUTH_BASE}/access/keychain?next_url=https%3A%2F%2Fhome.netatmo.com"
+
+        try:
+            async with self._session.get(
+                url,
+                cookies=cookies,
+                allow_redirects=False,
+                timeout=API_TIMEOUT,
+                headers={
+                    "Accept": (
+                        "text/html,application/xhtml+xml,"
+                        "application/xml;q=0.9,*/*;q=0.8"
+                    ),
+                    "User-Agent": USER_AGENT,
+                },
+            ) as response:
+                _LOGGER.warning(
+                    "KEYCHAIN status=%s location=%s cookies=%s",
+                    response.status,
+                    response.headers.get("Location"),
+                    list(response.cookies.keys()),
+                )
+
+        except TimeoutError as err:
+            raise LegrandPrivateApiError("Netatmo keychain test timed out") from err
+
+        except aiohttp.ClientError as err:
+            raise LegrandPrivateApiError(
+                f"Netatmo keychain test failed: {err}"
+            ) from err
+
     async def refresh_web_token(self) -> str:
         """Refresh the Netatmo private web access token."""
         async with self._refresh_lock:
@@ -304,6 +376,7 @@ class LegrandPrivateApi:
             assert self._laravel_session is not None
             assert self._mail_cookie is not None
             assert self._authorize_state is not None
+            assert self._state_cookie is not None
             assert self._xsrf_token is not None
 
             cookies = {
@@ -311,6 +384,7 @@ class LegrandPrivateApi:
                 "authnetatmocomlaravel_session": self._laravel_session,
                 "authnetatmocommail_cookie": self._mail_cookie,
                 "authnetatmocomauthorize_state": self._authorize_state,
+                "authnetatmocomstate": self._state_cookie,
                 "XSRF-TOKEN": self._xsrf_token,
                 "netatmocomlocale": "fr-FR",
             }
@@ -333,13 +407,7 @@ class LegrandPrivateApi:
                             "text/html,application/xhtml+xml,"
                             "application/xml;q=0.9,*/*;q=0.8"
                         ),
-                        "User-Agent": (
-                            "Mozilla/5.0 "
-                            "(Macintosh; Intel Mac OS X 10_15_7) "
-                            "AppleWebKit/537.36 "
-                            "(KHTML, like Gecko) "
-                            "Chrome/150.0.0.0 Safari/537.36"
-                        ),
+                        "User-Agent": USER_AGENT,
                     },
                 ) as response:
                     access_cookie = response.cookies.get("netatmocomaccess_token")
@@ -371,23 +439,16 @@ class LegrandPrivateApi:
                             "Netatmo did not return a valid web access token"
                         )
 
-                    _LOGGER.warning(
-                        "Netatmo refresh returned cookies: %s",
-                        list(response.cookies.keys()),
-                    )
-
                     self._update_rotated_cookies(response.cookies)
 
-                    _LOGGER.warning(
-                        "Netatmo refresh returned cookies: %s",
-                        list(response.cookies.keys()),
-                    )
             except LegrandPrivateApiError:
                 raise
+
             except TimeoutError as err:
                 raise LegrandPrivateApiError(
                     "Netatmo web-token refresh timed out"
                 ) from err
+
             except aiohttp.ClientError as err:
                 raise LegrandPrivateApiError(
                     f"Netatmo web-token refresh failed: {err}"
@@ -397,11 +458,12 @@ class LegrandPrivateApi:
             await self._persist_private_auth()
 
             _LOGGER.info("Netatmo private web token refreshed successfully")
+
             return new_web_token
 
     def _update_rotated_cookies(
         self,
-        response_cookies: BaseCookie[str] | dict[str, Morsel[str]],
+        response_cookies: Mapping[str, Morsel[str]],
     ) -> None:
         """Update private session cookies returned by Netatmo."""
         cookie_mapping = {
@@ -409,6 +471,7 @@ class LegrandPrivateApi:
             "authnetatmocomlaravel_session": "_laravel_session",
             "authnetatmocommail_cookie": "_mail_cookie",
             "authnetatmocomauthorize_state": "_authorize_state",
+            "authnetatmocomstate": "_state_cookie",
             "XSRF-TOKEN": "_xsrf_token",
         }
 
@@ -437,6 +500,7 @@ class LegrandPrivateApi:
             "laravel_session": self._laravel_session,
             "mail_cookie": self._mail_cookie,
             "authorize_state": self._authorize_state,
+            "state_cookie": self._state_cookie,
             "xsrf_token": self._xsrf_token,
         }
 

@@ -63,6 +63,10 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
                         default=self._current_value("authorize_state"),
                     ): str,
                     vol.Optional(
+                        "state_cookie",
+                        default=self._current_value("state_cookie"),
+                    ): str,
+                    vol.Optional(
                         "xsrf_token",
                         default=self._current_value("xsrf_token"),
                     ): str,
