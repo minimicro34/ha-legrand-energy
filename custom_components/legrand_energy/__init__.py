@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import unquote
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -82,11 +83,13 @@ async def async_setup_entry(
         option_value = entry.options.get(key)
 
         if isinstance(option_value, str) and option_value:
-            return option_value
+            return unquote(option_value)
 
         data_value = entry.data.get(key)
 
-        return data_value if isinstance(data_value, str) and data_value else None
+        return (
+            unquote(data_value) if isinstance(data_value, str) and data_value else None
+        )
 
     # API privée
     web_token = private_value("web_token")

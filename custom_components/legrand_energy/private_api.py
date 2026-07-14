@@ -330,6 +330,17 @@ class LegrandPrivateApi:
             assert self._authorize_state is not None
             assert self._xsrf_token is not None
 
+            _LOGGER.warning(
+                "REFRESH INPUT COOKIES: %s",
+                {
+                    "refresh_token": self._cookie_debug_value(self._refresh_token),
+                    "laravel_session": self._cookie_debug_value(self._laravel_session),
+                    "mail_cookie": self._cookie_debug_value(self._mail_cookie),
+                    "authorize_state": self._cookie_debug_value(self._authorize_state),
+                    "xsrf_token": self._cookie_debug_value(self._xsrf_token),
+                },
+            )
+
             cookies = {
                 "authnetatmocomrefresh_token": self._refresh_token,
                 "authnetatmocomlaravel_session": self._laravel_session,
@@ -395,6 +406,25 @@ class LegrandPrivateApi:
             _LOGGER.warning("Netatmo private web token refreshed successfully")
 
             return new_web_token
+
+    def _cookie_debug_value(
+        self,
+        value: str | None,
+    ) -> dict[str, Any]:
+        """Return safe cookie diagnostics without logging the full value."""
+        if value is None:
+            return {
+                "present": False,
+            }
+
+        return {
+            "present": True,
+            "length": len(value),
+            "prefix": value[:6],
+            "suffix": value[-6:],
+            "has_percent_3d": "%3D" in value.upper(),
+            "ends_with_equal": value.endswith("="),
+        }
 
     def _update_rotated_cookies(
         self,
