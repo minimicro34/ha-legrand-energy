@@ -66,7 +66,6 @@ class LegrandPrivateApi:
         laravel_session: str | None = None,
         mail_cookie: str | None = None,
         authorize_state: str | None = None,
-        state_cookie: str | None = None,
         xsrf_token: str | None = None,
         auth_update_callback: PrivateAuthUpdateCallback | None = None,
     ) -> None:
@@ -78,7 +77,6 @@ class LegrandPrivateApi:
         self._laravel_session = laravel_session
         self._mail_cookie = mail_cookie
         self._authorize_state = authorize_state
-        self._state_cookie = state_cookie
         self._xsrf_token = xsrf_token
 
         self._auth_update_callback = auth_update_callback
@@ -108,7 +106,6 @@ class LegrandPrivateApi:
                 self._laravel_session,
                 self._mail_cookie,
                 self._authorize_state,
-                self._state_cookie,
                 self._xsrf_token,
             )
         )
@@ -314,14 +311,12 @@ class LegrandPrivateApi:
         _LOGGER.warning("Entering refresh_web_token()")
         async with self._refresh_lock:
             _LOGGER.warning(
-                "can_refresh=%s refresh=%s laravel=%s "
-                "mail=%s authorize=%s state=%s xsrf=%s",
+                "can_refresh=%s refresh=%s laravel=%s mail=%s authorize=%s xsrf=%s",
                 self._can_refresh(),
                 self._refresh_token is not None,
                 self._laravel_session is not None,
                 self._mail_cookie is not None,
                 self._authorize_state is not None,
-                self._state_cookie is not None,
                 self._xsrf_token is not None,
             )
             if not self._can_refresh():
@@ -333,7 +328,6 @@ class LegrandPrivateApi:
             assert self._laravel_session is not None
             assert self._mail_cookie is not None
             assert self._authorize_state is not None
-            assert self._state_cookie is not None
             assert self._xsrf_token is not None
 
             cookies = {
@@ -341,7 +335,6 @@ class LegrandPrivateApi:
                 "authnetatmocomlaravel_session": self._laravel_session,
                 "authnetatmocommail_cookie": self._mail_cookie,
                 "authnetatmocomauthorize_state": self._authorize_state,
-                "authnetatmocomstate": self._state_cookie,
                 "XSRF-TOKEN": self._xsrf_token,
                 "netatmocomlocale": "fr-FR",
             }
@@ -413,7 +406,6 @@ class LegrandPrivateApi:
             "authnetatmocomlaravel_session": "_laravel_session",
             "authnetatmocommail_cookie": "_mail_cookie",
             "authnetatmocomauthorize_state": "_authorize_state",
-            "authnetatmocomstate": "_state_cookie",
             "XSRF-TOKEN": "_xsrf_token",
         }
 
@@ -442,7 +434,6 @@ class LegrandPrivateApi:
             "laravel_session": self._laravel_session,
             "mail_cookie": self._mail_cookie,
             "authorize_state": self._authorize_state,
-            "state_cookie": self._state_cookie,
             "xsrf_token": self._xsrf_token,
         }
 

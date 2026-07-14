@@ -25,7 +25,6 @@ PRIVATE_AUTH_KEYS = (
     "laravel_session",
     "mail_cookie",
     "authorize_state",
-    "state_cookie",
     "xsrf_token",
 )
 
@@ -100,7 +99,6 @@ async def async_setup_entry(
             laravel_session=private_value("laravel_session"),
             mail_cookie=private_value("mail_cookie"),
             authorize_state=private_value("authorize_state"),
-            state_cookie=private_value("state_cookie"),
             xsrf_token=private_value("xsrf_token"),
             auth_update_callback=async_update_private_auth,
         )

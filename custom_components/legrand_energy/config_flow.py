@@ -50,10 +50,6 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "authorize_state",
                         "",
                     ),
-                    "state_cookie": user_input.get(
-                        "state_cookie",
-                        "",
-                    ),
                     "xsrf_token": user_input.get(
                         "xsrf_token",
                         "",
@@ -74,7 +70,6 @@ class LegrandEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional("laravel_session", default=""): str,
                     vol.Optional("mail_cookie", default=""): str,
                     vol.Optional("authorize_state", default=""): str,
-                    vol.Optional("state_cookie", default=""): str,
                     vol.Optional("xsrf_token", default=""): str,
                 }
             ),
