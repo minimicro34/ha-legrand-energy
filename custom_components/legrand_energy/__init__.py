@@ -58,11 +58,16 @@ async def async_setup_entry(
         new_data: dict[str, Any] = dict(entry.data)
         new_data.update(auth_data)
 
+        new_options: dict[str, Any] = dict(entry.options)
+        new_options.update(auth_data)
+
         hass.config_entries.async_update_entry(
             entry,
             data=new_data,
+            options=new_options,
         )
 
+    # API publique
     api = LegrandEnergyApi(
         session=session,
         access_token=entry.data["access_token"],
@@ -72,17 +77,19 @@ async def async_setup_entry(
         token_update_callback=async_update_tokens,
     )
 
+    # Lecture des identifiants de l'API privée
     def private_value(key: str) -> str | None:
-        """Return persisted private value with options fallback."""
-        value = entry.data.get(key)
-
-        if isinstance(value, str) and value:
-            return value
-
+        """Return private authentication value."""
         option_value = entry.options.get(key)
 
-        return option_value if isinstance(option_value, str) and option_value else None
+        if isinstance(option_value, str) and option_value:
+            return option_value
 
+        data_value = entry.data.get(key)
+
+        return data_value if isinstance(data_value, str) and data_value else None
+
+    # API privée
     web_token = private_value("web_token")
 
     private_api = (
@@ -101,6 +108,7 @@ async def async_setup_entry(
         else None
     )
 
+    # Coordinator
     coordinator = LegrandEnergyCoordinator(
         hass=hass,
         config_entry=entry,
