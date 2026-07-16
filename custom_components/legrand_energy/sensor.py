@@ -35,6 +35,10 @@ AttributesFn = Callable[
     [LegrandEnergyData, LegrandModule | None],
     dict[str, Any] | None,
 ]
+LastResetFn = Callable[
+    [LegrandEnergyData, LegrandModule | None],
+    datetime | None,
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -44,6 +48,29 @@ class LegrandSensorDescription(SensorEntityDescription):
     value_fn: ValueFn
     available_fn: AvailableFn = lambda _data, _module: True
     attributes_fn: AttributesFn | None = None
+    last_reset_fn: LastResetFn | None = None
+
+
+def _start_of_today() -> datetime:
+    """Return the start of the current local day."""
+    now = dt_util.now()
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _start_of_week() -> datetime:
+    """Return the start of the current local week."""
+    today = _start_of_today()
+    return today - timedelta(days=today.weekday())
+
+
+def _start_of_month() -> datetime:
+    """Return the start of the current local month."""
+    return _start_of_today().replace(day=1)
+
+
+def _start_of_year() -> datetime:
+    """Return the start of the current local year."""
+    return _start_of_today().replace(month=1, day=1)
 
 
 def _format_remaining(remaining: timedelta | None) -> str | None:
@@ -82,6 +109,7 @@ def _global_measurement_description(
     unit: str,
     state_class: SensorStateClass,
     precision: int,
+    last_reset_fn: LastResetFn | None = None,
 ) -> LegrandSensorDescription:
     """Build a global measurement sensor description."""
 
@@ -108,6 +136,7 @@ def _global_measurement_description(
         suggested_display_precision=precision,
         value_fn=value_fn,
         available_fn=available_fn,
+        last_reset_fn=last_reset_fn,
     )
 
 
@@ -120,6 +149,7 @@ def _module_measurement_description(
     unit: str,
     state_class: SensorStateClass,
     precision: int,
+    last_reset_fn: LastResetFn | None = None,
 ) -> LegrandSensorDescription:
     """Build a per-module measurement sensor description."""
 
@@ -146,6 +176,7 @@ def _module_measurement_description(
         suggested_display_precision=precision,
         value_fn=value_fn,
         available_fn=available_fn,
+        last_reset_fn=last_reset_fn,
     )
 
 
@@ -156,8 +187,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _global_measurement_description(
         key="energy_peak_today",
@@ -165,8 +197,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_peak_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _global_measurement_description(
         key="energy_off_peak_today",
@@ -174,8 +207,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_off_peak_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     LegrandSensorDescription(
         key="projected_energy_today",
@@ -213,8 +247,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_week",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_week(),
     ),
     _global_measurement_description(
         key="energy_month",
@@ -222,8 +257,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_month",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_month(),
     ),
     _global_measurement_description(
         key="energy_year",
@@ -231,8 +267,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_year",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_year(),
     ),
     _global_measurement_description(
         key="cost_today",
@@ -242,6 +279,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _global_measurement_description(
         key="cost_peak_today",
@@ -251,6 +289,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _global_measurement_description(
         key="cost_off_peak_today",
@@ -260,6 +299,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     LegrandSensorDescription(
         key="projected_cost_today",
@@ -297,6 +337,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_week(),
     ),
     _global_measurement_description(
         key="cost_month",
@@ -306,6 +347,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_month(),
     ),
     _global_measurement_description(
         key="cost_year",
@@ -315,6 +357,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_year(),
     ),
     _global_measurement_description(
         key="power",
@@ -505,8 +548,9 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _module_measurement_description(
         key="circuit_energy_peak_today",
@@ -516,6 +560,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _module_measurement_description(
         key="circuit_energy_off_peak_today",
@@ -525,6 +570,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         state_class=SensorStateClass.TOTAL,
         precision=3,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _module_measurement_description(
         key="circuit_cost_today",
@@ -534,6 +580,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _module_measurement_description(
         key="circuit_cost_peak_today",
@@ -543,6 +590,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     _module_measurement_description(
         key="circuit_cost_off_peak_today",
@@ -552,6 +600,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         unit=CURRENCY_EURO,
         state_class=SensorStateClass.TOTAL,
         precision=2,
+        last_reset_fn=lambda _data, _module: _start_of_today(),
     ),
     LegrandSensorDescription(
         key="module_type",
@@ -665,3 +714,16 @@ class LegrandSensor(LegrandEntity, SensorEntity):
         if attributes_fn is None:
             return None
         return attributes_fn(self.coordinator.data, self.module)
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Return the beginning of the sensor accumulation period."""
+        last_reset_fn = self.entity_description.last_reset_fn
+
+        if last_reset_fn is None:
+            return None
+
+        return last_reset_fn(
+            self.coordinator.data,
+            self.module,
+        )
