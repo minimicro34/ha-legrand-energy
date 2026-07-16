@@ -106,6 +106,12 @@
       "circuit_cost_off_peak_today": {
         "name": "Off-peak cost today"
       },
+      "circuit_energy_peak_today": {
+        "name": "Peak energy today"
+      },
+      "circuit_energy_off_peak_today": {
+        "name": "Off-peak energy today"
+      }, 
       "energy_peak_today": {
         "name": "Peak energy today"
       },

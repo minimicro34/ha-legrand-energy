@@ -156,7 +156,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _global_measurement_description(
@@ -165,7 +165,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_peak_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _global_measurement_description(
@@ -174,7 +174,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_off_peak_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     LegrandSensorDescription(
@@ -182,7 +182,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_energy_today",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
             data.projections.energy_end_of_day if data.projections is not None else None
@@ -197,7 +197,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_energy_month",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
             data.projections.energy_end_of_month
@@ -215,7 +215,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_week",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _global_measurement_description(
@@ -224,7 +224,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_month",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _global_measurement_description(
@@ -233,7 +233,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_year",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _global_measurement_description(
@@ -242,7 +242,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_today",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _global_measurement_description(
@@ -251,7 +251,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_peak_today",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _global_measurement_description(
@@ -260,7 +260,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_off_peak_today",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     LegrandSensorDescription(
@@ -268,7 +268,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_cost_today",
         device_class=SensorDeviceClass.MONETARY,
         native_unit_of_measurement=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
             data.projections.cost_end_of_day if data.projections is not None else None
@@ -283,7 +283,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_cost_month",
         device_class=SensorDeviceClass.MONETARY,
         native_unit_of_measurement=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
             data.projections.cost_end_of_month if data.projections is not None else None
@@ -299,7 +299,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_week",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _global_measurement_description(
@@ -308,7 +308,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_month",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _global_measurement_description(
@@ -317,7 +317,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_year",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _global_measurement_description(
@@ -509,7 +509,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _module_measurement_description(
@@ -518,7 +518,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_peak_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _module_measurement_description(
@@ -527,7 +527,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="energy_off_peak_today",
         device_class=SensorDeviceClass.ENERGY,
         unit=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=3,
     ),
     _module_measurement_description(
@@ -536,7 +536,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_today",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _module_measurement_description(
@@ -545,7 +545,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_peak_today",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _module_measurement_description(
@@ -554,7 +554,7 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         field="cost_off_peak_today",
         device_class=SensorDeviceClass.MONETARY,
         unit=CURRENCY_EURO,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     LegrandSensorDescription(
