@@ -3,22 +3,18 @@
 from __future__ import annotations
 
 import json
-import logging
-from typing import Any, cast
+from typing import Any
 
 import aiohttp
 
 from .authentication import AuthenticationManager
+from .base_api import BaseApiClient
 from .services.private import (
     PrivateAuthServiceAuthenticationError,
     PrivateAuthServiceError,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
 APP_API_BASE = "https://app.netatmo.net/api"
-
-API_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 PRIVATE_MEASURE_TYPE_ELECTRICITY = (
     "sum_energy_elec,"
@@ -45,7 +41,7 @@ class LegrandPrivateApiRateLimitError(LegrandPrivateApiError):
     """Private API rate limit exceeded."""
 
 
-class LegrandPrivateApi:
+class LegrandPrivateApi(BaseApiClient):
     """Client for the private Netatmo API."""
 
     def __init__(
@@ -54,7 +50,7 @@ class LegrandPrivateApi:
         authentication: AuthenticationManager,
     ) -> None:
         """Initialize the private API client."""
-        self._session = session
+        super().__init__(session, LegrandPrivateApiError)
         self._authentication = authentication
 
     @property
@@ -81,73 +77,42 @@ class LegrandPrivateApi:
         """Perform a private API GET request."""
         url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
-        try:
-            async with self._session.get(
-                url,
-                headers=self._headers(),
-                params=params,
-                timeout=API_TIMEOUT,
-            ) as response:
-                if response.status in (401, 403):
-                    if retry_auth and self._can_refresh():
-                        await self.refresh_web_token()
+        response = await self._request(
+            "GET",
+            url,
+            headers=self._headers(),
+            params=params,
+        )
 
-                        return await self._get(
-                            base_url,
-                            endpoint,
-                            params,
-                            retry_auth=False,
-                        )
+        if response.status in (401, 403):
+            if retry_auth and self._can_refresh():
+                await self.refresh_web_token()
 
-                    raise LegrandPrivateApiAuthenticationError(
-                        f"Private API request to {endpoint} "
-                        f"failed with HTTP status {response.status}"
-                    )
+                return await self._get(
+                    base_url,
+                    endpoint,
+                    params,
+                    retry_auth=False,
+                )
 
-                if response.status == 429:
-                    response_text = await response.text()
-
-                    raise LegrandPrivateApiRateLimitError(
-                        f"Private API rate limit exceeded for {endpoint}: "
-                        f"{response_text[:300]}"
-                    )
-
-                if response.status >= 400:
-                    response_text = await response.text()
-
-                    raise LegrandPrivateApiError(
-                        f"Private API request to {endpoint} "
-                        f"failed with HTTP status {response.status}: "
-                        f"{response_text[:300]}"
-                    )
-
-                try:
-                    data = await response.json(content_type=None)
-                except (
-                    aiohttp.ContentTypeError,
-                    json.JSONDecodeError,
-                ) as err:
-                    raise LegrandPrivateApiError(
-                        f"Private API request to {endpoint} returned invalid JSON"
-                    ) from err
-
-        except LegrandPrivateApiError:
-            raise
-
-        except TimeoutError as err:
-            raise LegrandPrivateApiError(
-                f"Private API request to {endpoint} timed out"
-            ) from err
-
-        except aiohttp.ClientError as err:
-            raise LegrandPrivateApiError(
-                f"Private API request to {endpoint} failed: {err}"
-            ) from err
-
-        if not isinstance(data, dict):
-            raise LegrandPrivateApiError(
-                f"Private API request to {endpoint} returned an unexpected response"
+            raise LegrandPrivateApiAuthenticationError(
+                f"Private API request to {endpoint} "
+                f"failed with HTTP status {response.status}"
             )
+
+        if response.status == 429:
+            raise LegrandPrivateApiRateLimitError(
+                f"Private API rate limit exceeded for {endpoint}: {response.text[:300]}"
+            )
+
+        if response.status >= 400:
+            raise LegrandPrivateApiError(
+                f"Private API request to {endpoint} "
+                f"failed with HTTP status {response.status}: "
+                f"{response.text[:300]}"
+            )
+
+        data = self._parse_json_response(response)
 
         if data.get("status") == "error":
             raise LegrandPrivateApiError(
@@ -155,7 +120,7 @@ class LegrandPrivateApi:
                 f"returned an API error: {data.get('error')}"
             )
 
-        return cast(dict[str, Any], data)
+        return data
 
     async def homestatus(self, home_id: str) -> dict[str, Any]:
         """Return the current private home status."""
@@ -268,17 +233,11 @@ class LegrandPrivateApi:
 
     async def refresh_web_token(self) -> str:
         """Refresh the Netatmo private web access token."""
-        _LOGGER.debug("Refreshing Netatmo private web token")
-
         try:
             session = await self._authentication.refresh_private()
-
         except PrivateAuthServiceAuthenticationError as err:
             raise LegrandPrivateApiAuthenticationError(str(err)) from err
-
         except PrivateAuthServiceError as err:
             raise LegrandPrivateApiError(str(err)) from err
-
-        _LOGGER.debug("Netatmo private web token refreshed successfully")
 
         return session.web_token
