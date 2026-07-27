@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -10,8 +11,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import LegrandEnergyApi
+from .authentication import AuthenticationManager
+from .authentication_store import (
+    PRIVATE_COOKIE_NAMES,
+    ConfigEntryAuthenticationStore,
+)
 from .coordinator import LegrandEnergyCoordinator
+from .models.auth import AuthenticationState, OAuthSession, PrivateSession
 from .private_api import LegrandPrivateApi
+from .services.oauth import OAuthService
+from .services.private import PrivateAuthService
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -21,11 +30,7 @@ PLATFORMS: list[Platform] = [
 
 PRIVATE_AUTH_KEYS = (
     "web_token",
-    "refresh_token_web",
-    "laravel_session",
-    "mail_cookie",
-    "authorize_state",
-    "xsrf_token",
+    *PRIVATE_COOKIE_NAMES,
 )
 
 
@@ -36,49 +41,8 @@ async def async_setup_entry(
     """Set up Legrand Energy from a config entry."""
     session = async_get_clientsession(hass)
 
-    async def async_update_tokens(
-        access_token: str,
-        refresh_token: str,
-    ) -> None:
-        """Store refreshed public OAuth tokens."""
-        hass.config_entries.async_update_entry(
-            entry,
-            data={
-                **entry.data,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            },
-        )
-
-    async def async_update_private_auth(
-        auth_data: dict[str, str],
-    ) -> None:
-        """Persist refreshed private Netatmo authentication data."""
-        new_data: dict[str, Any] = dict(entry.data)
-        new_data.update(auth_data)
-
-        new_options: dict[str, Any] = dict(entry.options)
-        new_options.update(auth_data)
-
-        hass.config_entries.async_update_entry(
-            entry,
-            data=new_data,
-            options=new_options,
-        )
-
-    # API publique
-    api = LegrandEnergyApi(
-        session=session,
-        access_token=entry.data["access_token"],
-        refresh_token=entry.data["refresh_token"],
-        client_id=entry.data["client_id"],
-        client_secret=entry.data["client_secret"],
-        token_update_callback=async_update_tokens,
-    )
-
-    # Lecture des identifiants de l'API privée
     def private_value(key: str) -> str | None:
-        """Return private authentication value."""
+        """Return a private authentication value."""
         option_value = entry.options.get(key)
 
         if isinstance(option_value, str) and option_value:
@@ -86,27 +50,89 @@ async def async_setup_entry(
 
         data_value = entry.data.get(key)
 
-        return data_value if isinstance(data_value, str) and data_value else None
+        if isinstance(data_value, str) and data_value:
+            return data_value
 
-    # API privée
+        return None
+
+    obtained_at_value = entry.data.get("obtained_at")
+    obtained_at = datetime.now(UTC)
+
+    if isinstance(obtained_at_value, str):
+        obtained_at = datetime.fromisoformat(obtained_at_value)
+
+    expires_in_value = entry.data.get("expires_in", 0)
+    expires_in = expires_in_value if isinstance(expires_in_value, int) else 0
+
+    token_type_value = entry.data.get("token_type", "Bearer")
+    token_type = token_type_value if isinstance(token_type_value, str) else "Bearer"
+
+    oauth_service = OAuthService(
+        session=session,
+        client_id=entry.data["client_id"],
+        client_secret=entry.data["client_secret"],
+    )
+
+    private_service = PrivateAuthService(
+        session=session,
+    )
+
+    oauth_session = OAuthSession(
+        access_token=entry.data["access_token"],
+        refresh_token=entry.data["refresh_token"],
+        expires_in=expires_in,
+        obtained_at=obtained_at,
+        token_type=token_type,
+    )
+
     web_token = private_value("web_token")
+    private_session: PrivateSession | None = None
+
+    if web_token is not None:
+        private_cookies: dict[str, str] = {}
+
+        for config_key, cookie_name in PRIVATE_COOKIE_NAMES.items():
+            value = private_value(config_key)
+
+            if value is not None:
+                private_cookies[cookie_name] = value
+
+        private_session = PrivateSession(
+            web_token=web_token,
+            cookies=private_cookies,
+        )
+
+    authentication_state = AuthenticationState(
+        oauth=oauth_session,
+        private=private_session,
+    )
+
+    authentication_store = ConfigEntryAuthenticationStore(
+        hass=hass,
+        entry=entry,
+    )
+
+    authentication = AuthenticationManager(
+        oauth_service=oauth_service,
+        private_service=private_service,
+        state=authentication_state,
+        store=authentication_store,
+    )
+
+    api = LegrandEnergyApi(
+        session=session,
+        authentication=authentication,
+    )
 
     private_api = (
         LegrandPrivateApi(
             session=session,
-            web_token=web_token,
-            refresh_token=private_value("refresh_token_web"),
-            laravel_session=private_value("laravel_session"),
-            mail_cookie=private_value("mail_cookie"),
-            authorize_state=private_value("authorize_state"),
-            xsrf_token=private_value("xsrf_token"),
-            auth_update_callback=async_update_private_auth,
+            authentication=authentication,
         )
-        if web_token is not None
+        if private_session is not None
         else None
     )
 
-    # Coordinator
     coordinator = LegrandEnergyCoordinator(
         hass=hass,
         config_entry=entry,

@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import aiohttp
 
+from .authentication import AuthenticationManager
 from .models import LegrandModule
 
 _LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
-TOKEN_URL = "https://api.netatmo.com/oauth2/token"
 
 API_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
@@ -27,8 +26,6 @@ PRIVATE_MEASURE_TYPE_ELECTRICITY = (
     "sum_energy_price$1,"
     "sum_energy_price$2"
 )
-
-TokenUpdateCallback = Callable[[str, str], Awaitable[None]]
 
 
 class LegrandEnergyApiError(Exception):
@@ -45,68 +42,17 @@ class LegrandEnergyApi:
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        access_token: str,
-        refresh_token: str,
-        client_id: str,
-        client_secret: str,
-        token_update_callback: TokenUpdateCallback | None = None,
+        authentication: AuthenticationManager,
     ) -> None:
         """Initialize the Legrand Energy API client."""
         self._session = session
-        self._access_token = access_token
-        self._refresh_token = refresh_token
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._token_update_callback = token_update_callback
-
+        self._authentication = authentication
         self._homes_cache: dict[str, Any] | None = None
 
     @property
     def headers(self) -> dict[str, str]:
         """Return OAuth authorization headers."""
-        return {"Authorization": f"Bearer {self._access_token}"}
-
-    async def refresh_token(self) -> None:
-        """Refresh the public Netatmo OAuth access token."""
-        try:
-            async with self._session.post(
-                TOKEN_URL,
-                data={
-                    "grant_type": "refresh_token",
-                    "refresh_token": self._refresh_token,
-                    "client_id": self._client_id,
-                    "client_secret": self._client_secret,
-                },
-                timeout=API_TIMEOUT,
-            ) as response:
-                status = response.status
-                data = await self._read_json_response(response)
-
-        except (aiohttp.ClientError, TimeoutError) as err:
-            raise LegrandEnergyAuthenticationError(
-                "Unable to refresh the Netatmo OAuth token"
-            ) from err
-
-        access_token = data.get("access_token")
-
-        if status >= 400 or not isinstance(access_token, str):
-            raise LegrandEnergyAuthenticationError(
-                f"OAuth token refresh failed with HTTP status {status}"
-            )
-
-        self._access_token = access_token
-
-        refresh_token = data.get("refresh_token")
-        if isinstance(refresh_token, str):
-            self._refresh_token = refresh_token
-
-        _LOGGER.debug("Legrand Energy OAuth token refreshed")
-
-        if self._token_update_callback is not None:
-            await self._token_update_callback(
-                self._access_token,
-                self._refresh_token,
-            )
+        return self._authentication.authorization_headers
 
     async def _read_json_response(
         self,
@@ -195,7 +141,14 @@ class LegrandEnergyApi:
         # Netatmo OAuth token. Custom headers generally contain a private
         # web token that cannot be refreshed using the public OAuth flow.
         if error_code in (2, 3) and retry and headers is None:
-            await self.refresh_token()
+            try:
+                await self._authentication.refresh_oauth()
+            except Exception as err:
+                raise LegrandEnergyAuthenticationError(
+                    "Unable to refresh the Netatmo OAuth token"
+                ) from err
+
+            _LOGGER.debug("Legrand Energy OAuth token refreshed")
 
             return await self._get(
                 endpoint,
@@ -250,7 +203,14 @@ class LegrandEnergyApi:
         error_code = self._get_error_code(data)
 
         if error_code in (2, 3) and retry:
-            await self.refresh_token()
+            try:
+                await self._authentication.refresh_oauth()
+            except Exception as err:
+                raise LegrandEnergyAuthenticationError(
+                    "Unable to refresh the Netatmo OAuth token"
+                ) from err
+
+            _LOGGER.debug("Legrand Energy OAuth token refreshed")
 
             return await self._post(
                 endpoint,
@@ -341,7 +301,10 @@ class LegrandEnergyApi:
 
                     room_id = room.get("id")
                     if isinstance(room_id, str):
-                        rooms[room_id] = room.get("name")
+                        room_name = room.get("name")
+                        rooms[room_id] = (
+                            room_name if isinstance(room_name, str) else None
+                        )
 
             home_modules = home.get("modules", [])
             if not isinstance(home_modules, list):
@@ -370,13 +333,16 @@ class LegrandEnergyApi:
                 room_id = module.get("room_id")
                 room_name = rooms.get(room_id) if isinstance(room_id, str) else None
 
+                bridge = module.get("bridge")
+                setup_date = module.get("setup_date")
+
                 modules[module_id] = LegrandModule(
                     id=module_id,
                     name=module_name,
                     type=module_type,
-                    bridge=module.get("bridge"),
+                    bridge=bridge if isinstance(bridge, str) else None,
                     room=room_name,
-                    setup_date=module.get("setup_date"),
+                    setup_date=(setup_date if isinstance(setup_date, int) else None),
                 )
 
         return modules
