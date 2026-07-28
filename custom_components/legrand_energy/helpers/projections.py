@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from calendar import monthrange
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -9,6 +10,15 @@ from datetime import datetime
 @dataclass(slots=True)
 class DailyProjection:
     """Daily projection."""
+
+    projected_energy: float
+    projected_cost: float
+    elapsed_ratio: float
+
+
+@dataclass(slots=True)
+class MonthlyProjection:
+    """Monthly projection."""
 
     projected_energy: float
     projected_cost: float
@@ -37,4 +47,19 @@ def project_today(
         projected_energy=energy / elapsed_ratio,
         projected_cost=cost / elapsed_ratio,
         elapsed_ratio=elapsed_ratio,
+    )
+
+
+def project_month(
+    energy: float,
+    cost: float,
+    now: datetime,
+) -> MonthlyProjection:
+    """Project a month using estimated full-day values."""
+    days_in_month = monthrange(now.year, now.month)[1]
+
+    return MonthlyProjection(
+        projected_energy=energy * days_in_month,
+        projected_cost=cost * days_in_month,
+        elapsed_ratio=1.0 / days_in_month,
     )

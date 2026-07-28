@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .contract_models import Contract
-from .tariff_engine import TariffState
+from ..tariff_engine import TariffState
+from .contract import Contract
 
 
 @dataclass(frozen=True, slots=True)
