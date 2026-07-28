@@ -13,6 +13,7 @@ from yarl import URL
 from custom_components.legrand_energy.models.auth import PrivateSession
 
 AUTH_BASE = "https://auth.netatmo.com"
+HOME_DASHBOARD_URL = "https://home.netatmo.com/control/dashboard"
 
 API_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
@@ -122,6 +123,84 @@ class PrivateAuthService:
             )
 
         return token
+
+    async def _post_login(
+        self,
+        username: str,
+        password: str,
+        csrf_token: str,
+    ) -> str:
+        """Submit the private Netatmo login form and return the redirect URL."""
+        url = f"{AUTH_BASE}/access/postlogin"
+
+        try:
+            async with self._session.post(
+                url,
+                params={"next_url": HOME_DASHBOARD_URL},
+                data={
+                    "email": username,
+                    "password": password,
+                    "stay_logged": "on",
+                    "_token": csrf_token,
+                },
+                allow_redirects=False,
+                timeout=API_TIMEOUT,
+                headers={
+                    "Accept": (
+                        "text/html,application/xhtml+xml,"
+                        "application/xml;q=0.9,*/*;q=0.8"
+                    ),
+                    "Origin": AUTH_BASE,
+                    "Referer": f"{AUTH_BASE}/access/login",
+                    "User-Agent": USER_AGENT,
+                },
+            ) as response:
+                if response.status in {401, 403}:
+                    raise PrivateAuthServiceInvalidCredentialsError(
+                        "Netatmo rejected the private authentication credentials"
+                    )
+
+                if response.status == 200:
+                    raise PrivateAuthServiceInvalidCredentialsError(
+                        "Netatmo did not accept the private authentication credentials"
+                    )
+
+                if response.status not in {301, 302, 303, 307, 308}:
+                    raise PrivateAuthServiceAuthenticationError(
+                        "Netatmo private login failed with HTTP status "
+                        f"{response.status}"
+                    )
+
+                location = response.headers.get("Location")
+
+                if not location:
+                    raise PrivateAuthServiceSessionError(
+                        "Netatmo private login did not return a redirect URL"
+                    )
+
+                redirect_url = str(
+                    URL(f"{AUTH_BASE}/access/postlogin").join(URL(location))
+                )
+
+                if "/access/keychain" not in redirect_url:
+                    raise PrivateAuthServiceInvalidCredentialsError(
+                        "Netatmo private login did not redirect to the keychain"
+                    )
+
+                return redirect_url
+
+        except PrivateAuthServiceError:
+            raise
+
+        except TimeoutError as err:
+            raise PrivateAuthServiceError(
+                "Netatmo private login request timed out"
+            ) from err
+
+        except aiohttp.ClientError as err:
+            raise PrivateAuthServiceError(
+                f"Netatmo private login request failed: {err}"
+            ) from err
 
     async def login(
         self,
