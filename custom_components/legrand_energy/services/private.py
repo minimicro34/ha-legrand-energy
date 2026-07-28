@@ -202,13 +202,133 @@ class PrivateAuthService:
                 f"Netatmo private login request failed: {err}"
             ) from err
 
+    async def _complete_keychain(self, keychain_url: str) -> None:
+        """Complete the Netatmo keychain authentication step."""
+        try:
+            async with self._session.get(
+                keychain_url,
+                allow_redirects=True,
+                timeout=API_TIMEOUT,
+                headers={
+                    "Accept": (
+                        "text/html,application/xhtml+xml,"
+                        "application/xml;q=0.9,*/*;q=0.8"
+                    ),
+                    "Referer": f"{AUTH_BASE}/access/login",
+                    "User-Agent": USER_AGENT,
+                },
+            ) as response:
+                if response.status != 200:
+                    raise PrivateAuthServiceSessionError(
+                        "Netatmo keychain request failed with HTTP status "
+                        f"{response.status}"
+                    )
+
+                if "/access/keychain" not in response.url.path:
+                    raise PrivateAuthServiceSessionError(
+                        "Netatmo keychain request ended on an unexpected page"
+                    )
+
+        except PrivateAuthServiceError:
+            raise
+
+        except TimeoutError as err:
+            raise PrivateAuthServiceSessionError(
+                "Netatmo keychain request timed out"
+            ) from err
+
+        except aiohttp.ClientError as err:
+            raise PrivateAuthServiceSessionError(
+                f"Netatmo keychain request failed: {err}"
+            ) from err
+
+    def _extract_session_cookies(self) -> dict[str, str]:
+        """Extract private authentication cookies from the session cookie jar."""
+        cookies: dict[str, str] = {}
+
+        for url in (
+            URL(AUTH_BASE),
+            URL("https://home.netatmo.com"),
+            URL("https://app.netatmo.net"),
+        ):
+            for name, morsel in self._session.cookie_jar.filter_cookies(url).items():
+                value = str(morsel.value)
+
+                if value and value.casefold() != "deleted":
+                    cookies[name] = value
+
+        missing = [
+            cookie_name
+            for cookie_name in REQUIRED_REFRESH_COOKIES
+            if not cookies.get(cookie_name)
+        ]
+
+        if missing:
+            raise PrivateAuthServiceSessionError(
+                "Netatmo private session is missing required authentication cookies: "
+                + ", ".join(missing)
+            )
+
+        return cookies
+
+    def _extract_web_token(self, cookies: Mapping[str, str]) -> str:
+        """Extract and validate the private Netatmo web access token."""
+        raw_token = cookies.get(ACCESS_TOKEN_COOKIE)
+
+        if raw_token is None:
+            home_cookies = self._session.cookie_jar.filter_cookies(
+                URL("https://home.netatmo.com")
+            )
+            access_cookie = home_cookies.get(ACCESS_TOKEN_COOKIE)
+
+            if access_cookie is not None:
+                raw_token = str(access_cookie.value)
+
+        if raw_token is None:
+            app_cookies = self._session.cookie_jar.filter_cookies(
+                URL("https://app.netatmo.net")
+            )
+            access_cookie = app_cookies.get(ACCESS_TOKEN_COOKIE)
+
+            if access_cookie is not None:
+                raw_token = str(access_cookie.value)
+
+        if raw_token is None:
+            raise PrivateAuthServiceSessionError(
+                f"Netatmo private session does not contain {ACCESS_TOKEN_COOKIE}"
+            )
+
+        web_token = unquote(raw_token)
+
+        if web_token.casefold() == "deleted" or len(web_token) < 20:
+            raise PrivateAuthServiceSessionError(
+                "Netatmo private session contains an invalid web access token"
+            )
+
+        return web_token
+
     async def login(
         self,
         username: str,
         password: str,
     ) -> PrivateSession:
         """Authenticate against the private Netatmo API."""
-        raise NotImplementedError
+        csrf_token = await self._get_csrf()
+        keychain_url = await self._post_login(
+            username,
+            password,
+            csrf_token,
+        )
+
+        await self._complete_keychain(keychain_url)
+
+        cookies = self._extract_session_cookies()
+        web_token = self._extract_web_token(cookies)
+
+        return PrivateSession(
+            web_token=web_token,
+            cookies=cookies,
+        )
 
     async def refresh(
         self,
