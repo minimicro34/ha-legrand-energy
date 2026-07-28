@@ -18,7 +18,7 @@ from .authentication_store import (
     ConfigEntryAuthenticationStore,
 )
 from .coordinator import LegrandEnergyCoordinator
-from .models.auth import AuthenticationState, PrivateSession
+from .models.auth import PrivateSession
 from .oauth2 import async_get_session
 from .private_api import LegrandPrivateApi
 from .services.private import PrivateAuthService
@@ -90,10 +90,6 @@ async def async_setup_entry(
             cookies=private_cookies,
         )
 
-    authentication_state = AuthenticationState(
-        private=private_session,
-    )
-
     authentication_store = ConfigEntryAuthenticationStore(
         hass=hass,
         entry=entry,
@@ -102,7 +98,7 @@ async def async_setup_entry(
     authentication = AuthenticationManager(
         oauth_session=oauth_session,
         private_service=private_service,
-        state=authentication_state,
+        private_session=private_session,
         store=authentication_store,
     )
 

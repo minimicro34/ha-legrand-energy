@@ -6,16 +6,6 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class AuthenticationState:
-    """Current authentication state."""
-
-    private: PrivateSession | None = None
-
-    def clear(self) -> None:
-        """Clear all authentication sessions."""
-        self.private = None
-
-@dataclass(slots=True)
 class PrivateSession:
     """Current authenticated private Netatmo session."""
 

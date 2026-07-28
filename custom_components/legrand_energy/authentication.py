@@ -6,8 +6,7 @@ from typing import Any, Protocol
 
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
-from .models.auth import AuthenticationState, PrivateSession
-from .services.private import PrivateAuthService
+from .models.auth import PrivateSession
 
 
 class AuthenticationStore(Protocol):
@@ -18,6 +17,23 @@ class AuthenticationStore(Protocol):
         session: PrivateSession,
     ) -> None:
         """Persist a private session."""
+
+
+class PrivateAuthenticationService(Protocol):
+    """Interface for private Netatmo authentication."""
+
+    async def login(
+        self,
+        username: str,
+        password: str,
+    ) -> PrivateSession:
+        """Create and return a private authentication session."""
+
+    async def refresh(
+        self,
+        session: PrivateSession,
+    ) -> None:
+        """Refresh a private authentication session."""
 
 
 class AuthenticationError(Exception):
@@ -38,32 +54,25 @@ class AuthenticationManager:
     def __init__(
         self,
         oauth_session: OAuth2Session,
-        private_service: PrivateAuthService,
-        state: AuthenticationState | None = None,
-        store: AuthenticationStore | None = None,
+        private_service: PrivateAuthenticationService,
+        private_session: PrivateSession | None,
+        store: AuthenticationStore,
     ) -> None:
         """Initialize the authentication manager."""
         self._oauth_session = oauth_session
         self._private_service = private_service
-        self._state = state or AuthenticationState()
+        self._private = private_session
         self._store = store
-
-    @property
-    def state(self) -> AuthenticationState:
-        """Return the private authentication state."""
-        return self._state
 
     @property
     def private(self) -> PrivateSession:
         """Return the current private session."""
-        session = self._state.private
-
-        if session is None:
+        if self._private is None:
             raise PrivateAuthenticationUnavailableError(
                 "Private authentication session is unavailable"
             )
 
-        return session
+        return self._private
 
     @property
     def oauth_token(self) -> dict[str, Any]:
@@ -133,10 +142,8 @@ class AuthenticationManager:
             password=password,
         )
 
-        self._state.private = session
-
-        if self._store is not None:
-            await self._store.async_save_private(session)
+        self._private = session
+        await self._store.async_save_private(session)
 
         return session
 
@@ -145,16 +152,14 @@ class AuthenticationManager:
         session = self.private
 
         await self._private_service.refresh(session)
-
-        if self._store is not None:
-            await self._store.async_save_private(session)
+        await self._store.async_save_private(session)
 
         return session
 
     def set_private(self, session: PrivateSession) -> None:
         """Replace the private authentication session."""
-        self._state.private = session
+        self._private = session
 
     def clear(self) -> None:
-        """Clear authentication state."""
-        self._state.clear()
+        """Clear the private authentication state."""
+        self._private = None
