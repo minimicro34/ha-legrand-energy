@@ -53,6 +53,20 @@ class PrivateAuthServiceAuthenticationError(PrivateAuthServiceError):
     """Private authentication failed."""
 
 
+class PrivateAuthServiceInvalidCredentialsError(
+    PrivateAuthServiceAuthenticationError
+):
+    """The Netatmo email address or password is invalid."""
+
+
+class PrivateAuthServiceCsrfError(PrivateAuthServiceAuthenticationError):
+    """The Netatmo CSRF token could not be retrieved."""
+
+
+class PrivateAuthServiceSessionError(PrivateAuthServiceAuthenticationError):
+    """The authenticated private Netatmo session could not be created."""
+
+
 class PrivateAuthService:
     """Manage authentication against the private Netatmo API."""
 
