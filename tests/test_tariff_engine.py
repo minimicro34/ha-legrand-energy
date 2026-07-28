@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from custom_components.legrand_energy.contract_models import (
+from custom_components.legrand_energy.models.contract import (
     Contract,
     TariffPeriod,
     TariffZone,

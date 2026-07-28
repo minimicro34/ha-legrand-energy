@@ -18,7 +18,6 @@ from .api import (
     LegrandEnergyApiError,
 )
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
-from .contract_models import Contract
 from .contract_service import ContractService
 from .measurement_service import MeasurementService
 from .models import (
@@ -26,6 +25,7 @@ from .models import (
     LegrandMeasurements,
     LegrandProjections,
 )
+from .models.contract import Contract
 from .private_api import (
     LegrandPrivateApi,
     LegrandPrivateApiAuthenticationError,

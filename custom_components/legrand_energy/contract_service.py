@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 
 from homeassistant.util import dt as dt_util
 
-from .contract_models import Contract
 from .contract_parser import parse_contract
+from .models.contract import Contract
 from .private_api import (
     LegrandPrivateApi,
     LegrandPrivateApiAuthenticationError,

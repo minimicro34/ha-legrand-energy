@@ -7,7 +7,6 @@ from datetime import timedelta
 
 from homeassistant.util import dt as dt_util
 
-from .contract_models import Contract
 from .helpers.measurement_processor import MeasurementProcessor
 from .helpers.private_measure_decoder import decode_energy_points_by_module
 from .models import (
@@ -16,6 +15,7 @@ from .models import (
     LegrandModule,
     LegrandProjections,
 )
+from .models.contract import Contract
 from .private_api import (
     LegrandPrivateApi,
     LegrandPrivateApiAuthenticationError,

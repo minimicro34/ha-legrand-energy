@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from .contract_models import Contract
+from .models.contract import Contract
 
 MINUTES_PER_DAY = 24 * 60
 MINUTES_PER_WEEK = 7 * MINUTES_PER_DAY

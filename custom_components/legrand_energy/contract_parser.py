@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .contract_models import Contract, TariffPeriod, TariffZone
+from .models.contract import Contract, TariffPeriod, TariffZone
 
 
 def parse_contract(data: dict[str, Any]) -> Contract | None:
