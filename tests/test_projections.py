@@ -2,7 +2,12 @@
 
 from datetime import UTC, datetime
 
-from custom_components.legrand_energy.helpers.projections import project_today
+import pytest
+
+from custom_components.legrand_energy.helpers.projections import (
+    project_month,
+    project_today,
+)
 
 
 def test_project_today_at_midday() -> None:
@@ -29,3 +34,24 @@ def test_project_today_at_midnight() -> None:
     assert projection.elapsed_ratio == 0.0
     assert projection.projected_energy == 0.0
     assert projection.projected_cost == 0.0
+
+
+@pytest.mark.parametrize(
+    ("now", "days_in_month"),
+    [
+        (datetime(2026, 2, 1, tzinfo=UTC), 28),
+        (datetime(2024, 2, 1, tzinfo=UTC), 29),
+        (datetime(2026, 7, 1, tzinfo=UTC), 31),
+    ],
+)
+def test_project_month(now: datetime, days_in_month: int) -> None:
+    """Test monthly projection for different month lengths."""
+    projection = project_month(
+        energy=5.0,
+        cost=1.0,
+        now=now,
+    )
+
+    assert projection.projected_energy == 5.0 * days_in_month
+    assert projection.projected_cost == 1.0 * days_in_month
+    assert projection.elapsed_ratio == pytest.approx(1.0 / days_in_month)

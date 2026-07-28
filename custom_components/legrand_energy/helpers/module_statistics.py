@@ -6,8 +6,7 @@ from dataclasses import dataclass
 
 from .daily_statistics import DailyStatistics
 from .energy_series import EnergyPoint
-from .monthly_projection import MonthlyProjection
-from .projections import DailyProjection
+from .projections import DailyProjection, MonthlyProjection
 
 
 @dataclass(slots=True)
