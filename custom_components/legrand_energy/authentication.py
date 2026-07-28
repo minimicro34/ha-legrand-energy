@@ -107,6 +107,24 @@ class AuthenticationManager:
 
         return refreshed_session
 
+    async def login_private(
+        self,
+        username: str,
+        password: str,
+    ) -> PrivateSession:
+        """Create, persist and return a private authentication session."""
+        session = await self._private_service.login(
+            username=username,
+            password=password,
+        )
+
+        self._state.private = session
+
+        if self._store is not None:
+            await self._store.async_save_private(session)
+
+        return session
+
     async def refresh_private(self) -> PrivateSession:
         """Refresh, persist and return the private authentication session."""
         session = self.private

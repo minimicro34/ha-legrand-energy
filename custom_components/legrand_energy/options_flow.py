@@ -7,65 +7,95 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from .authentication_store import PRIVATE_COOKIE_NAMES
+from .services.private import (
+    PrivateAuthService,
+    PrivateAuthServiceAuthenticationError,
+    PrivateAuthServiceError,
+)
+
+PRIVATE_AUTH_KEYS = (
+    "web_token",
+    *PRIVATE_COOKIE_NAMES,
+)
 
 
 class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
     """Handle options for Legrand Energy."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
+        """Initialize the options flow."""
         self._config_entry = config_entry
 
     def _current_value(self, key: str) -> str:
         """Return the current persisted value."""
-        data_value = self._config_entry.data.get(key)
+        value = self._config_entry.data.get(key)
 
-        if isinstance(data_value, str) and data_value:
-            return data_value
-
-        option_value = self._config_entry.options.get(key)
-
-        return option_value if isinstance(option_value, str) else ""
+        return value if isinstance(value, str) else ""
 
     async def async_step_init(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Manage options."""
+        """Manage private Netatmo credentials."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            return self.async_create_entry(
-                title=self._config_entry.title,
-                data=user_input,
-            )
+            session = async_get_clientsession(self.hass)
+            private_service = PrivateAuthService(session=session)
+
+            try:
+                private_session = await private_service.login(
+                    username=user_input["username"],
+                    password=user_input["password"],
+                )
+
+            except PrivateAuthServiceAuthenticationError:
+                errors["base"] = "invalid_auth"
+
+            except PrivateAuthServiceError:
+                errors["base"] = "cannot_connect"
+
+            else:
+                new_data = dict(self._config_entry.data)
+
+                new_data["username"] = user_input["username"]
+                new_data["password"] = user_input["password"]
+
+                for key in PRIVATE_AUTH_KEYS:
+                    new_data.pop(key, None)
+
+                new_data["web_token"] = private_session.web_token
+
+                for config_key, cookie_name in PRIVATE_COOKIE_NAMES.items():
+                    cookie_value = private_session.cookies.get(cookie_name)
+
+                    if cookie_value:
+                        new_data[config_key] = cookie_value
+
+                self.hass.config_entries.async_update_entry(
+                    self._config_entry,
+                    data=new_data,
+                    options={},
+                )
+
+                return self.async_create_entry(
+                    title="",
+                    data={},
+                )
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        "web_token",
-                        default=self._current_value("web_token"),
+                    vol.Required(
+                        "username",
+                        default=self._current_value("username"),
                     ): str,
-                    vol.Optional(
-                        "refresh_token_web",
-                        default=self._current_value("refresh_token_web"),
-                    ): str,
-                    vol.Optional(
-                        "laravel_session",
-                        default=self._current_value("laravel_session"),
-                    ): str,
-                    vol.Optional(
-                        "mail_cookie",
-                        default=self._current_value("mail_cookie"),
-                    ): str,
-                    vol.Optional(
-                        "authorize_state",
-                        default=self._current_value("authorize_state"),
-                    ): str,
-                    vol.Optional(
-                        "xsrf_token",
-                        default=self._current_value("xsrf_token"),
-                    ): str,
+                    vol.Required("password"): str,
                 }
             ),
+            errors=errors,
         )

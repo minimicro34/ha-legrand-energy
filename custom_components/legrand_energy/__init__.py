@@ -119,6 +119,21 @@ async def async_setup_entry(
         store=authentication_store,
     )
 
+    if private_session is None:
+        username = entry.data.get("username")
+        password = entry.data.get("password")
+
+        if (
+            isinstance(username, str) 
+            and username 
+            and isinstance(password, str) 
+            and password
+        ):
+            private_session = await authentication.login_private(
+                username=username,
+                password=password,
+            )
+
     api = LegrandEnergyApi(
         session=session,
         authentication=authentication,

@@ -129,19 +129,39 @@
     "step": {
       "user": {
         "title": "Legrand Energy",
-        "description": "Configure your Legrand Energy account."
+        "description": "Configure your Legrand Energy account.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client Secret",
+          "access_token": "OAuth access token",
+          "refresh_token": "OAuth refresh token",
+          "username": "Netatmo email",
+          "password": "Netatmo password"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Invalid Netatmo credentials.",
+      "cannot_connect": "Unable to connect to Netatmo."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Legrand Energy options",
+        "title": "Netatmo credentials",
+        "description": "Update your Netatmo credentials. A new private session will be created automatically.",
         "data": {
-          "web_token": "Netatmo Web Token"
-        },
-        "description": "Paste the Netatmo web token used to access the private API."
+          "username": "Netatmo email",
+          "password": "Netatmo password"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Invalid Netatmo credentials.",
+      "cannot_connect": "Unable to connect to Netatmo."
     }
+  },
+  "application_credentials": {
+    "description": "Créez une application dans le [portail développeur Netatmo]({console_url}). Ajoutez `https://my.home-assistant.io/redirect/oauth` comme URI de redirection, puis saisissez le Client ID et le Client Secret ci-dessous."
   }
 }

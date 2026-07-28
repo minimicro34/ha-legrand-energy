@@ -8,9 +8,8 @@ from typing import Any
 
 import aiohttp
 
+from ..const import OAUTH_TOKEN_URL
 from ..models.auth import OAuthSession
-
-TOKEN_URL = "https://api.netatmo.com/oauth2/token"
 
 API_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
@@ -33,14 +32,6 @@ class OAuthService:
         self._client_id = client_id
         self._client_secret = client_secret
 
-    async def login(
-        self,
-        username: str,
-        password: str,
-    ) -> OAuthSession:
-        """Authenticate with credentials and return an OAuth session."""
-        raise NotImplementedError
-
     async def refresh(
         self,
         session: OAuthSession,
@@ -48,7 +39,7 @@ class OAuthService:
         """Refresh an existing OAuth session."""
         try:
             async with self._session.post(
-                TOKEN_URL,
+                OAUTH_TOKEN_URL,
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": session.refresh_token,
