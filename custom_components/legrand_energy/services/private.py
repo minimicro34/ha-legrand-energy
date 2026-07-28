@@ -53,9 +53,7 @@ class PrivateAuthServiceAuthenticationError(PrivateAuthServiceError):
     """Private authentication failed."""
 
 
-class PrivateAuthServiceInvalidCredentialsError(
-    PrivateAuthServiceAuthenticationError
-):
+class PrivateAuthServiceInvalidCredentialsError(PrivateAuthServiceAuthenticationError):
     """The Netatmo email address or password is invalid."""
 
 
@@ -77,6 +75,53 @@ class PrivateAuthService:
         """Initialize the private authentication service."""
         self._session = session
         self._refresh_lock = asyncio.Lock()
+
+    async def _get_csrf(self) -> str:
+        """Retrieve the Netatmo CSRF token."""
+        url = f"{AUTH_BASE}/access/csrf"
+
+        try:
+            async with self._session.get(
+                url,
+                timeout=API_TIMEOUT,
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": USER_AGENT,
+                    "Referer": f"{AUTH_BASE}/access/login",
+                },
+            ) as response:
+                if response.status != 200:
+                    raise PrivateAuthServiceCsrfError(
+                        f"Netatmo CSRF request failed with HTTP status "
+                        f"{response.status}"
+                    )
+
+                try:
+                    payload = await response.json()
+                except (aiohttp.ContentTypeError, ValueError) as err:
+                    raise PrivateAuthServiceCsrfError(
+                        "Netatmo CSRF response is not valid JSON"
+                    ) from err
+
+        except PrivateAuthServiceError:
+            raise
+
+        except TimeoutError as err:
+            raise PrivateAuthServiceCsrfError("Netatmo CSRF request timed out") from err
+
+        except aiohttp.ClientError as err:
+            raise PrivateAuthServiceCsrfError(
+                f"Netatmo CSRF request failed: {err}"
+            ) from err
+
+        token = payload.get("token")
+
+        if not isinstance(token, str) or not token.strip():
+            raise PrivateAuthServiceCsrfError(
+                "Netatmo CSRF response does not contain a valid token"
+            )
+
+        return token
 
     async def login(
         self,
