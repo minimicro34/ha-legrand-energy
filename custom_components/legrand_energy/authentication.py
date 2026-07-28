@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
-from .models.auth import AuthenticationState, OAuthSession, PrivateSession
-from .services.oauth import OAuthService
+from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
+
+from .models.auth import AuthenticationState, PrivateSession
 from .services.private import PrivateAuthService
 
 
 class AuthenticationStore(Protocol):
-    """Persistence interface for authentication sessions."""
+    """Persistence interface for private authentication sessions."""
 
-    async def async_save_oauth(self, session: OAuthSession) -> None:
-        """Persist an OAuth session."""
-
-    async def async_save_private(self, session: PrivateSession) -> None:
+    async def async_save_private(
+        self,
+        session: PrivateSession,
+    ) -> None:
         """Persist a private session."""
 
 
@@ -36,33 +37,21 @@ class AuthenticationManager:
 
     def __init__(
         self,
-        oauth_service: OAuthService,
+        oauth_session: OAuth2Session,
         private_service: PrivateAuthService,
         state: AuthenticationState | None = None,
         store: AuthenticationStore | None = None,
     ) -> None:
         """Initialize the authentication manager."""
-        self._oauth_service = oauth_service
+        self._oauth_session = oauth_session
         self._private_service = private_service
         self._state = state or AuthenticationState()
         self._store = store
 
     @property
     def state(self) -> AuthenticationState:
-        """Return the complete authentication state."""
+        """Return the private authentication state."""
         return self._state
-
-    @property
-    def oauth(self) -> OAuthSession:
-        """Return the current OAuth session."""
-        session = self._state.oauth
-
-        if session is None:
-            raise OAuthAuthenticationUnavailableError(
-                "OAuth authentication session is unavailable"
-            )
-
-        return session
 
     @property
     def private(self) -> PrivateSession:
@@ -77,35 +66,61 @@ class AuthenticationManager:
         return session
 
     @property
+    def oauth_token(self) -> dict[str, Any]:
+        """Return the current Home Assistant OAuth token data."""
+        token = self._oauth_session.token
+
+        if not isinstance(token, dict):
+            raise OAuthAuthenticationUnavailableError(
+                "OAuth authentication token is unavailable"
+            )
+
+        return token
+
+    @property
     def access_token(self) -> str:
         """Return the current OAuth access token."""
-        return self.oauth.access_token
+        access_token = self.oauth_token.get("access_token")
+
+        if not isinstance(access_token, str) or not access_token:
+            raise OAuthAuthenticationUnavailableError(
+                "OAuth access token is unavailable"
+            )
+
+        return access_token
 
     @property
     def refresh_token(self) -> str:
         """Return the current OAuth refresh token."""
-        return self.oauth.refresh_token
+        refresh_token = self.oauth_token.get("refresh_token")
+
+        if not isinstance(refresh_token, str) or not refresh_token:
+            raise OAuthAuthenticationUnavailableError(
+                "OAuth refresh token is unavailable"
+            )
+
+        return refresh_token
 
     @property
     def authorization_headers(self) -> dict[str, str]:
         """Return public OAuth authorization headers."""
-        return self.oauth.authorization_header
+        token_type = self.oauth_token.get("token_type", "Bearer")
+
+        if not isinstance(token_type, str) or not token_type:
+            token_type = "Bearer"
+
+        return {
+            "Authorization": f"{token_type} {self.access_token}",
+        }
 
     @property
     def private_headers(self) -> dict[str, str]:
         """Return private API authorization headers."""
         return self.private.headers
 
-    async def refresh_oauth(self) -> OAuthSession:
-        """Refresh, persist and return the OAuth session."""
-        refreshed_session = await self._oauth_service.refresh(self.oauth)
-
-        self._state.oauth = refreshed_session
-
-        if self._store is not None:
-            await self._store.async_save_oauth(refreshed_session)
-
-        return refreshed_session
+    async def async_ensure_oauth_valid(self) -> None:
+        """Ensure that the Home Assistant OAuth token is valid."""
+        await self._oauth_session.async_ensure_token_valid()
 
     async def login_private(
         self,
@@ -136,14 +151,10 @@ class AuthenticationManager:
 
         return session
 
-    def set_oauth(self, session: OAuthSession) -> None:
-        """Replace the OAuth authentication session."""
-        self._state.oauth = session
-
     def set_private(self, session: PrivateSession) -> None:
         """Replace the private authentication session."""
         self._state.private = session
 
     def clear(self) -> None:
-        """Clear all authentication state."""
+        """Clear authentication state."""
         self._state.clear()

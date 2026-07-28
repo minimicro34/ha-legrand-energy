@@ -109,7 +109,7 @@ class LegrandEnergyApi(BaseApiClient):
 
         if error_code in (2, 3) and retry and headers is None:
             try:
-                await self._authentication.refresh_oauth()
+                await self._authentication.async_ensure_oauth_valid()            
             except Exception as err:
                 raise LegrandEnergyAuthenticationError(
                     "Unable to refresh the Netatmo OAuth token"
@@ -161,7 +161,7 @@ class LegrandEnergyApi(BaseApiClient):
 
         if error_code in (2, 3) and retry:
             try:
-                await self._authentication.refresh_oauth()
+                await self._authentication.async_ensure_oauth_valid()            
             except Exception as err:
                 raise LegrandEnergyAuthenticationError(
                     "Unable to refresh the Netatmo OAuth token"
