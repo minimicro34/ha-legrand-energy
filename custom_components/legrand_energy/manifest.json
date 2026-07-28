@@ -3,12 +3,11 @@
   "name": "Legrand Energy",
   "codeowners": ["@minimicro34"],
   "config_flow": true,
+  "dependencies": ["application_credentials"],
   "documentation": "https://github.com/minimicro34/ha-legrand-energy",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/minimicro34/ha-legrand-energy/issues",
   "requirements": [],
-  "version": "1.0.0",
-  "dependencies": ["application_credentials"],
-  "after_dependencies": ["application_credentials"]
+  "version": "1.0.0"
 }
