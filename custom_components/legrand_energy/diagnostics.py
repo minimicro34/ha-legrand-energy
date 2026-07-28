@@ -13,7 +13,6 @@ from .const import DOMAIN
 TO_REDACT = {
     "access_token",
     "refresh_token",
-    "client_secret",
 }
 
 

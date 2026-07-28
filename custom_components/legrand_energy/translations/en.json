@@ -132,9 +132,7 @@
         "description": "Configure your Legrand Energy account.",
         "data": {
           "client_id": "Client ID",
-          "client_secret": "Client Secret",
           "access_token": "OAuth access token",
-          "refresh_token": "OAuth refresh token",
           "username": "Netatmo email",
           "password": "Netatmo password"
         }
@@ -162,6 +160,6 @@
     }
   },
   "application_credentials": {
-    "description": "Créez une application dans le [portail développeur Netatmo]({console_url}). Ajoutez `https://my.home-assistant.io/redirect/oauth` comme URI de redirection, puis saisissez le Client ID et le Client Secret ci-dessous."
+    "description": "Create an application in [portail développeur Netatmo]({console_url}). Add `https://[your-homeassistant-URL]/auth/external/callback` in URI redirection, and enter the Client ID et the Client Secret below."
   }
 }

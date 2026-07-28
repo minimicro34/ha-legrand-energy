@@ -99,18 +99,6 @@ class AuthenticationManager:
         return access_token
 
     @property
-    def refresh_token(self) -> str:
-        """Return the current OAuth refresh token."""
-        refresh_token = self.oauth_token.get("refresh_token")
-
-        if not isinstance(refresh_token, str) or not refresh_token:
-            raise OAuthAuthenticationUnavailableError(
-                "OAuth refresh token is unavailable"
-            )
-
-        return refresh_token
-
-    @property
     def authorization_headers(self) -> dict[str, str]:
         """Return public OAuth authorization headers."""
         token_type = self.oauth_token.get("token_type", "Bearer")

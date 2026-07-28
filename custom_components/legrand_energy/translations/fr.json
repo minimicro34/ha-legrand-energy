@@ -131,9 +131,7 @@
       "description": "Configurez votre compte Legrand Energy.",
       "data": {
         "client_id": "Client ID",
-        "client_secret": "Client Secret",
         "access_token": "Jeton d'accès OAuth",
-        "refresh_token": "Jeton de rafraîchissement OAuth",
         "username": "Adresse e-mail Netatmo",
         "password": "Mot de passe Netatmo"
       }

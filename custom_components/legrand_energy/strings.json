@@ -6,9 +6,7 @@
         "description": "Configure Legrand Energy OAuth credentials.",
         "data": {
           "client_id": "Client ID",
-          "client_secret": "Client Secret",
-          "access_token": "Access Token",
-          "refresh_token": "Refresh Token"
+          "access_token": "Access Token"
         }
       }
     }
