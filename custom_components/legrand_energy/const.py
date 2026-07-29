@@ -14,7 +14,7 @@ OAUTH_AUTHORIZE_URL = "https://api.netatmo.com/oauth2/authorize"
 OAUTH_TOKEN_URL = "https://api.netatmo.com/oauth2/token"
 
 OAUTH_SCOPES: tuple[str, ...] = (
-    "read_thermostat"
+    "read_thermostat",
     "read_magellan",
     "write_magellan",
 )
