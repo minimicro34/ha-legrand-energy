@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 from .api import (
     LegrandEnergyApi,
     LegrandEnergyApiError,
+    LegrandEnergyAuthenticationError,
 )
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_service import ContractService
@@ -58,7 +59,6 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
 
         self.api = api
-        self.private_api = private_api
         self._contract_service = (
             ContractService(private_api) if private_api is not None else None
         )
@@ -77,7 +77,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             measurements_by_module: dict[str, LegrandMeasurements] = {}
             projections: LegrandProjections | None = None
 
-            home_id = self._get_home_id()
+            home_id = self.api.get_first_home_id()
 
             if (
                 self._contract_service is not None
@@ -118,65 +118,19 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             )
 
         except LegrandPrivateApiRateLimitError as err:
-            _LOGGER.warning("Netatmo API rate limit reached, keeping previous values")
-
             if self.data is not None:
+                _LOGGER.debug("Netatmo API rate limit reached, keeping previous values")
                 return self.data
 
             raise UpdateFailed("Netatmo API rate limit exceeded") from err
 
         except LegrandPrivateApiAuthenticationError as err:
             raise ConfigEntryAuthFailed(
-                "La session Web Netatmo a expiré. "
-                "Mettez à jour les cookies privés dans les options."
+                "Private Netatmo authentication expired"
             ) from err
+
+        except LegrandEnergyAuthenticationError as err:
+            raise ConfigEntryAuthFailed("Netatmo OAuth authentication expired") from err
 
         except LegrandEnergyApiError as err:
             raise UpdateFailed(f"Unable to update Legrand Energy data: {err}") from err
-
-    def _get_home_id(
-        self,
-    ) -> str | None:
-        """Return the first home ID from cached topology data."""
-        homesdata = self.api._homes_cache  # noqa: SLF001
-
-        if homesdata is None:
-            return None
-
-        body = homesdata.get("body")
-
-        if not isinstance(
-            body,
-            dict,
-        ):
-            return None
-
-        homes = body.get("homes")
-
-        if (
-            not isinstance(
-                homes,
-                list,
-            )
-            or not homes
-        ):
-            return None
-
-        home = homes[0]
-
-        if not isinstance(
-            home,
-            dict,
-        ):
-            return None
-
-        home_id = home.get("id")
-
-        return (
-            home_id
-            if isinstance(
-                home_id,
-                str,
-            )
-            else None
-        )

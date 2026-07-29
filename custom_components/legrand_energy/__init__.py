@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import LegrandEnergyApi
@@ -17,9 +18,9 @@ from .authentication_store import (
     ConfigEntryAuthenticationStore,
 )
 from .coordinator import LegrandEnergyCoordinator
-from .models.auth import AuthenticationState, OAuthSession, PrivateSession
+from .models.auth import PrivateSession
+from .oauth2 import async_get_session
 from .private_api import LegrandPrivateApi
-from .services.oauth import OAuthService
 from .services.private import PrivateAuthService
 
 PLATFORMS: list[Platform] = [
@@ -55,34 +56,21 @@ async def async_setup_entry(
 
         return None
 
-    obtained_at_value = entry.data.get("obtained_at")
-    obtained_at = datetime.now(UTC)
+    try:
+        oauth_session = await async_get_session(
+            hass,
+            entry,
+        )
+    except config_entry_oauth2_flow.ImplementationUnavailableError as err:
+        raise ConfigEntryNotReady(
+            "OAuth2 implementation temporarily unavailable"
+        ) from err
 
-    if isinstance(obtained_at_value, str):
-        obtained_at = datetime.fromisoformat(obtained_at_value)
-
-    expires_in_value = entry.data.get("expires_in", 0)
-    expires_in = expires_in_value if isinstance(expires_in_value, int) else 0
-
-    token_type_value = entry.data.get("token_type", "Bearer")
-    token_type = token_type_value if isinstance(token_type_value, str) else "Bearer"
-
-    oauth_service = OAuthService(
-        session=session,
-        client_id=entry.data["client_id"],
-        client_secret=entry.data["client_secret"],
-    )
+    # Refresh the token immediately when it is already expired.
+    await oauth_session.async_ensure_token_valid()
 
     private_service = PrivateAuthService(
         session=session,
-    )
-
-    oauth_session = OAuthSession(
-        access_token=entry.data["access_token"],
-        refresh_token=entry.data["refresh_token"],
-        expires_in=expires_in,
-        obtained_at=obtained_at,
-        token_type=token_type,
     )
 
     web_token = private_value("web_token")
@@ -102,22 +90,32 @@ async def async_setup_entry(
             cookies=private_cookies,
         )
 
-    authentication_state = AuthenticationState(
-        oauth=oauth_session,
-        private=private_session,
-    )
-
     authentication_store = ConfigEntryAuthenticationStore(
         hass=hass,
         entry=entry,
     )
 
     authentication = AuthenticationManager(
-        oauth_service=oauth_service,
+        oauth_session=oauth_session,
         private_service=private_service,
-        state=authentication_state,
+        private_session=private_session,
         store=authentication_store,
     )
+
+    if private_session is None:
+        username = entry.data.get("username")
+        password = entry.data.get("password")
+
+        if (
+            isinstance(username, str)
+            and username
+            and isinstance(password, str)
+            and password
+        ):
+            private_session = await authentication.login_private(
+                username=username,
+                password=password,
+            )
 
     api = LegrandEnergyApi(
         session=session,

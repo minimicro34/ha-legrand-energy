@@ -15,7 +15,6 @@
       "setup_date": {
         "name": "Setup date"
       },
-
       "current_tariff": {
         "name": "Current tariff"
       },
@@ -25,13 +24,23 @@
       "next_tariff_change": {
         "name": "Next tariff change"
       },
-
       "power": {
         "name": "Power"
       },
-
       "energy_today": {
         "name": "Energy today"
+      },
+      "energy_peak_today": {
+        "name": "Peak energy today"
+      },
+      "energy_off_peak_today": {
+        "name": "Off-peak energy today"
+      },
+      "projected_energy_today": {
+        "name": "Projected energy today"
+      },
+      "projected_energy_month": {
+        "name": "Projected energy this month"
       },
       "energy_week": {
         "name": "Energy this week"
@@ -42,7 +51,6 @@
       "energy_year": {
         "name": "Energy this year"
       },
-
       "cost_today": {
         "name": "Cost today"
       },
@@ -51,6 +59,12 @@
       },
       "cost_off_peak_today": {
         "name": "Off-peak cost today"
+      },
+      "projected_cost_today": {
+        "name": "Projected cost today"
+      },
+      "projected_cost_month": {
+        "name": "Projected cost this month"
       },
       "cost_week": {
         "name": "Cost this week"
@@ -61,20 +75,6 @@
       "cost_year": {
         "name": "Cost this year"
       },
-
-      "projected_energy_today": {
-        "name": "Projected energy today"
-      },
-      "projected_energy_month": {
-        "name": "Projected energy this month"
-      },
-      "projected_cost_today": {
-        "name": "Projected cost today"
-      },
-      "projected_cost_month": {
-        "name": "Projected cost this month"
-      },
-
       "contract_type": {
         "name": "Contract type"
       },
@@ -93,9 +93,14 @@
       "off_peak_price": {
         "name": "Off-peak price"
       },
-
       "circuit_energy_today": {
         "name": "Energy today"
+      },
+      "circuit_energy_peak_today": {
+        "name": "Peak energy today"
+      },
+      "circuit_energy_off_peak_today": {
+        "name": "Off-peak energy today"
       },
       "circuit_cost_today": {
         "name": "Cost today"
@@ -105,18 +110,6 @@
       },
       "circuit_cost_off_peak_today": {
         "name": "Off-peak cost today"
-      },
-      "circuit_energy_peak_today": {
-        "name": "Peak energy today"
-      },
-      "circuit_energy_off_peak_today": {
-        "name": "Off-peak energy today"
-      }, 
-      "energy_peak_today": {
-        "name": "Peak energy today"
-      },
-      "energy_off_peak_today": {
-        "name": "Off-peak energy today"
       }
     },
     "button": {
@@ -127,21 +120,40 @@
   },
   "config": {
     "step": {
-      "user": {
-        "title": "Legrand Energy",
-        "description": "Configure your Legrand Energy account."
+      "private": {
+        "title": "Netatmo credentials",
+        "description": "Enter your Netatmo credentials to access detailed energy measurements.",
+        "data": {
+          "username": "Netatmo email",
+          "password": "Netatmo password"
+        }
       }
+    },
+    "abort": {
+      "oauth_error": "OAuth authentication failed."
+    },
+    "error": {
+      "invalid_auth": "Invalid Netatmo credentials.",
+      "cannot_connect": "Unable to connect to Netatmo."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Legrand Energy options",
+        "title": "Netatmo credentials",
+        "description": "Update your Netatmo credentials. A new private session will be created automatically.",
         "data": {
-          "web_token": "Netatmo Web Token"
-        },
-        "description": "Paste the Netatmo web token used to access the private API."
+          "username": "Netatmo email",
+          "password": "Netatmo password"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Invalid Netatmo credentials.",
+      "cannot_connect": "Unable to connect to Netatmo."
     }
+  },
+  "application_credentials": {
+    "description": "Create an application in the [Netatmo Developer Portal]({console_url}). Add `https://<your-home-assistant-url>/auth/external/callback` as a redirect URI, then enter the Client ID and Client Secret below."
   }
 }

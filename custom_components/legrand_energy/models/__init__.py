@@ -1,6 +1,6 @@
 """Models for Legrand Energy."""
 
-from .auth import AuthenticationState, OAuthSession, PrivateSession
+from .auth import PrivateSession
 from .energy import (
     LegrandEnergyData,
     LegrandMeasurements,
@@ -9,11 +9,9 @@ from .energy import (
 )
 
 __all__ = [
-    "AuthenticationState",
     "LegrandEnergyData",
     "LegrandMeasurements",
     "LegrandModule",
     "LegrandProjections",
-    "OAuthSession",
     "PrivateSession",
 ]

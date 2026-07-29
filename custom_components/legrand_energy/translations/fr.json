@@ -13,9 +13,8 @@
         "name": "Pièce"
       },
       "setup_date": {
-        "name": "Date d’installation"
+        "name": "Date d'installation"
       },
-
       "current_tariff": {
         "name": "Tarif actuel"
       },
@@ -25,13 +24,23 @@
       "next_tariff_change": {
         "name": "Prochain changement de tarif"
       },
-
       "power": {
         "name": "Puissance"
       },
-
       "energy_today": {
-        "name": "Consommation aujourd’hui"
+        "name": "Consommation aujourd'hui"
+      },
+      "energy_peak_today": {
+        "name": "Consommation HP aujourd'hui"
+      },
+      "energy_off_peak_today": {
+        "name": "Consommation HC aujourd'hui"
+      },
+      "projected_energy_today": {
+        "name": "Projection de consommation aujourd'hui"
+      },
+      "projected_energy_month": {
+        "name": "Projection de consommation ce mois"
       },
       "energy_week": {
         "name": "Consommation cette semaine"
@@ -42,15 +51,20 @@
       "energy_year": {
         "name": "Consommation cette année"
       },
-
       "cost_today": {
-        "name": "Coût aujourd’hui"
+        "name": "Coût aujourd'hui"
       },
       "cost_peak_today": {
-        "name": "Coût HP aujourd’hui"
+        "name": "Coût HP aujourd'hui"
       },
       "cost_off_peak_today": {
-        "name": "Coût HC aujourd’hui"
+        "name": "Coût HC aujourd'hui"
+      },
+      "projected_cost_today": {
+        "name": "Projection du coût aujourd'hui"
+      },
+      "projected_cost_month": {
+        "name": "Projection du coût ce mois"
       },
       "cost_week": {
         "name": "Coût cette semaine"
@@ -61,20 +75,6 @@
       "cost_year": {
         "name": "Coût cette année"
       },
-
-      "projected_energy_today": {
-        "name": "Projection de consommation aujourd’hui"
-      },
-      "projected_energy_month": {
-        "name": "Projection de consommation ce mois"
-      },
-      "projected_cost_today": {
-        "name": "Projection du coût aujourd’hui"
-      },
-      "projected_cost_month": {
-        "name": "Projection du coût ce mois"
-      },
-
       "contract_type": {
         "name": "Type de contrat"
       },
@@ -94,28 +94,22 @@
         "name": "Prix heures creuses"
       },
       "circuit_energy_today": {
-        "name": "Consommation aujourd’hui"
+        "name": "Consommation aujourd'hui"
       },
-      "circuit_cost_today": {
-        "name": "Coût aujourd’hui"
-      },
-      "circuit_cost_peak_today": {
-        "name": "Coût HP aujourd’hui"
-      },
-      "circuit_cost_off_peak_today": {
-        "name": "Coût HC aujourd’hui"
-      }, 
       "circuit_energy_peak_today": {
-        "name": "Consommation aujourd’hui HP"
+        "name": "Consommation HP aujourd'hui"
       },
       "circuit_energy_off_peak_today": {
-        "name": "Consommation aujourd’hui HC"
-      }, 
-      "energy_peak_today": {
-        "name": "Consommation HP aujourd’hui"
+        "name": "Consommation HC aujourd'hui"
       },
-      "energy_off_peak_today": {
-        "name": "Consommation HC aujourd’hui"
+      "circuit_cost_today": {
+        "name": "Coût aujourd'hui"
+      },
+      "circuit_cost_peak_today": {
+        "name": "Coût HP aujourd'hui"
+      },
+      "circuit_cost_off_peak_today": {
+        "name": "Coût HC aujourd'hui"
       }
     },
     "button": {
@@ -126,21 +120,40 @@
   },
   "config": {
     "step": {
-      "user": {
-        "title": "Legrand Energy",
-        "description": "Configurez votre compte Legrand Energy."
+      "private": {
+        "title": "Identifiants Netatmo",
+        "description": "Saisissez vos identifiants Netatmo pour accéder aux mesures d'énergie détaillées.",
+        "data": {
+          "username": "Adresse e-mail Netatmo",
+          "password": "Mot de passe Netatmo"
+        }
       }
+    },
+    "abort": {
+      "oauth_error": "L'authentification OAuth a échoué."
+    },
+    "error": {
+      "invalid_auth": "Identifiants Netatmo invalides.",
+      "cannot_connect": "Impossible de se connecter à Netatmo."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Options Legrand Energy",
+        "title": "Identifiants Netatmo",
+        "description": "Modifiez vos identifiants Netatmo. Une nouvelle session privée sera créée automatiquement.",
         "data": {
-          "web_token": "Jeton Web Netatmo"
-        },
-        "description": "Collez le jeton Web Netatmo utilisé pour accéder à l’API privée."
+          "username": "Adresse e-mail Netatmo",
+          "password": "Mot de passe Netatmo"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Identifiants Netatmo invalides.",
+      "cannot_connect": "Impossible de se connecter à Netatmo."
     }
+  },
+  "application_credentials": {
+    "description": "Créez une application dans le [portail développeur Netatmo]({console_url}). Ajoutez `https://<votre-url-home-assistant>/auth/external/callback` comme URI de redirection, puis saisissez le Client ID et le Client Secret."
   }
 }

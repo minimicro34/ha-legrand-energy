@@ -7,7 +7,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .models.auth import OAuthSession, PrivateSession
+from .models.auth import PrivateSession
 
 PRIVATE_COOKIE_NAMES = {
     "refresh_token_web": "authnetatmocomrefresh_token",
@@ -29,16 +29,6 @@ class ConfigEntryAuthenticationStore:
         """Initialize the authentication store."""
         self._hass = hass
         self._entry = entry
-
-    async def async_save_oauth(self, session: OAuthSession) -> None:
-        """Persist the current OAuth session."""
-        new_data: dict[str, Any] = dict(self._entry.data)
-        new_data.update(session.to_dict())
-
-        self._hass.config_entries.async_update_entry(
-            self._entry,
-            data=new_data,
-        )
 
     async def async_save_private(self, session: PrivateSession) -> None:
         """Persist the current private authentication session."""
