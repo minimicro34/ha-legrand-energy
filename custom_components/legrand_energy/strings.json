@@ -1,0 +1,97 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "off_peak": {
+        "name": "Off-peak hours"
+      }
+    },
+    "sensor": {
+      "module_type": {"name": "Module type"},
+      "room": {"name": "Room"},
+      "setup_date": {"name": "Setup date"},
+      "current_tariff": {"name": "Current tariff"},
+      "current_price": {"name": "Current price"},
+      "next_tariff_change": {"name": "Next tariff change"},
+      "power": {"name": "Power"},
+      "energy_today": {"name": "Energy today"},
+      "energy_peak_today": {"name": "Peak energy today"},
+      "energy_off_peak_today": {"name": "Off-peak energy today"},
+      "projected_energy_today": {"name": "Projected energy today"},
+      "projected_energy_month": {"name": "Projected energy this month"},
+      "energy_week": {"name": "Energy this week"},
+      "energy_month": {"name": "Energy this month"},
+      "energy_year": {"name": "Energy this year"},
+      "cost_today": {"name": "Cost today"},
+      "cost_peak_today": {"name": "Peak cost today"},
+      "cost_off_peak_today": {"name": "Off-peak cost today"},
+      "projected_cost_today": {"name": "Projected cost today"},
+      "projected_cost_month": {"name": "Projected cost this month"},
+      "cost_week": {"name": "Cost this week"},
+      "cost_month": {"name": "Cost this month"},
+      "cost_year": {"name": "Cost this year"},
+      "contract_type": {"name": "Contract type"},
+      "contract_tariff": {"name": "Tariff"},
+      "contract_option": {"name": "Tariff option"},
+      "contract_power": {"name": "Subscribed power"},
+      "peak_price": {"name": "Peak price"},
+      "off_peak_price": {"name": "Off-peak price"},
+      "circuit_energy_today": {"name": "Energy today"},
+      "circuit_energy_peak_today": {"name": "Peak energy today"},
+      "circuit_energy_off_peak_today": {"name": "Off-peak energy today"},
+      "circuit_cost_today": {"name": "Cost today"},
+      "circuit_cost_peak_today": {"name": "Peak cost today"},
+      "circuit_cost_off_peak_today": {"name": "Off-peak cost today"}
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "private": {
+        "title": "Netatmo / Home + Control sign-in",
+        "description": "Enter your Netatmo or Legrand Home + Control account credentials to access private contract data and detailed energy measurements.",
+        "data": {
+          "username": "Email address",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "Email address used with the Home + Control app or your Netatmo account.",
+          "password": "Password for the Netatmo or Legrand Home + Control account."
+        }
+      }
+    },
+    "abort": {
+      "oauth_error": "OAuth authentication failed."
+    },
+    "error": {
+      "invalid_auth": "Invalid Netatmo or Home + Control credentials.",
+      "cannot_connect": "Unable to connect to the Netatmo service."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Netatmo / Home + Control sign-in",
+        "description": "Update your Netatmo or Legrand Home + Control account credentials. A new private session will be created automatically.",
+        "data": {
+          "username": "Email address",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "Email address used with the Home + Control app or your Netatmo account.",
+          "password": "Password for the Netatmo or Legrand Home + Control account."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid Netatmo or Home + Control credentials.",
+      "cannot_connect": "Unable to connect to the Netatmo service."
+    }
+  },
+  "application_credentials": {
+    "description": "Create an application in the Netatmo Developer Portal, then enter the Client ID and Client Secret below."
+  }
+}
