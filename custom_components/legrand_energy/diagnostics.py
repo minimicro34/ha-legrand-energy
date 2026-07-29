@@ -8,11 +8,17 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .authentication_store import PRIVATE_COOKIE_NAMES
+from .coordinator import LegrandEnergyCoordinator
 
 TO_REDACT = {
     "access_token",
     "refresh_token",
+    "client_secret",
+    "username",
+    "password",
+    "web_token",
+    *PRIVATE_COOKIE_NAMES.keys(),
 }
 
 
@@ -21,10 +27,15 @@ async def async_get_config_entry_diagnostics(
     entry: ConfigEntry,
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    api = coordinator.api
+    coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
     return {
-        "entry": async_redact_data(dict(entry.data), TO_REDACT),
-        "homesdata": await api.homesdata(force_refresh=True),
+        "entry": async_redact_data(
+            dict(entry.data),
+            TO_REDACT,
+        ),
+        "homesdata": async_redact_data(
+            await coordinator.api.homesdata(force_refresh=True),
+            TO_REDACT,
+        ),
     }

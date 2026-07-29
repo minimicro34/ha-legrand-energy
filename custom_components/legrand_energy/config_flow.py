@@ -9,7 +9,7 @@ import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
-from homeassistant.helpers import config_entry_oauth2_flow
+from homeassistant.helpers import config_entry_oauth2_flow, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .authentication_store import PRIVATE_COOKIE_NAMES
@@ -79,11 +79,11 @@ class LegrandEnergyConfigFlow(
             username = user_input["username"]
             password = user_input["password"]
 
-            private_service = PrivateAuthService(
-                session=async_get_clientsession(self.hass),
-            )
-
             try:
+                private_service = PrivateAuthService(
+                    session=async_get_clientsession(self.hass),
+                )
+
                 private_session = await private_service.login(
                     username=username,
                     password=password,
@@ -113,7 +113,7 @@ class LegrandEnergyConfigFlow(
                         entry_data[config_key] = cookie_value
 
                 return self.async_create_entry(
-                    title="Legrand Energy",
+                    title="Legrand EcoMeter",
                     data=entry_data,
                 )
 
@@ -121,8 +121,16 @@ class LegrandEnergyConfigFlow(
             step_id="private",
             data_schema=vol.Schema(
                 {
-                    vol.Required("username"): str,
-                    vol.Required("password"): str,
+                    vol.Required("username"): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                        )
+                    ),
+                    vol.Required("password"): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                        )
+                    ),
                 }
             ),
             errors=errors,

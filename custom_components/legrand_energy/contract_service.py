@@ -17,6 +17,7 @@ from .private_api import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_CACHE_DURATION = timedelta(hours=1)
 
 
 class ContractService:
@@ -35,7 +36,7 @@ class ContractService:
         cache_is_valid = (
             self._contract is not None
             and self._last_update is not None
-            and now - self._last_update < timedelta(hours=1)
+            and now - self._last_update < _CACHE_DURATION
         )
 
         if cache_is_valid:
@@ -44,10 +45,10 @@ class ContractService:
         try:
             raw = await self._private_api.getcontracts(home_id)
 
-        except LegrandPrivateApiAuthenticationError:
-            raise
-
-        except LegrandPrivateApiRateLimitError:
+        except (
+            LegrandPrivateApiAuthenticationError,
+            LegrandPrivateApiRateLimitError,
+        ):
             raise
 
         except LegrandPrivateApiError as err:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+import aiohttp
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
 from .models.auth import PrivateSession
@@ -116,8 +117,11 @@ class AuthenticationManager:
         return self.private.headers
 
     async def async_ensure_oauth_valid(self) -> None:
-        """Ensure that the Home Assistant OAuth token is valid."""
-        await self._oauth_session.async_ensure_token_valid()
+        """Ensure that the OAuth token is valid."""
+        try:
+            await self._oauth_session.async_ensure_token_valid()
+        except aiohttp.ClientError as err:
+            raise AuthenticationError("Unable to refresh the OAuth token") from err
 
     async def login_private(
         self,

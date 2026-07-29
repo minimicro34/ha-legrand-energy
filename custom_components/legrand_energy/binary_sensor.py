@@ -11,9 +11,10 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddConfigEntryEntitiesCallback,
+)
 
-from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
 from .entity import LegrandEntity, get_main_module_id
 from .models import LegrandEnergyData
@@ -21,12 +22,12 @@ from .models import LegrandEnergyData
 
 @dataclass(frozen=True, kw_only=True)
 class LegrandBinarySensorDescription(BinarySensorEntityDescription):
-    """Binary sensor description."""
+    """Describe a Legrand Energy binary sensor."""
 
     value_fn: Callable[[LegrandEnergyData], bool | None]
 
 
-BINARY_SENSOR_DESCRIPTIONS = (
+BINARY_SENSOR_DESCRIPTIONS: tuple[LegrandBinarySensorDescription, ...] = (
     LegrandBinarySensorDescription(
         key="off_peak",
         translation_key="off_peak",
@@ -47,11 +48,10 @@ BINARY_SENSOR_DESCRIPTIONS = (
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up binary sensors."""
+    """Set up Legrand Energy binary sensors."""
     coordinator: LegrandEnergyCoordinator = entry.runtime_data
-
     main_module_id = get_main_module_id(coordinator)
 
     if main_module_id is None:
@@ -68,7 +68,7 @@ async def async_setup_entry(
 
 
 class LegrandBinarySensor(LegrandEntity, BinarySensorEntity):
-    """Legrand binary sensor."""
+    """Representation of a Legrand Energy binary sensor."""
 
     entity_description: LegrandBinarySensorDescription
 
@@ -78,17 +78,14 @@ class LegrandBinarySensor(LegrandEntity, BinarySensorEntity):
         module_id: str,
         description: LegrandBinarySensorDescription,
     ) -> None:
-        """Initialize."""
+        """Initialize the binary sensor."""
         super().__init__(coordinator, module_id)
         self.entity_description = description
-        self._attr_has_entity_name = True
-
-        safe_module_id = module_id.replace(":", "_").replace("#", "_")
-        self._attr_unique_id = f"{DOMAIN}_{safe_module_id}_{description.key}"
+        self._attr_unique_id = f"{module_id}_{description.key}"
 
     @property
     def available(self) -> bool:
-        """Return availability."""
+        """Return whether the binary sensor is available."""
         return super().available and self.coordinator.data.tariff is not None
 
     @property

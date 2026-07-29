@@ -106,16 +106,12 @@ class MeasurementService:
 
         points_by_module = decode_energy_points_by_module(raw)
 
-        peak_price = (
-            contract.peak_price
-            if (contract is not None and contract.peak_price is not None)
-            else 0.0
-        )
-        off_peak_price = (
-            contract.off_peak_price
-            if (contract is not None and contract.off_peak_price is not None)
-            else 0.0
-        )
+        if contract is None:
+            peak_price = 0.0
+            off_peak_price = 0.0
+        else:
+            peak_price = contract.peak_price or 0.0
+            off_peak_price = contract.off_peak_price or 0.0
 
         measurements_by_module: dict[str, LegrandMeasurements] = {}
 

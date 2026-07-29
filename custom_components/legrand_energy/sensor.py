@@ -79,7 +79,7 @@ def _format_remaining(remaining: timedelta | None) -> str | None:
         return None
     total_seconds = max(0, int(remaining.total_seconds()))
     hours, remainder = divmod(total_seconds, 3600)
-    minutes, _seconds = divmod(remainder, 60)
+    minutes, _ = divmod(remainder, 60)
     return f"{hours} h {minutes:02d} min" if hours > 0 else f"{minutes} min"
 
 

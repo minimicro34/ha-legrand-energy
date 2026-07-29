@@ -7,13 +7,16 @@ from typing import Any
 
 import aiohttp
 
-from .authentication import AuthenticationManager
+from .authentication import AuthenticationError, AuthenticationManager
 from .base_api import BaseApiClient
 from .models import LegrandModule
 
 APP_API_BASE = "https://app.netatmo.net/api"
 
-
+# Measurement types expected by the undocumented private
+# gethomemeasure endpoint. This value comes from reverse
+# engineering the Netatmo web application and should not
+# be modified unless the private API changes.
 PRIVATE_MEASURE_TYPE_ELECTRICITY = (
     "sum_energy_elec,"
     "sum_energy_elec$0,"
@@ -44,7 +47,7 @@ class LegrandEnergyApi(BaseApiClient):
         """Initialize the Legrand Energy API client."""
         super().__init__(session, LegrandEnergyApiError)
         self._authentication = authentication
-        self._homes_cache: dict[str, Any] | None = None
+        self._homes_data: dict[str, Any] | None = None
 
     @property
     def headers(self) -> dict[str, str]:
@@ -110,9 +113,9 @@ class LegrandEnergyApi(BaseApiClient):
         if error_code in (2, 3) and retry and headers is None:
             try:
                 await self._authentication.async_ensure_oauth_valid()
-            except Exception as err:
+            except AuthenticationError as err:
                 raise LegrandEnergyAuthenticationError(
-                    "Unable to refresh the Netatmo OAuth token"
+                    f"OAuth token refresh failed: {err}"
                 ) from err
 
             return await self._get(
@@ -129,7 +132,13 @@ class LegrandEnergyApi(BaseApiClient):
                 )
 
             raise LegrandEnergyApiError(
-                f"GET request to {endpoint} failed with HTTP status {status}"
+                self._build_error_message(
+                    "GET",
+                    endpoint,
+                    status,
+                    error_code,
+                    data,
+                )
             )
 
         return data
@@ -162,9 +171,9 @@ class LegrandEnergyApi(BaseApiClient):
         if error_code in (2, 3) and retry:
             try:
                 await self._authentication.async_ensure_oauth_valid()
-            except Exception as err:
+            except AuthenticationError as err:
                 raise LegrandEnergyAuthenticationError(
-                    "Unable to refresh the Netatmo OAuth token"
+                    f"OAuth token refresh failed: {err}"
                 ) from err
 
             return await self._post(
@@ -181,7 +190,13 @@ class LegrandEnergyApi(BaseApiClient):
                 )
 
             raise LegrandEnergyApiError(
-                f"POST request to {endpoint} failed with HTTP status {status}"
+                self._build_error_message(
+                    "GET",
+                    endpoint,
+                    status,
+                    error_code,
+                    data,
+                )
             )
 
         return data
@@ -192,8 +207,8 @@ class LegrandEnergyApi(BaseApiClient):
         force_refresh: bool = False,
     ) -> dict[str, Any]:
         """Return homes topology data."""
-        if self._homes_cache is not None and not force_refresh:
-            return self._homes_cache
+        if self._homes_data is not None and not force_refresh:
+            return self._homes_data
 
         data = await self._get(
             "homesdata",
@@ -204,7 +219,7 @@ class LegrandEnergyApi(BaseApiClient):
             },
         )
 
-        self._homes_cache = data
+        self._homes_data = data
         return data
 
     async def homestatus(self) -> dict[str, Any]:
@@ -301,10 +316,6 @@ class LegrandEnergyApi(BaseApiClient):
 
         return modules
 
-    async def update(self) -> dict[str, LegrandModule]:
-        """Discover and return available Legrand modules."""
-        return await self.discover_modules()
-
     async def get_home_measure(
         self,
         home_id: str,
@@ -340,9 +351,53 @@ class LegrandEnergyApi(BaseApiClient):
                 "date_end": date_end,
             },
             headers={
+                # Private endpoints require the web session token
+                # instead of the OAuth access token.
                 "Authorization": f"Bearer {web_token}",
                 "Referer": "https://home.netatmo.com/",
                 "Accept": "application/json, text/plain, */*",
             },
             retry=False,
+        )
+
+    def get_first_home_id(self) -> str | None:
+        """Return the first discovered home ID."""
+        homesdata = self._homes_data
+
+        if not isinstance(homesdata, dict):
+            return None
+
+        body = homesdata.get("body")
+        if not isinstance(body, dict):
+            return None
+
+        homes = body.get("homes")
+        if not isinstance(homes, list) or not homes:
+            return None
+
+        first_home = homes[0]
+        if not isinstance(first_home, dict):
+            return None
+
+        home_id = first_home.get("id")
+        return home_id if isinstance(home_id, str) else None
+
+    @staticmethod
+    def _build_error_message(
+        method: str,
+        endpoint: str,
+        status: int,
+        error_code: int | None,
+        data: dict[str, Any],
+    ) -> str:
+        """Build a readable API error message."""
+        message = None
+        error = data.get("error")
+
+        if isinstance(error, dict):
+            message = error.get("message")
+
+        return (
+            f"{method} request to {endpoint} failed "
+            f"(HTTP {status}, code={error_code}, message={message!r})"
         )
