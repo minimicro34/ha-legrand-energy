@@ -154,6 +154,6 @@
     }
   },
   "application_credentials": {
-    "description": "Créez une application dans le [portail développeur Netatmo]({console_url}). Ajoutez `https://<votre-url-home-assistant>/auth/external/callback` comme URI de redirection, puis saisissez le Client ID et le Client Secret."
+    "description": "Créez une application dans le portail développeur Netatmo. Ajoutez `https://<votre-url-home-assistant>/auth/external/callback` comme URI de redirection, puis saisissez le Client ID et le Client Secret."
   }
 }

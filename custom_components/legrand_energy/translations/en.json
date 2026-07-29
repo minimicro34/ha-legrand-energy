@@ -154,6 +154,6 @@
     }
   },
   "application_credentials": {
-    "description": "Create an application in the [Netatmo Developer Portal]({console_url}). Add `https://<your-home-assistant-url>/auth/external/callback` as a redirect URI, then enter the Client ID and Client Secret below."
+    "description": "Create an application in the Netatmo Developer Portal. Add `https://<your-home-assistant-url>/auth/external/callback` as a redirect URI, then enter the Client ID and Client Secret below."
   }
 }
