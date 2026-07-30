@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 import aiohttp
@@ -13,6 +14,8 @@ from .services.private import (
     PrivateAuthServiceAuthenticationError,
     PrivateAuthServiceError,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
 
@@ -62,10 +65,6 @@ class LegrandPrivateApi(BaseApiClient):
         """Return private API request headers."""
         return self._authentication.private_headers
 
-    def _can_refresh(self) -> bool:
-        """Return whether private authentication data is available."""
-        return bool(self._authentication.private.cookies)
-
     async def _get(
         self,
         base_url: str,
@@ -85,8 +84,19 @@ class LegrandPrivateApi(BaseApiClient):
         )
 
         if response.status in (401, 403):
-            if retry_auth and self._can_refresh():
+            _LOGGER.debug(
+                "Private API returned %s for %s, attempting authentication refresh",
+                response.status,
+                endpoint,
+            )
+
+            if retry_auth:
                 await self.refresh_web_token()
+
+                _LOGGER.debug(
+                    "Private authentication refreshed, retrying %s",
+                    endpoint,
+                )
 
                 return await self._get(
                     base_url,
@@ -96,8 +106,9 @@ class LegrandPrivateApi(BaseApiClient):
                 )
 
             raise LegrandPrivateApiAuthenticationError(
-                f"Private API request to {endpoint} "
-                f"failed with HTTP status {response.status}"
+                f"Private API request to {endpoint} failed with "
+                f"HTTP status {response.status} "
+                "after authentication refresh"
             )
 
         if response.status == 429:
@@ -128,6 +139,35 @@ class LegrandPrivateApi(BaseApiClient):
             APP_API_BASE,
             "homestatus",
             {"home_id": home_id},
+        )
+
+    async def get_home_measure(
+        self,
+        *,
+        home: dict[str, Any],
+        scale: str = "5min",
+        real_time: bool = True,
+        date_begin: int | None = None,
+        date_end: int | None = None,
+    ) -> dict[str, Any]:
+        """Return historical or real-time measurements."""
+
+        params: dict[str, Any] = {
+            "home": json.dumps(home, separators=(",", ":")),
+            "real_time": str(real_time).lower(),
+            "scale": scale,
+        }
+
+        if date_begin is not None:
+            params["date_begin"] = date_begin
+
+        if date_end is not None:
+            params["date_end"] = date_end
+
+        return await self._get(
+            APP_API_BASE,
+            "gethomemeasure",
+            params,
         )
 
     async def get_measure(
@@ -233,11 +273,24 @@ class LegrandPrivateApi(BaseApiClient):
 
     async def refresh_web_token(self) -> str:
         """Refresh the Netatmo private web access token."""
+
         try:
+            _LOGGER.debug("Refreshing Netatmo private authentication")
+
             session = await self._authentication.refresh_private()
+
+            _LOGGER.debug(
+                "Private authentication refreshed successfully, web_token=%s...",
+                session.web_token[:8],
+            )
+
         except PrivateAuthServiceAuthenticationError as err:
-            raise LegrandPrivateApiAuthenticationError(str(err)) from err
+            raise LegrandPrivateApiAuthenticationError(
+                f"Unable to refresh private Netatmo authentication: {err}"
+            ) from err
         except PrivateAuthServiceError as err:
-            raise LegrandPrivateApiError(str(err)) from err
+            raise LegrandPrivateApiError(
+                f"Unable to refresh private Netatmo session: {err}"
+            ) from err
 
         return session.web_token

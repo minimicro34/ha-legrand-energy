@@ -17,6 +17,7 @@ from .private_api import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
 _CACHE_DURATION = timedelta(hours=1)
 
 
@@ -34,9 +35,7 @@ class ContractService:
         now = dt_util.now()
 
         cache_is_valid = (
-            self._contract is not None
-            and self._last_update is not None
-            and now - self._last_update < _CACHE_DURATION
+            self._last_update is not None and now - self._last_update < _CACHE_DURATION
         )
 
         if cache_is_valid:

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 import aiohttp
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
 from .models.auth import PrivateSession
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AuthenticationStore(Protocol):
@@ -143,7 +146,18 @@ class AuthenticationManager:
         """Refresh, persist and return the private authentication session."""
         session = self.private
 
+        _LOGGER.debug(
+            "Refreshing private session (old token=%s...)",
+            session.web_token[:8],
+        )
+
         await self._private_service.refresh(session)
+
+        _LOGGER.debug(
+            "Private session refreshed (new token=%s...)",
+            session.web_token[:8],
+        )
+
         await self._store.async_save_private(session)
 
         return session

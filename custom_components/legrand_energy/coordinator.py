@@ -27,6 +27,7 @@ from .models import (
     LegrandProjections,
 )
 from .models.contract import Contract
+from .module_service import ModuleService
 from .private_api import (
     LegrandPrivateApi,
     LegrandPrivateApiAuthenticationError,
@@ -59,6 +60,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
 
         self.api = api
+        self._module_service = ModuleService(api)
+
         self._contract_service = (
             ContractService(private_api) if private_api is not None else None
         )
@@ -69,7 +72,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
     async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""
         try:
-            modules = await self.api.discover_modules()
+            modules = await self._module_service.async_get()
 
             contract: Contract | None = None
             tariff: TariffState | None = None

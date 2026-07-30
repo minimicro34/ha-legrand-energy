@@ -191,7 +191,7 @@ class LegrandEnergyApi(BaseApiClient):
 
             raise LegrandEnergyApiError(
                 self._build_error_message(
-                    "GET",
+                    "POST",
                     endpoint,
                     status,
                     error_code,

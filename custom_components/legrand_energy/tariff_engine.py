@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from homeassistant.util import dt as dt_util
+
 from .models.contract import Contract
 
 MINUTES_PER_DAY = 24 * 60
@@ -106,7 +108,7 @@ class TariffEngine:
         when: datetime | None = None,
     ) -> TariffState:
         """Return current tariff state."""
-        return self.state_at(datetime.now().astimezone() if when is None else when)
+        return self.state_at(dt_util.now() if when is None else when)
 
     def current_price(
         self,
@@ -145,8 +147,8 @@ class TariffEngine:
 
     @staticmethod
     def _as_local_aware(when: datetime) -> datetime:
-        """Return a timezone-aware local datetime."""
+        """Return a timezone-aware Home Assistant local datetime."""
         if when.tzinfo is None:
-            return when.astimezone()
+            return when.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
 
-        return when.astimezone()
+        return dt_util.as_local(when)

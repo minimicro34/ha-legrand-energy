@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Mapping
 from http.cookies import Morsel
 from urllib.parse import unquote
@@ -11,6 +12,8 @@ import aiohttp
 from yarl import URL
 
 from custom_components.legrand_energy.models.auth import PrivateSession
+
+_LOGGER = logging.getLogger(__name__)
 
 AUTH_BASE = "https://auth.netatmo.com"
 HOME_DASHBOARD_URL = "https://home.netatmo.com/control/dashboard"
@@ -363,30 +366,44 @@ class PrivateAuthService:
                         "User-Agent": USER_AGENT,
                     },
                 ) as response:
+                    if response.status not in (200, 302, 303):
+                        raise PrivateAuthServiceAuthenticationError(
+                            "Netatmo checklogin failed with "
+                            f"HTTP status {response.status}"
+                        )
+
+                    location = response.headers.get("Location", "")
+                    if "login" in location.casefold():
+                        raise PrivateAuthServiceAuthenticationError(
+                            "Netatmo redirected to the login page "
+                            "while refreshing the private session"
+                        )
+
                     access_cookie = response.cookies.get(ACCESS_TOKEN_COOKIE)
 
                     if access_cookie is None:
-                        home_cookies = self._session.cookie_jar.filter_cookies(
-                            URL("https://home.netatmo.com")
-                        )
-                        access_cookie = home_cookies.get(ACCESS_TOKEN_COOKIE)
-
-                    if access_cookie is None:
                         raise PrivateAuthServiceAuthenticationError(
-                            f"Netatmo checklogin did not return {ACCESS_TOKEN_COOKIE}"
+                            "Netatmo checklogin did not return a new access token"
                         )
 
-                    new_web_token = unquote(str(access_cookie.value))
+                    new_web_token = unquote(access_cookie.value)
 
                     if new_web_token.casefold() == "deleted" or len(new_web_token) < 20:
                         raise PrivateAuthServiceAuthenticationError(
                             "Netatmo did not return a valid web access token"
                         )
 
+                    if new_web_token == session.web_token:
+                        _LOGGER.debug(
+                            "Netatmo refresh returned the same web token value"
+                        )
+
                     self._update_rotated_cookies(
                         session,
                         response.cookies,
                     )
+
+                    session.web_token = new_web_token
 
             except PrivateAuthServiceError:
                 raise
@@ -400,8 +417,6 @@ class PrivateAuthService:
                 raise PrivateAuthServiceError(
                     f"Netatmo web-token refresh failed: {err}"
                 ) from err
-
-            session.web_token = new_web_token
 
     @staticmethod
     def _can_refresh(session: PrivateSession) -> bool:
@@ -441,6 +456,7 @@ class PrivateAuthService:
             value = str(cookie.value)
 
             if not value or value.casefold() == "deleted":
+                session.cookies.pop(cookie_name, None)
                 continue
 
             session.cookies[cookie_name] = value

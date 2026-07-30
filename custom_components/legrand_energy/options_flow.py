@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
@@ -55,7 +56,7 @@ class LegrandEnergyOptionsFlow(config_entries.OptionsFlow):
             except PrivateAuthServiceAuthenticationError:
                 errors["base"] = "invalid_auth"
 
-            except PrivateAuthServiceError:
+            except (PrivateAuthServiceError, aiohttp.ClientError, TimeoutError):
                 errors["base"] = "cannot_connect"
 
             else:

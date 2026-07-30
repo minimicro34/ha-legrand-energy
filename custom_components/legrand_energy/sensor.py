@@ -424,7 +424,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         value_fn=lambda data, _module: (
             data.contract.power_threshold if data.contract is not None else None
         ),
-        available_fn=lambda data, _module: data.contract is not None,
+        available_fn=lambda data, _module: (
+            data.contract is not None and data.contract.power_threshold is not None
+        ),
     ),
     LegrandSensorDescription(
         key="contract_tariff",
