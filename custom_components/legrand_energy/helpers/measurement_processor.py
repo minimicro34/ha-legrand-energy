@@ -131,6 +131,9 @@ class MeasurementProcessor:
         off_peak_price: float,
     ) -> float:
         """Calculate total cost from HP and HC energy."""
+        if points and all(point.price is not None for point in points):
+            return sum(point.price or 0.0 for point in points)
+
         peak_energy_wh = cls.energy_for_tariff(
             points,
             "HP",

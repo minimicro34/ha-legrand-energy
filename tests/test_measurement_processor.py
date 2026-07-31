@@ -41,3 +41,27 @@ def test_project_year_at_start_of_year() -> None:
 
     assert energy is None
     assert cost is None
+
+
+def test_calculate_cost_prefers_api_historical_prices() -> None:
+    """Use Home Control's accumulated prices when they are available."""
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    points = [
+        EnergyPoint(
+            timestamp=datetime(2026, 1, 1, tzinfo=UTC),
+            energy=1000.0,
+            price=0.18,
+        ),
+        EnergyPoint(
+            timestamp=datetime(2026, 1, 2, tzinfo=UTC),
+            energy=2000.0,
+            price=0.36,
+        ),
+    ]
+
+    assert MeasurementProcessor.calculate_cost(
+        points,
+        peak_price=99.0,
+        off_peak_price=99.0,
+    ) == pytest.approx(0.54)

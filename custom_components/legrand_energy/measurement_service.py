@@ -69,18 +69,32 @@ class MeasurementService:
         )
 
         try:
-            raw = await self._private_api.get_electricity_measures(
+            module_payload = [
+                (
+                    module.id,
+                    module.bridge,
+                )
+                for module in circuits
+                if module.bridge is not None
+            ]
+
+            historical_raw = (
+                await self._private_api.get_electricity_measures(
+                    home_id=home_id,
+                    modules=module_payload,
+                    date_begin=int(year_start.timestamp()),
+                    date_end=int(today_start.timestamp()) - 1,
+                    scale="1day",
+                )
+                if year_start < today_start
+                else {}
+            )
+            today_raw = await self._private_api.get_electricity_measures(
                 home_id=home_id,
-                modules=[
-                    (
-                        module.id,
-                        module.bridge,
-                    )
-                    for module in circuits
-                    if module.bridge is not None
-                ],
+                modules=module_payload,
                 date_begin=int(today_start.timestamp()),
                 date_end=int(now.timestamp()),
+                scale="5min",
             )
 
         except (
@@ -104,7 +118,16 @@ class MeasurementService:
 
             return None, {}, None
 
-        points_by_module = decode_energy_points_by_module(raw)
+        historical_points = decode_energy_points_by_module(historical_raw)
+        today_points_by_module = decode_energy_points_by_module(today_raw)
+        points_by_module = {
+            module_id: sorted(
+                historical_points.get(module_id, [])
+                + today_points_by_module.get(module_id, []),
+                key=lambda point: point.timestamp,
+            )
+            for module_id in historical_points.keys() | today_points_by_module.keys()
+        }
 
         if contract is None:
             peak_price = 0.0
