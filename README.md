@@ -12,16 +12,26 @@ The integration automatically discovers your EcoMeter installation and electrica
 
 ---
 
+# What's new in 1.0.3
+
+- Removed the redundant peak-hours binary sensor that appeared as an unnamed `Legrand EcoMeter` entity.
+- Added automatic cleanup for both current and legacy entity identifiers.
+- Kept the useful off-peak-hours sensor for dashboards and automations.
+
+After updating through HACS, restart Home Assistant or reload the integration. Recreating the integration is not required.
+
+---
+
 # Features
 
 ## Supported features
 
 - ⚡ Automatic EcoMeter discovery
 - 🔌 Automatic circuit discovery
-- 📊 Energy consumption
+- 📊 Daily, weekly, monthly, and yearly energy consumption
 - 💶 Electricity cost calculation
 - 🟢 Peak / Off-peak tariff detection
-- 📈 Consumption projections
+- 📈 Daily, monthly, and yearly energy and cost projections
 - 📋 Electricity contract retrieval
 - 🔄 Automatic OAuth token refresh
 - 🔐 Automatic private session renewal
@@ -40,7 +50,8 @@ The integration automatically discovers your EcoMeter installation and electrica
 
 ## Known limitations
 
-- Historical measurements currently start from the first successful synchronization.
+- Week, month, and year totals use the historical measurements available from Home + Control for the current calendar year.
+- Historical totals before January 1 of the current year are not exposed as entities.
 - Some advanced features rely on undocumented Netatmo web services.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
 ---
