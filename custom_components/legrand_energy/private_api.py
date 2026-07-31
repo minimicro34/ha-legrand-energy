@@ -238,6 +238,7 @@ class LegrandPrivateApi(BaseApiClient):
         modules: list[tuple[str, str]],
         date_begin: int,
         date_end: int,
+        scale: str = "5min",
     ) -> dict[str, Any]:
         """Return electricity measurements for multiple modules."""
         home_payload = {
@@ -257,7 +258,7 @@ class LegrandPrivateApi(BaseApiClient):
             "gethomemeasure",
             {
                 "home": json.dumps(home_payload),
-                "scale": "5min",
+                "scale": scale,
                 "date_begin": date_begin,
                 "date_end": date_end,
             },

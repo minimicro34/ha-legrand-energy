@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from calendar import monthrange
+from calendar import isleap, monthrange
 from datetime import datetime
 
 from homeassistant.util import dt as dt_util
@@ -131,6 +131,9 @@ class MeasurementProcessor:
         off_peak_price: float,
     ) -> float:
         """Calculate total cost from HP and HC energy."""
+        if points and all(point.price is not None for point in points):
+            return sum(point.price or 0.0 for point in points)
+
         peak_energy_wh = cls.energy_for_tariff(
             points,
             "HP",
@@ -168,11 +171,19 @@ class MeasurementProcessor:
             cost_month=(measurements.cost_month),
         )
 
+        projected_energy_year, projected_cost_year = cls.project_year(
+            now=now,
+            energy_year=measurements.energy_year,
+            cost_year=measurements.cost_year,
+        )
+
         return LegrandProjections(
             energy_end_of_day=(today_projection.projected_energy / 1000),
             energy_end_of_month=(projected_energy_month),
+            energy_end_of_year=projected_energy_year,
             cost_end_of_day=(today_projection.projected_cost),
             cost_end_of_month=(projected_cost_month),
+            cost_end_of_year=projected_cost_year,
         )
 
     @staticmethod
@@ -213,6 +224,28 @@ class MeasurementProcessor:
         return (
             projected_energy,
             projected_cost,
+        )
+
+    @staticmethod
+    def project_year(
+        *,
+        now: datetime,
+        energy_year: float | None,
+        cost_year: float | None,
+    ) -> tuple[float | None, float | None]:
+        """Project current year totals from elapsed year time."""
+        days_in_year = 366 if isleap(now.year) else 365
+        seconds_today = now.hour * 3600 + now.minute * 60 + now.second
+        elapsed_days = now.timetuple().tm_yday - 1 + seconds_today / SECONDS_PER_DAY
+
+        if elapsed_days <= 0:
+            return None, None
+
+        factor = days_in_year / elapsed_days
+
+        return (
+            energy_year * factor if energy_year is not None else None,
+            cost_year * factor if cost_year is not None else None,
         )
 
     @staticmethod

@@ -216,6 +216,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_energy_today",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
             data.projections.energy_end_of_day if data.projections is not None else None
@@ -230,6 +231,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_energy_month",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
         value_fn=lambda data, _module: (
             data.projections.energy_end_of_month
@@ -239,6 +241,23 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         available_fn=lambda data, _module: (
             data.projections is not None
             and data.projections.energy_end_of_month is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="projected_energy_year",
+        translation_key="projected_energy_year",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=3,
+        value_fn=lambda data, _module: (
+            data.projections.energy_end_of_year
+            if data.projections is not None
+            else None
+        ),
+        available_fn=lambda data, _module: (
+            data.projections is not None
+            and data.projections.energy_end_of_year is not None
         ),
     ),
     _global_measurement_description(
@@ -306,6 +325,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_cost_today",
         device_class=SensorDeviceClass.MONETARY,
         native_unit_of_measurement=CURRENCY_EURO,
+        state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
             data.projections.cost_end_of_day if data.projections is not None else None
@@ -320,6 +340,7 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         translation_key="projected_cost_month",
         device_class=SensorDeviceClass.MONETARY,
         native_unit_of_measurement=CURRENCY_EURO,
+        state_class=SensorStateClass.TOTAL,
         suggested_display_precision=2,
         value_fn=lambda data, _module: (
             data.projections.cost_end_of_month if data.projections is not None else None
@@ -327,6 +348,21 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         available_fn=lambda data, _module: (
             data.projections is not None
             and data.projections.cost_end_of_month is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="projected_cost_year",
+        translation_key="projected_cost_year",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=CURRENCY_EURO,
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=2,
+        value_fn=lambda data, _module: (
+            data.projections.cost_end_of_year if data.projections is not None else None
+        ),
+        available_fn=lambda data, _module: (
+            data.projections is not None
+            and data.projections.cost_end_of_year is not None
         ),
     ),
     _global_measurement_description(

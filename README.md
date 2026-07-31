@@ -142,8 +142,10 @@ Credentials are stored using Home Assistant's secure storage facilities.
 
 - Projected energy today
 - Projected energy this month
+- Projected energy this year
 - Projected cost today
 - Projected cost this month
+- Projected cost this year
 
 ### Contract
 
