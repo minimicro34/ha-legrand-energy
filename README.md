@@ -128,8 +128,15 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Energy this week
 - Energy this month
 - Energy this year
+- Projected energy today
+- Projected energy this month
+- Projected energy this year
 
 ### Costs
+
+- Projected cost today
+- Projected cost this month
+- Projected cost this year
 
 - Cost today
 - Peak cost today

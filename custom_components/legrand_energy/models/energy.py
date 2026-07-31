@@ -49,8 +49,10 @@ class LegrandProjections:
 
     energy_end_of_day: float | None = None
     energy_end_of_month: float | None = None
+    energy_end_of_year: float | None = None
     cost_end_of_day: float | None = None
     cost_end_of_month: float | None = None
+    cost_end_of_year: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
