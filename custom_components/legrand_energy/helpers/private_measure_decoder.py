@@ -84,14 +84,21 @@ def decode_energy_points_by_module(
                 if not isinstance(row, list):
                     continue
 
-                energy = _first_number(
+                energy = _number_at(
                     row,
-                    ENERGY_INDEXES,
+                    0,
                 )
+
+                if energy is None:
+                    energy = _sum_numbers(
+                        row,
+                        ENERGY_INDEXES,
+                    )
+
                 if energy is None:
                     continue
 
-                price = _first_number(
+                price = _sum_numbers(
                     row,
                     PRICE_INDEXES,
                 )
@@ -102,8 +109,8 @@ def decode_energy_points_by_module(
                             beg_time + index * step_time,
                             UTC,
                         ),
-                        energy=float(energy),
-                        price=(float(price) if price is not None else None),
+                        energy=energy,
+                        price=price,
                     )
                 )
 
@@ -115,18 +122,39 @@ def decode_energy_points_by_module(
     return result
 
 
-def _first_number(
-    row: list[Any],
+def _sum_numbers(
+    row: list[object],
     indexes: tuple[int, ...],
-) -> float | int | None:
-    """Return the first numeric value from the requested indexes."""
+) -> float | None:
+    """Sum all numeric values at the requested indexes."""
+
+    total = 0.0
+    found = False
+
     for index in indexes:
         if index >= len(row):
             continue
 
         value = row[index]
 
-        if isinstance(value, int | float):
-            return value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            total += float(value)
+            found = True
+
+    return total if found else None
+
+
+def _number_at(
+    row: list[object],
+    index: int,
+) -> float | None:
+    """Return a numeric value at the requested index."""
+    if index >= len(row):
+        return None
+
+    value = row[index]
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
 
     return None

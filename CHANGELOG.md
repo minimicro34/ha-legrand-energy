@@ -6,6 +6,15 @@ The format is based on Keep a Changelog.
 
 ---
 
+## 1.0.5 - 2026-08-03
+
+### Fixed
+- Fixed parsing of `gethomemeasure` responses using the compact `sum_energy_elec` format.
+- Added automatic fallback between total energy (`sum_energy_elec`) and tariff-specific values (`sum_energy_elec$0/$1/$2`).
+- Improved compatibility with different Legrand Energy API response formats.
+
+---
+
 ## [1.0.4] - 2026-08-02
 
 ### Changed
