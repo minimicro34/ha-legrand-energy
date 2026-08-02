@@ -145,17 +145,17 @@ class AuthenticationManager:
     async def refresh_private(self) -> PrivateSession:
         """Refresh, persist and return the private authentication session."""
         session = self.private
-
-        _LOGGER.debug(
-            "Refreshing private session (old token=%s...)",
-            session.web_token[:8],
-        )
+        old_token = session.web_token
 
         await self._private_service.refresh(session)
 
         _LOGGER.debug(
-            "Private session refreshed (new token=%s...)",
+            "Private session refreshed (changed=%s, old=%s...%s, new=%s...%s)",
+            old_token != session.web_token,
+            old_token[:8],
+            old_token[-8:],
             session.web_token[:8],
+            session.web_token[-8:],
         )
 
         await self._store.async_save_private(session)

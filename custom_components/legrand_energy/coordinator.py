@@ -122,15 +122,23 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
 
         except LegrandPrivateApiRateLimitError as err:
             if self.data is not None:
-                _LOGGER.debug("Netatmo API rate limit reached, keeping previous values")
+                _LOGGER.warning(
+                    "Netatmo API rate limit reached, keeping previous values",
+                )
                 return self.data
 
             raise UpdateFailed("Netatmo API rate limit exceeded") from err
 
         except LegrandPrivateApiAuthenticationError as err:
-            raise ConfigEntryAuthFailed(
-                "Private Netatmo authentication expired"
-            ) from err
+            if self.data is not None:
+                _LOGGER.warning(
+                    "Private Netatmo authentication failed, "
+                    "keeping previous values: %s",
+                    err,
+                )
+                return self.data
+
+            raise UpdateFailed(f"Private Netatmo authentication failed: {err}") from err
 
         except LegrandEnergyAuthenticationError as err:
             raise ConfigEntryAuthFailed("Netatmo OAuth authentication expired") from err

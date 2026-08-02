@@ -22,13 +22,14 @@ def get_main_module_id(
         if module.type == "NLE" and "#" not in module_id:
             return module_id
 
-    # Fallback: find a module referenced as the bridge by a child circuit.
+    # Fallback: find the NLE module referenced as the bridge
+    # by one or more child circuits.
     referenced_bridges = {
         module.bridge for module in modules.values() if module.bridge is not None
     }
 
-    for module_id in modules:
-        if module_id in referenced_bridges:
+    for module_id, module in modules.items():
+        if module.type == "NLE" and module_id in referenced_bridges:
             return module_id
 
     return None
@@ -50,22 +51,17 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
         self._module_id = module_id
 
         module = coordinator.data.modules[module_id]
-        main_module_id = get_main_module_id(coordinator)
-
-        is_main_module = module_id == main_module_id
+        is_main_module = module_id == get_main_module_id(coordinator)
 
         device_info = DeviceInfo(
-            identifiers={(DOMAIN, module.id)},
+            identifiers={(DOMAIN, module_id)},
             manufacturer=MANUFACTURER,
-            model=("EcoMeter" if is_main_module else "EcoMeter Circuit"),
+            model="EcoMeter" if is_main_module else "EcoMeter Circuit",
             name=module.name,
         )
 
         if not is_main_module and module.bridge is not None:
-            device_info["via_device"] = (
-                DOMAIN,
-                module.bridge,
-            )
+            device_info["via_device"] = (DOMAIN, module.bridge)
 
         self._attr_device_info = device_info
 
