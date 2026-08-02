@@ -3,6 +3,8 @@
 [![GitHub release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
 [![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE)
+[![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](...)
+[![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](...)
 
 A Home Assistant custom integration for **Legrand EcoMeter** installations using **Home + Control / Netatmo** services.
 
@@ -12,30 +14,38 @@ The integration automatically discovers your EcoMeter installation and electrica
 
 ---
 
-# What's new in 1.0.3
+## Features
 
-- Removed the redundant peak-hours binary sensor that appeared as an unnamed `Legrand EcoMeter` entity.
-- Added automatic cleanup for both current and legacy entity identifiers.
-- Kept the useful off-peak-hours sensor for dashboards and automations.
+### Energy monitoring
 
-After updating through HACS, restart Home Assistant or reload the integration. Recreating the integration is not required.
+- ⚡ Automatic EcoMeter and circuit discovery
+- 📊 Daily, weekly, monthly and yearly energy consumption
+- 💶 Energy cost calculation
+- 📈 Energy and cost projections
+- 🔌 Per-circuit energy and cost monitoring
 
----
+### Tariffs & contract
 
-# Features
-
-## Supported features
-
-- ⚡ Automatic EcoMeter discovery
-- 🔌 Automatic circuit discovery
-- 📊 Daily, weekly, monthly, and yearly energy consumption
-- 💶 Electricity cost calculation
+- 📋 Electricity contract information
 - 🟢 Peak / Off-peak tariff detection
-- 📈 Daily, monthly, and yearly energy and cost projections
-- 📋 Electricity contract retrieval
+- 💲 Current electricity price
+- ⏰ Next tariff change
+
+### Home Assistant
+
+- 🏠 Energy Dashboard compatible
+- 🔄 Config Flow
+- 🔐 OAuth2 authentication
+- ⚙️ Options Flow
+- 🩺 Diagnostics support
+- 📦 HACS compatible
+
+### Reliability
+
 - 🔄 Automatic OAuth token refresh
 - 🔐 Automatic private session renewal
-- 🩺 Diagnostics support
+- 🛡️ Automatic recovery from temporary API errors
+- 📉 Graceful handling of Netatmo API rate limits
 
 ## Integration
 
@@ -52,7 +62,7 @@ After updating through HACS, restart Home Assistant or reload the integration. R
 
 - Week, month, and year totals use the historical measurements available from Home + Control for the current calendar year.
 - Historical totals before January 1 of the current year are not exposed as entities.
-- Some advanced features rely on undocumented Netatmo web services.
+- Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo. features rely on undocumented Netatmo web services.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
 ---
 
@@ -202,12 +212,9 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 
 # Roadmap
 
-- Historical statistics
-- Instantaneous power
 - Water measurements
 - Gas measurements
 - Additional Legrand energy devices
-- Energy Dashboard improvements
 - Additional diagnostics
 
 ---
@@ -223,10 +230,16 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 Run the following checks before submitting changes:
 
 ```bash
-python3.13 -m ruff check .
-python3.13 -m ruff format --check .
-python3.13 -m mypy custom_components/legrand_energy
-python3.13 -m pytest -v
+python3 -m compileall custom_components
+
+ruff check .
+ruff format --check .
+
+mypy custom_components/legrand_energy
+
+pytest -v
+
+git diff --check
 ```
 
 ---
