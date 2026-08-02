@@ -71,3 +71,28 @@ The format is based on Keep a Changelog.
 - Automatic circuit discovery.
 - Automatic OAuth token refresh.
 - Automatic private Netatmo session management.
+
+---
+
+## [1.0.0]
+
+🎉 First stable release
+
+Initial stable release of the Legrand Energy integration for Home Assistant.
+
+- Features
+- OAuth2 authentication
+- Private API support
+- Electricity contract parsing
+- Peak / Off-Peak tariff detection
+- Current tariff and next change sensors
+- Daily, monthly and yearly consumption
+- Cost calculation
+- Consumption projections
+- Diagnostics support
+- HACS compatible
+- Quality
+- Full type checking with mypy
+- Ruff formatted
+- Automated tests
+- Home Assistant best practices
