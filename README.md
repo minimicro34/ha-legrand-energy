@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
 [![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
-[![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE)
+[![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE.md)
 [![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml)
 
 A Home Assistant custom integration for **Legrand EcoMeter** installations using **Home + Control / Netatmo** services.
