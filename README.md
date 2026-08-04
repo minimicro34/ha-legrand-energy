@@ -243,12 +243,13 @@ Each cold or hot water circuit exposes:
 - Consumption this week
 - Consumption this month
 - Consumption this year
+
+When Home + Control provides water pricing information, the following entities are also available:
+
 - Cost today
 - Cost this week
 - Cost this month
 - Cost this year
-
-Water consumption is exposed in litres.
 
 ### Gas circuits
 
@@ -258,6 +259,9 @@ Each gas circuit exposes:
 - Consumption this week
 - Consumption this month
 - Consumption this year
+
+When Home + Control provides water pricing information, the following entities are also available:
+
 - Cost today
 - Cost this week
 - Cost this month
