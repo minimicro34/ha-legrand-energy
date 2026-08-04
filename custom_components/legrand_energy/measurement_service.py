@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from homeassistant.util import dt as dt_util
 
+from .helpers.energy_series import EnergyPoint
 from .helpers.measurement_processor import MeasurementProcessor
 from .helpers.private_measure_decoder import decode_energy_points_by_module
 from .models import (
@@ -26,6 +27,8 @@ from .tariff_engine import TariffEngine
 
 _LOGGER = logging.getLogger(__name__)
 
+HISTORICAL_RETRY_INTERVAL = timedelta(minutes=15)
+
 
 class MeasurementService:
     """Fetch and process electricity measurements."""
@@ -33,6 +36,9 @@ class MeasurementService:
     def __init__(self, private_api: LegrandPrivateApi) -> None:
         """Initialize the measurement service."""
         self._private_api = private_api
+        self._historical_points_by_module: dict[str, list[EnergyPoint]] = {}
+        self._historical_cache_date: date | None = None
+        self._historical_retry_at: datetime | None = None
 
     async def async_get_all(
         self,
@@ -68,27 +74,56 @@ class MeasurementService:
             day=1,
         )
 
-        try:
-            module_payload = [
-                (
-                    module.id,
-                    module.bridge,
-                )
-                for module in circuits
-                if module.bridge is not None
-            ]
-
-            historical_raw = (
-                await self._private_api.get_electricity_measures(
-                    home_id=home_id,
-                    modules=module_payload,
-                    date_begin=int(year_start.timestamp()),
-                    date_end=int(today_start.timestamp()) - 1,
-                    scale="1day",
-                )
-                if year_start < today_start
-                else {}
+        module_payload = [
+            (
+                module.id,
+                module.bridge,
             )
+            for module in circuits
+            if module.bridge is not None
+        ]
+
+        should_refresh_history = self._historical_cache_date != today_start.date() and (
+            self._historical_retry_at is None or now >= self._historical_retry_at
+        )
+
+        if should_refresh_history:
+            try:
+                historical_raw = (
+                    await self._private_api.get_electricity_measures(
+                        home_id=home_id,
+                        modules=module_payload,
+                        date_begin=int(year_start.timestamp()),
+                        date_end=int(today_start.timestamp()) - 1,
+                        scale="1day",
+                    )
+                    if year_start < today_start
+                    else {}
+                )
+
+            except (
+                LegrandPrivateApiAuthenticationError,
+                LegrandPrivateApiRateLimitError,
+            ):
+                raise
+
+            except LegrandPrivateApiError as err:
+                self._historical_retry_at = now + HISTORICAL_RETRY_INTERVAL
+
+                _LOGGER.warning(
+                    "Unable to update historical private measurements, "
+                    "keeping cached data: %s",
+                    err,
+                )
+
+            else:
+                self._historical_points_by_module = decode_energy_points_by_module(
+                    historical_raw
+                )
+                self._historical_cache_date = today_start.date()
+                self._historical_retry_at = None
+
+        try:
             today_raw = await self._private_api.get_electricity_measures(
                 home_id=home_id,
                 modules=module_payload,
@@ -105,7 +140,8 @@ class MeasurementService:
 
         except LegrandPrivateApiError as err:
             _LOGGER.warning(
-                "Unable to update private measurements, keeping cached data: %s",
+                "Unable to update current-day private measurements, "
+                "keeping cached data: %s",
                 err,
             )
 
@@ -118,8 +154,9 @@ class MeasurementService:
 
             return None, {}, None
 
-        historical_points = decode_energy_points_by_module(historical_raw)
+        historical_points = self._historical_points_by_module
         today_points_by_module = decode_energy_points_by_module(today_raw)
+
         points_by_module = {
             module_id: sorted(
                 historical_points.get(module_id, [])
@@ -162,11 +199,13 @@ class MeasurementService:
             )
 
         total_module = MeasurementProcessor.find_total_module(modules)
+
         measurements = (
             measurements_by_module.get(total_module.id)
             if total_module is not None
             else None
         )
+
         projections = (
             MeasurementProcessor.build_projections(
                 measurements=measurements,
