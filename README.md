@@ -36,14 +36,23 @@ It automatically discovers your electrical, water and gas circuits and provides 
 
 ## Contents
 
-- Features
-- Supported devices
-- Installation
-- Configuration
-- Available entities
-- Diagnostics
-- Troubleshooting
-- Roadmap
+- [Features](#features)
+- [Known limitations](#known-limitations)
+- [Supported devices](#supported-devices)
+- [Compatibility](#compatibility)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Available entities](#available-entities)
+- [API rate limits](#api-rate-limits)
+- [Private authentication](#private-authentication)
+- [Roadmap](#roadmap)
+- [Screenshots](#screenshots)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer)
+- [Support](#support)
+- [License](#license)
 
 ---
 
