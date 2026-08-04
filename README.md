@@ -46,6 +46,7 @@ The integration automatically discovers your EcoMeter installation and electrica
 - 🔐 Automatic private session renewal
 - 🛡️ Automatic recovery from temporary API errors
 - 📉 Graceful handling of Netatmo API rate limits
+- 🚀 Intelligent caching of historical measurements to reduce private API traffic
 
 ## Integration
 

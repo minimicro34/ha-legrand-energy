@@ -6,6 +6,27 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.0.6] - 2026-08-04
+
+### Changed
+
+- Cached historical (`scale=1day`) private measurements in memory.
+- Historical measurements are now refreshed only:
+  - at startup,
+  - after a day change,
+  - after a 15-minute retry delay following a temporary failure.
+- Current-day (`scale=5min`) measurements continue to refresh every coordinator update.
+- Refactored the private measurement decoder for improved readability and maintainability.
+
+### Improved
+
+- Significantly reduced calls to the Netatmo private `gethomemeasure` endpoint.
+- Reduced the risk of HTTP 500/502 errors caused by repeated historical requests.
+- Historical measurements are preserved during temporary private API failures.
+- Expanded unit test coverage for measurement caching and private response decoding.
+
+---
+
 ## 1.0.5 - 2026-08-03
 
 ### Fixed
