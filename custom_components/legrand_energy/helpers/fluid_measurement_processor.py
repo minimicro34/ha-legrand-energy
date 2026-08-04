@@ -40,11 +40,8 @@ class FluidMeasurementProcessor:
         )
 
     @staticmethod
-    def _sum_consumption(points: list[EnergyPoint]) -> float | None:
+    def _sum_consumption(points: list[EnergyPoint]) -> float:
         """Return the sum of available consumption values."""
-        if not points:
-            return None
-
         return sum(point.energy for point in points)
 
     @staticmethod

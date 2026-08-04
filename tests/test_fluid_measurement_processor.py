@@ -93,8 +93,8 @@ def test_missing_costs_return_none() -> None:
     assert measurements.cost_today is None
 
 
-def test_empty_points_return_none() -> None:
-    """Return no totals for an empty series."""
+def test_empty_points_return_zero_consumption() -> None:
+    """Return zero consumption and no cost for an empty series."""
     measurements = FluidMeasurementProcessor.build_measurements(
         today_points=[],
         week_points=[],
@@ -102,7 +102,12 @@ def test_empty_points_return_none() -> None:
         year_points=[],
     )
 
-    assert measurements.consumption_today is None
-    assert measurements.consumption_year is None
+    assert measurements.consumption_today == 0.0
+    assert measurements.consumption_week == 0.0
+    assert measurements.consumption_month == 0.0
+    assert measurements.consumption_year == 0.0
+
     assert measurements.cost_today is None
+    assert measurements.cost_week is None
+    assert measurements.cost_month is None
     assert measurements.cost_year is None
