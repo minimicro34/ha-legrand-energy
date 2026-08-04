@@ -1,26 +1,28 @@
-"""Tests for fluid measurement definitions."""
+"""Tests for fluid type helpers."""
 
 import pytest
 
-from custom_components.legrand_energy.helpers.fluid_types import (
-    PRIVATE_MEASURE_TYPE_ELECTRICITY,
-    PRIVATE_MEASURE_TYPE_FLUID,
-    private_measure_type,
-)
+from custom_components.legrand_energy.helpers.fluid_types import detect_fluid_type
 from custom_components.legrand_energy.models import FluidType
 
 
 @pytest.mark.parametrize(
-    ("fluid_type", "expected"),
+    ("module_id", "module_name", "expected"),
     [
-        (FluidType.ELECTRICITY, PRIVATE_MEASURE_TYPE_ELECTRICITY),
-        (FluidType.WATER, PRIVATE_MEASURE_TYPE_FLUID),
-        (FluidType.GAS, PRIVATE_MEASURE_TYPE_FLUID),
+        ("bridge#0", "Chauffe Eau", FluidType.ELECTRICITY),
+        ("bridge#5", "Total", FluidType.ELECTRICITY),
+        ("bridge#6", "Gaz", FluidType.GAS),
+        ("bridge#7", "Eau chaude", FluidType.WATER),
+        ("bridge#8", "Eau froide", FluidType.WATER),
+        ("other", "Gaz", FluidType.GAS),
+        ("other", "Eau jardin", FluidType.WATER),
+        ("other", "Water garden", FluidType.WATER),
     ],
 )
-def test_private_measure_type(
-    fluid_type: FluidType,
-    expected: str,
+def test_detect_fluid_type(
+    module_id: str,
+    module_name: str,
+    expected: FluidType,
 ) -> None:
-    """Return the correct private API measurement fields."""
-    assert private_measure_type(fluid_type) == expected
+    """Detect the fluid type from module metadata."""
+    assert detect_fluid_type(module_id, module_name) is expected

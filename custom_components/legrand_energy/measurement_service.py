@@ -78,10 +78,15 @@ class MeasurementService:
             scale=scale,
         )
 
-        return decode_points_by_module(
+        points_by_module = decode_points_by_module(
             raw,
             fluid_type=fluid_type,
         )
+
+        for module_id, _bridge in modules:
+            points_by_module.setdefault(module_id, [])
+
+        return points_by_module
 
     async def async_get_all(
         self,
@@ -98,7 +103,7 @@ class MeasurementService:
         dict[str, FluidMeasurements],
         LegrandProjections | None,
     ]:
-        """Fetch and calculate measurements for every electricity module."""
+        """Fetch and calculate measurements for every supported module."""
         circuits = [module for module in modules.values() if module.bridge is not None]
 
         if not circuits:
@@ -123,18 +128,16 @@ class MeasurementService:
             circuits,
             FluidType.ELECTRICITY,
         )
-
         water_modules = self._modules_for_fluid(
             circuits,
             FluidType.WATER,
         )
-
         gas_modules = self._modules_for_fluid(
             circuits,
             FluidType.GAS,
         )
 
-        if not electricity_modules:
+        if not (electricity_modules or water_modules or gas_modules):
             return None, {}, {}, {}, None
 
         should_refresh_history = self._historical_cache_date != today_start.date() and (
@@ -308,9 +311,6 @@ class MeasurementService:
                 points,
                 year_start,
             )
-
-            if not today_points:
-                continue
 
             fluid_measurements = FluidMeasurementProcessor.build_measurements(
                 today_points=today_points,

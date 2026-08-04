@@ -30,17 +30,18 @@ def detect_fluid_type(
     module_name: str,
 ) -> FluidType:
     """Detect the fluid type exposed by a Legrand module."""
-    normalized = module_name.casefold()
+    normalized_name = module_name.casefold().strip()
 
-    if module_id.endswith("#6") or "gaz" in normalized or "gas" in normalized:
+    if module_id.endswith("#6"):
         return FluidType.GAS
 
-    if (
-        module_id.endswith("#7")
-        or module_id.endswith("#8")
-        or "eau" in normalized
-        or "water" in normalized
-    ):
+    if module_id.endswith(("#7", "#8")):
+        return FluidType.WATER
+
+    if normalized_name in {"gaz", "gas"}:
+        return FluidType.GAS
+
+    if normalized_name.startswith(("eau ", "water ")):
         return FluidType.WATER
 
     return FluidType.ELECTRICITY
