@@ -828,16 +828,39 @@ GAS_SENSOR_DESCRIPTIONS = _fluid_sensor_descriptions(
 
 
 def _descriptions_for_module(
+    data: LegrandEnergyData,
     module: LegrandModule,
 ) -> tuple[LegrandSensorDescription, ...]:
     """Return sensor descriptions supported by a module."""
     if module.fluid_type is FluidType.ELECTRICITY:
         return MODULE_SENSOR_DESCRIPTIONS
 
-    if module.fluid_type is FluidType.WATER:
-        return WATER_SENSOR_DESCRIPTIONS + MODULE_DIAGNOSTIC_SENSOR_DESCRIPTIONS
+    measurements = data.module_measurements(module)
 
-    return GAS_SENSOR_DESCRIPTIONS + MODULE_DIAGNOSTIC_SENSOR_DESCRIPTIONS
+    if module.fluid_type is FluidType.WATER:
+        descriptions = WATER_SENSOR_DESCRIPTIONS
+    else:
+        descriptions = GAS_SENSOR_DESCRIPTIONS
+
+    if isinstance(measurements, FluidMeasurements):
+        has_cost = any(
+            value is not None
+            for value in (
+                measurements.cost_today,
+                measurements.cost_week,
+                measurements.cost_month,
+                measurements.cost_year,
+            )
+        )
+
+        if not has_cost:
+            descriptions = tuple(
+                description
+                for description in descriptions
+                if "_cost_" not in description.key
+            )
+
+    return descriptions + MODULE_DIAGNOSTIC_SENSOR_DESCRIPTIONS
 
 
 async def async_setup_entry(
@@ -871,7 +894,10 @@ async def async_setup_entry(
                 module_id=module_id,
                 description=description,
             )
-            for description in _descriptions_for_module(module)
+            for description in _descriptions_for_module(
+                coordinator.data,
+                module,
+            )
         )
 
     async_add_entities(entities)
