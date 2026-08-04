@@ -1,5 +1,7 @@
 """Tests for private measure decoder."""
 
+import pytest
+
 from custom_components.legrand_energy.helpers.private_measure_decoder import (
     decode_energy_points,
     decode_energy_points_by_module,
@@ -66,7 +68,7 @@ def test_prefers_total_energy_value() -> None:
 
     assert len(points) == 1
     assert points[0].energy == 900
-    assert points[0].price == 0.6
+    assert points[0].price == pytest.approx(0.6)
 
 
 def test_decode_multiple_modules_and_sort_points() -> None:

@@ -133,13 +133,22 @@ def _sum_numbers(
     indexes: tuple[int, ...],
 ) -> float | None:
     """Sum all numeric values at the requested indexes."""
-    values = [
-        float(row[index])
-        for index in indexes
-        if index < len(row) and _is_number(row[index])
-    ]
+    total = 0.0
+    found = False
 
-    return sum(values) if values else None
+    for index in indexes:
+        if index >= len(row):
+            continue
+
+        value = row[index]
+
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+
+        total += float(value)
+        found = True
+
+    return total if found else None
 
 
 def _number_at(
@@ -152,9 +161,7 @@ def _number_at(
 
     value = row[index]
 
-    return float(value) if _is_number(value) else None
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
 
-
-def _is_number(value: object) -> bool:
-    """Return whether a value is numeric but not boolean."""
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return float(value)

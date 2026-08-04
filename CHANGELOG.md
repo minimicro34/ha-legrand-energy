@@ -27,7 +27,7 @@ The format is based on Keep a Changelog.
 
 ---
 
-## 1.0.5 - 2026-08-03
+## [1.0.5] - 2026-08-03
 
 ### Fixed
 - Fixed parsing of `gethomemeasure` responses using the compact `sum_energy_elec` format.
