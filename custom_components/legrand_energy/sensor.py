@@ -19,6 +19,7 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfEnergy,
     UnitOfPower,
+    UnitOfVolume,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -26,7 +27,13 @@ from homeassistant.util import dt as dt_util
 
 from .coordinator import LegrandEnergyCoordinator
 from .entity import LegrandEntity, get_main_module_id
-from .models import LegrandEnergyData, LegrandMeasurements, LegrandModule
+from .models import (
+    FluidMeasurements,
+    FluidType,
+    LegrandEnergyData,
+    LegrandMeasurements,
+    LegrandModule,
+)
 
 SensorValue = str | int | float | datetime | None
 ValueFn = Callable[[LegrandEnergyData, LegrandModule | None], SensorValue]
@@ -93,11 +100,12 @@ def _remaining_until(target: datetime | None) -> timedelta | None:
 def _module_measurements(
     data: LegrandEnergyData,
     module: LegrandModule | None,
-) -> LegrandMeasurements | None:
+) -> LegrandMeasurements | FluidMeasurements | None:
     """Return measurements for a module."""
     if module is None:
         return None
-    return data.measurements_by_module.get(module.id)
+
+    return data.module_measurements(module)
 
 
 def _global_measurement_description(
@@ -676,6 +684,162 @@ MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
 )
 
 
+MODULE_DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    LegrandSensorDescription(
+        key="module_type",
+        translation_key="module_type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda _data, module: module.type if module is not None else None,
+        available_fn=lambda _data, module: module is not None and bool(module.type),
+    ),
+    LegrandSensorDescription(
+        key="room",
+        translation_key="room",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda _data, module: module.room if module is not None else None,
+        available_fn=lambda _data, module: (
+            module is not None and module.room is not None
+        ),
+    ),
+    LegrandSensorDescription(
+        key="setup_date",
+        translation_key="setup_date",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
+        value_fn=lambda _data, module: (
+            dt_util.utc_from_timestamp(module.setup_date)
+            if module is not None and module.setup_date is not None
+            else None
+        ),
+        available_fn=lambda _data, module: (
+            module is not None and module.setup_date is not None
+        ),
+    ),
+)
+
+
+def _fluid_sensor_descriptions(
+    *,
+    prefix: str,
+    device_class: SensorDeviceClass,
+    unit: str,
+) -> tuple[LegrandSensorDescription, ...]:
+    """Build fluid consumption and cost sensor descriptions."""
+    return (
+        _module_measurement_description(
+            key=f"{prefix}_consumption_today",
+            translation_key=f"{prefix}_consumption_today",
+            field="consumption_today",
+            device_class=device_class,
+            unit=unit,
+            state_class=SensorStateClass.TOTAL,
+            precision=3,
+            last_reset_fn=lambda _data, _module: _start_of_today(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_consumption_week",
+            translation_key=f"{prefix}_consumption_week",
+            field="consumption_week",
+            device_class=device_class,
+            unit=unit,
+            state_class=SensorStateClass.TOTAL,
+            precision=3,
+            last_reset_fn=lambda _data, _module: _start_of_week(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_consumption_month",
+            translation_key=f"{prefix}_consumption_month",
+            field="consumption_month",
+            device_class=device_class,
+            unit=unit,
+            state_class=SensorStateClass.TOTAL,
+            precision=3,
+            last_reset_fn=lambda _data, _module: _start_of_month(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_consumption_year",
+            translation_key=f"{prefix}_consumption_year",
+            field="consumption_year",
+            device_class=device_class,
+            unit=unit,
+            state_class=SensorStateClass.TOTAL,
+            precision=3,
+            last_reset_fn=lambda _data, _module: _start_of_year(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_cost_today",
+            translation_key=f"{prefix}_cost_today",
+            field="cost_today",
+            device_class=SensorDeviceClass.MONETARY,
+            unit=CURRENCY_EURO,
+            state_class=SensorStateClass.TOTAL,
+            precision=2,
+            last_reset_fn=lambda _data, _module: _start_of_today(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_cost_week",
+            translation_key=f"{prefix}_cost_week",
+            field="cost_week",
+            device_class=SensorDeviceClass.MONETARY,
+            unit=CURRENCY_EURO,
+            state_class=SensorStateClass.TOTAL,
+            precision=2,
+            last_reset_fn=lambda _data, _module: _start_of_week(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_cost_month",
+            translation_key=f"{prefix}_cost_month",
+            field="cost_month",
+            device_class=SensorDeviceClass.MONETARY,
+            unit=CURRENCY_EURO,
+            state_class=SensorStateClass.TOTAL,
+            precision=2,
+            last_reset_fn=lambda _data, _module: _start_of_month(),
+        ),
+        _module_measurement_description(
+            key=f"{prefix}_cost_year",
+            translation_key=f"{prefix}_cost_year",
+            field="cost_year",
+            device_class=SensorDeviceClass.MONETARY,
+            unit=CURRENCY_EURO,
+            state_class=SensorStateClass.TOTAL,
+            precision=2,
+            last_reset_fn=lambda _data, _module: _start_of_year(),
+        ),
+    )
+
+
+WATER_SENSOR_DESCRIPTIONS = _fluid_sensor_descriptions(
+    prefix="water",
+    device_class=SensorDeviceClass.WATER,
+    unit=UnitOfVolume.LITERS,
+)
+
+# Home Control reports gas in dm³. One dm³ is exactly one litre, and Home
+# Assistant's gas device class supports litres rather than a distinct dm³ unit.
+GAS_SENSOR_DESCRIPTIONS = _fluid_sensor_descriptions(
+    prefix="gas",
+    device_class=SensorDeviceClass.GAS,
+    unit=UnitOfVolume.LITERS,
+)
+
+
+def _descriptions_for_module(
+    module: LegrandModule,
+) -> tuple[LegrandSensorDescription, ...]:
+    """Return sensor descriptions supported by a module."""
+    if module.fluid_type is FluidType.ELECTRICITY:
+        return MODULE_SENSOR_DESCRIPTIONS
+
+    if module.fluid_type is FluidType.WATER:
+        return WATER_SENSOR_DESCRIPTIONS + MODULE_DIAGNOSTIC_SENSOR_DESCRIPTIONS
+
+    return GAS_SENSOR_DESCRIPTIONS + MODULE_DIAGNOSTIC_SENSOR_DESCRIPTIONS
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -707,7 +871,7 @@ async def async_setup_entry(
                 module_id=module_id,
                 description=description,
             )
-            for description in MODULE_SENSOR_DESCRIPTIONS
+            for description in _descriptions_for_module(module)
         )
 
     async_add_entities(entities)

@@ -22,6 +22,7 @@ from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_service import ContractService
 from .measurement_service import MeasurementService
 from .models import (
+    FluidMeasurements,
     LegrandEnergyData,
     LegrandMeasurements,
     LegrandProjections,
@@ -78,6 +79,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             tariff: TariffState | None = None
             measurements: LegrandMeasurements | None = None
             measurements_by_module: dict[str, LegrandMeasurements] = {}
+            water_measurements_by_module: dict[str, FluidMeasurements] = {}
+            gas_measurements_by_module: dict[str, FluidMeasurements] = {}
             projections: LegrandProjections | None = None
 
             home_id = self.api.get_first_home_id()
@@ -102,6 +105,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 (
                     measurements,
                     measurements_by_module,
+                    water_measurements_by_module,
+                    gas_measurements_by_module,
                     projections,
                 ) = await self._measurement_service.async_get_all(
                     home_id=home_id,
@@ -117,6 +122,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 tariff=tariff,
                 measurements=measurements,
                 measurements_by_module=measurements_by_module,
+                water_measurements_by_module=water_measurements_by_module,
+                gas_measurements_by_module=gas_measurements_by_module,
                 projections=projections,
             )
 

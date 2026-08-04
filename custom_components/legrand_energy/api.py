@@ -9,6 +9,7 @@ import aiohttp
 
 from .authentication import AuthenticationError, AuthenticationManager
 from .base_api import BaseApiClient
+from .helpers.fluid_types import detect_fluid_type
 from .models import LegrandModule
 
 APP_API_BASE = "https://app.netatmo.net/api"
@@ -309,6 +310,10 @@ class LegrandEnergyApi(BaseApiClient):
                     id=module_id,
                     name=module_name,
                     type=module_type,
+                    fluid_type=detect_fluid_type(
+                        module_id=module_id,
+                        module_name=module_name,
+                    ),
                     bridge=bridge if isinstance(bridge, str) else None,
                     room=room_name,
                     setup_date=(setup_date if isinstance(setup_date, int) else None),

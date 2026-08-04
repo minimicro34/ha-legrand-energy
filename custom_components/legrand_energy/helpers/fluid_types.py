@@ -23,3 +23,24 @@ def private_measure_type(fluid_type: FluidType) -> str:
         return PRIVATE_MEASURE_TYPE_ELECTRICITY
 
     return PRIVATE_MEASURE_TYPE_FLUID
+
+
+def detect_fluid_type(
+    module_id: str,
+    module_name: str,
+) -> FluidType:
+    """Detect the fluid type exposed by a Legrand module."""
+    normalized = module_name.casefold()
+
+    if module_id.endswith("#6") or "gaz" in normalized or "gas" in normalized:
+        return FluidType.GAS
+
+    if (
+        module_id.endswith("#7")
+        or module_id.endswith("#8")
+        or "eau" in normalized
+        or "water" in normalized
+    ):
+        return FluidType.WATER
+
+    return FluidType.ELECTRICITY

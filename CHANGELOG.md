@@ -6,6 +6,37 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.1.0] - 2026-08-04
+
+### Added
+
+- Added water and gas module detection.
+- Added support for cold water, hot water, and gas measurements.
+- Added daily, weekly, monthly, and yearly fluid consumption entities.
+- Added water and gas cost entities when price data is available from Home + Control.
+- Added generic fluid measurement types and private API measurement handling.
+- Added a generic decoder for electricity, water, and gas responses.
+- Added dedicated fluid measurement models and processing helpers.
+- Added English and French translations for water and gas entities.
+- Added automated tests for fluid type detection, decoding, processing, and data access.
+
+### Changed
+
+- Generalized private measurement requests to support electricity, water, and gas.
+- Extended the measurement service and coordinator to store fluid measurements separately from electricity.
+- Updated module discovery to classify electricity, water, and gas circuits.
+- Updated the sensor platform to expose entities according to each module's fluid type.
+- Gas values reported by Home + Control in dm³ are exposed as litres for Home Assistant compatibility.
+
+### Internal
+
+- Preserved the existing electricity measurement and tariff pipelines.
+- Added reusable fluid measurement architecture for future supported resources.
+
+[1.1.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.7...v1.1.0
+
+---
+
 ## [1.0.6] - 2026-08-04
 
 ### Changed

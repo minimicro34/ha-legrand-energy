@@ -8,15 +8,18 @@ from datetime import date, datetime, timedelta
 from homeassistant.util import dt as dt_util
 
 from .helpers.energy_series import EnergyPoint
+from .helpers.fluid_measurement_processor import FluidMeasurementProcessor
 from .helpers.measurement_processor import MeasurementProcessor
-from .helpers.private_measure_decoder import decode_energy_points_by_module
+from .helpers.private_measure_decoder import decode_points_by_module
 from .models import (
+    FluidMeasurements,
     LegrandEnergyData,
     LegrandMeasurements,
     LegrandModule,
     LegrandProjections,
 )
 from .models.contract import Contract
+from .models.fluid import FluidType
 from .private_api import (
     LegrandPrivateApi,
     LegrandPrivateApiAuthenticationError,
@@ -40,6 +43,46 @@ class MeasurementService:
         self._historical_cache_date: date | None = None
         self._historical_retry_at: datetime | None = None
 
+    def _modules_for_fluid(
+        self,
+        modules: list[LegrandModule],
+        fluid_type: FluidType,
+    ) -> list[tuple[str, str]]:
+        """Return module payload for a specific fluid type."""
+        return [
+            (module.id, module.bridge)
+            for module in modules
+            if module.bridge is not None and module.fluid_type is fluid_type
+        ]
+
+    async def _fetch_points_by_module(
+        self,
+        *,
+        home_id: str,
+        modules: list[tuple[str, str]],
+        fluid_type: FluidType,
+        date_begin: int,
+        date_end: int,
+        scale: str,
+    ) -> dict[str, list[EnergyPoint]]:
+        """Fetch and decode measurements for one fluid type."""
+        if not modules:
+            return {}
+
+        raw = await self._private_api.get_fluid_measures(
+            home_id=home_id,
+            modules=modules,
+            fluid_type=fluid_type,
+            date_begin=date_begin,
+            date_end=date_end,
+            scale=scale,
+        )
+
+        return decode_points_by_module(
+            raw,
+            fluid_type=fluid_type,
+        )
+
     async def async_get_all(
         self,
         *,
@@ -51,13 +94,15 @@ class MeasurementService:
     ) -> tuple[
         LegrandMeasurements | None,
         dict[str, LegrandMeasurements],
+        dict[str, FluidMeasurements],
+        dict[str, FluidMeasurements],
         LegrandProjections | None,
     ]:
         """Fetch and calculate measurements for every electricity module."""
         circuits = [module for module in modules.values() if module.bridge is not None]
 
         if not circuits:
-            return None, {}, None
+            return None, {}, {}, {}, None
 
         now = dt_util.now()
 
@@ -74,14 +119,23 @@ class MeasurementService:
             day=1,
         )
 
-        module_payload = [
-            (
-                module.id,
-                module.bridge,
-            )
-            for module in circuits
-            if module.bridge is not None
-        ]
+        electricity_modules = self._modules_for_fluid(
+            circuits,
+            FluidType.ELECTRICITY,
+        )
+
+        water_modules = self._modules_for_fluid(
+            circuits,
+            FluidType.WATER,
+        )
+
+        gas_modules = self._modules_for_fluid(
+            circuits,
+            FluidType.GAS,
+        )
+
+        if not electricity_modules:
+            return None, {}, {}, {}, None
 
         should_refresh_history = self._historical_cache_date != today_start.date() and (
             self._historical_retry_at is None or now >= self._historical_retry_at
@@ -89,17 +143,24 @@ class MeasurementService:
 
         if should_refresh_history:
             try:
-                historical_raw = (
-                    await self._private_api.get_electricity_measures(
-                        home_id=home_id,
-                        modules=module_payload,
-                        date_begin=int(year_start.timestamp()),
-                        date_end=int(today_start.timestamp()) - 1,
-                        scale="1day",
-                    )
-                    if year_start < today_start
-                    else {}
-                )
+                historical_points_by_module: dict[str, list[EnergyPoint]] = {}
+
+                if year_start < today_start:
+                    for fluid_type, fluid_modules in (
+                        (FluidType.ELECTRICITY, electricity_modules),
+                        (FluidType.WATER, water_modules),
+                        (FluidType.GAS, gas_modules),
+                    ):
+                        historical_points_by_module.update(
+                            await self._fetch_points_by_module(
+                                home_id=home_id,
+                                modules=fluid_modules,
+                                fluid_type=fluid_type,
+                                date_begin=int(year_start.timestamp()),
+                                date_end=int(today_start.timestamp()) - 1,
+                                scale="1day",
+                            )
+                        )
 
             except (
                 LegrandPrivateApiAuthenticationError,
@@ -117,20 +178,28 @@ class MeasurementService:
                 )
 
             else:
-                self._historical_points_by_module = decode_energy_points_by_module(
-                    historical_raw
-                )
+                self._historical_points_by_module = historical_points_by_module
                 self._historical_cache_date = today_start.date()
                 self._historical_retry_at = None
 
         try:
-            today_raw = await self._private_api.get_electricity_measures(
-                home_id=home_id,
-                modules=module_payload,
-                date_begin=int(today_start.timestamp()),
-                date_end=int(now.timestamp()),
-                scale="5min",
-            )
+            today_points_by_module: dict[str, list[EnergyPoint]] = {}
+
+            for fluid_type, fluid_modules in (
+                (FluidType.ELECTRICITY, electricity_modules),
+                (FluidType.WATER, water_modules),
+                (FluidType.GAS, gas_modules),
+            ):
+                today_points_by_module.update(
+                    await self._fetch_points_by_module(
+                        home_id=home_id,
+                        modules=fluid_modules,
+                        fluid_type=fluid_type,
+                        date_begin=int(today_start.timestamp()),
+                        date_end=int(now.timestamp()),
+                        scale="5min",
+                    )
+                )
 
         except (
             LegrandPrivateApiAuthenticationError,
@@ -149,13 +218,14 @@ class MeasurementService:
                 return (
                     previous_data.measurements,
                     previous_data.measurements_by_module,
+                    previous_data.water_measurements_by_module,
+                    previous_data.gas_measurements_by_module,
                     previous_data.projections,
                 )
 
-            return None, {}, None
+            return None, {}, {}, {}, None
 
         historical_points = self._historical_points_by_module
-        today_points_by_module = decode_energy_points_by_module(today_raw)
 
         points_by_module = {
             module_id: sorted(
@@ -174,29 +244,86 @@ class MeasurementService:
             off_peak_price = contract.off_peak_price or 0.0
 
         measurements_by_module: dict[str, LegrandMeasurements] = {}
+        water_measurements_by_module: dict[str, FluidMeasurements] = {}
+        gas_measurements_by_module: dict[str, FluidMeasurements] = {}
 
         for module_id, points in points_by_module.items():
-            MeasurementProcessor.apply_tariffs(
-                points=points,
-                tariff_engine=tariff_engine,
-            )
+            module = modules.get(module_id)
 
-            today_points = MeasurementProcessor.points_since(points, today_start)
-            week_points = MeasurementProcessor.points_since(points, week_start)
-            month_points = MeasurementProcessor.points_since(points, month_start)
-            year_points = MeasurementProcessor.points_since(points, year_start)
+            if module is None:
+                continue
+
+            if module.fluid_type is FluidType.ELECTRICITY:
+                MeasurementProcessor.apply_tariffs(
+                    points=points,
+                    tariff_engine=tariff_engine,
+                )
+
+                today_points = MeasurementProcessor.points_since(
+                    points,
+                    today_start,
+                )
+                week_points = MeasurementProcessor.points_since(
+                    points,
+                    week_start,
+                )
+                month_points = MeasurementProcessor.points_since(
+                    points,
+                    month_start,
+                )
+                year_points = MeasurementProcessor.points_since(
+                    points,
+                    year_start,
+                )
+
+                if not today_points:
+                    continue
+
+                measurements_by_module[module_id] = (
+                    MeasurementProcessor.build_measurements(
+                        today_points=today_points,
+                        week_points=week_points,
+                        month_points=month_points,
+                        year_points=year_points,
+                        peak_price=peak_price,
+                        off_peak_price=off_peak_price,
+                    )
+                )
+
+                continue
+
+            today_points = FluidMeasurementProcessor.points_since(
+                points,
+                today_start,
+            )
+            week_points = FluidMeasurementProcessor.points_since(
+                points,
+                week_start,
+            )
+            month_points = FluidMeasurementProcessor.points_since(
+                points,
+                month_start,
+            )
+            year_points = FluidMeasurementProcessor.points_since(
+                points,
+                year_start,
+            )
 
             if not today_points:
                 continue
 
-            measurements_by_module[module_id] = MeasurementProcessor.build_measurements(
+            fluid_measurements = FluidMeasurementProcessor.build_measurements(
                 today_points=today_points,
                 week_points=week_points,
                 month_points=month_points,
                 year_points=year_points,
-                peak_price=peak_price,
-                off_peak_price=off_peak_price,
             )
+
+            if module.fluid_type is FluidType.WATER:
+                water_measurements_by_module[module_id] = fluid_measurements
+
+            elif module.fluid_type is FluidType.GAS:
+                gas_measurements_by_module[module_id] = fluid_measurements
 
         total_module = MeasurementProcessor.find_total_module(modules)
 
@@ -215,4 +342,10 @@ class MeasurementService:
             else None
         )
 
-        return measurements, measurements_by_module, projections
+        return (
+            measurements,
+            measurements_by_module,
+            water_measurements_by_module,
+            gas_measurements_by_module,
+            projections,
+        )

@@ -5,11 +5,12 @@ import pytest
 from custom_components.legrand_energy.helpers.private_measure_decoder import (
     decode_energy_points,
     decode_energy_points_by_module,
+    decode_points_by_module,
 )
+from custom_components.legrand_energy.models import FluidType
 
 
 def test_decode_energy_points() -> None:
-    """Decode split energy and price channels."""
     data = {
         "body": {
             "home": {
@@ -72,7 +73,7 @@ def test_prefers_total_energy_value() -> None:
 
 
 def test_decode_multiple_modules_and_sort_points() -> None:
-    """Group modules separately and sort their points chronologically."""
+    """Decode every module and sort points by timestamp."""
     data = {
         "body": {
             "home": {
@@ -81,14 +82,18 @@ def test_decode_multiple_modules_and_sort_points() -> None:
                         "id": "module-1",
                         "measures": [
                             {
-                                "beg_time": 2000,
+                                "beg_time": 1783350300,
                                 "step_time": 300,
-                                "value": [[100, None, None, None]],
+                                "value": [
+                                    [None, 20, None, None, 0.2, None, None],
+                                ],
                             },
                             {
-                                "beg_time": 1000,
+                                "beg_time": 1783350000,
                                 "step_time": 300,
-                                "value": [[50, None, None, None]],
+                                "value": [
+                                    [None, 10, None, None, 0.1, None, None],
+                                ],
                             },
                         ],
                     },
@@ -96,9 +101,11 @@ def test_decode_multiple_modules_and_sort_points() -> None:
                         "id": "module-2",
                         "measures": [
                             {
-                                "beg_time": 1500,
+                                "beg_time": 1783350000,
                                 "step_time": 300,
-                                "value": [[25, None, None, None]],
+                                "value": [
+                                    [None, 30, None, None, 0.3, None, None],
+                                ],
                             }
                         ],
                     },
@@ -110,27 +117,28 @@ def test_decode_multiple_modules_and_sort_points() -> None:
     points_by_module = decode_energy_points_by_module(data)
 
     assert list(points_by_module) == ["module-1", "module-2"]
-    assert [point.energy for point in points_by_module["module-1"]] == [50, 100]
-    assert [point.energy for point in points_by_module["module-2"]] == [25]
+    assert [point.energy for point in points_by_module["module-1"]] == [10, 20]
+    assert [point.energy for point in points_by_module["module-2"]] == [30]
 
 
-def test_ignore_invalid_rows_and_boolean_values() -> None:
-    """Ignore malformed rows and booleans masquerading as integers."""
+def test_ignore_invalid_rows_and_values() -> None:
+    """Ignore malformed rows and non-numeric values."""
     data = {
         "body": {
             "home": {
                 "modules": [
                     {
-                        "id": "module",
+                        "id": "module-1",
                         "measures": [
                             {
                                 "beg_time": 1783350000,
                                 "step_time": 300,
                                 "value": [
                                     "invalid",
-                                    [True, None, None, None],
-                                    [None, False, None, None],
-                                    [125, None, None, None],
+                                    [None, None, None, None],
+                                    [None, True, None, None, False],
+                                    [None, "10", None, None, "0.2"],
+                                    [None, 50, None, None, 0.5],
                                 ],
                             }
                         ],
@@ -143,11 +151,86 @@ def test_ignore_invalid_rows_and_boolean_values() -> None:
     points = decode_energy_points(data)
 
     assert len(points) == 1
-    assert points[0].energy == 125
+    assert points[0].energy == 50
+    assert points[0].price == 0.5
 
 
-def test_invalid_response_returns_no_points() -> None:
-    """Return an empty result for incomplete responses."""
+def test_returns_empty_for_invalid_payload() -> None:
+    """Return no points for malformed response structures."""
     assert decode_energy_points({}) == []
-    assert decode_energy_points({"body": {}}) == []
-    assert decode_energy_points({"body": {"home": {}}}) == []
+    assert decode_energy_points({"body": []}) == []
+    assert decode_energy_points({"body": {"home": []}}) == []
+    assert decode_energy_points({"body": {"home": {"modules": {}}}}) == []
+
+
+def test_decode_water_measurements() -> None:
+    """Decode water consumption and price values."""
+    data = {
+        "body": {
+            "home": {
+                "modules": [
+                    {
+                        "id": "bridge#8",
+                        "measures": [
+                            {
+                                "beg_time": 1783350000,
+                                "step_time": 300,
+                                "value": [
+                                    [125.5, 0.42],
+                                    [20.0, None],
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+
+    points_by_module = decode_points_by_module(
+        data,
+        fluid_type=FluidType.WATER,
+    )
+
+    points = points_by_module["bridge#8"]
+
+    assert len(points) == 2
+    assert points[0].energy == 125.5
+    assert points[0].price == 0.42
+    assert points[1].energy == 20.0
+    assert points[1].price is None
+
+
+def test_decode_gas_measurements() -> None:
+    """Decode gas consumption and price values."""
+    data = {
+        "body": {
+            "home": {
+                "modules": [
+                    {
+                        "id": "bridge#6",
+                        "measures": [
+                            {
+                                "beg_time": 1783350000,
+                                "step_time": 300,
+                                "value": [
+                                    [750.0, 1.25],
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+
+    points_by_module = decode_points_by_module(
+        data,
+        fluid_type=FluidType.GAS,
+    )
+
+    points = points_by_module["bridge#6"]
+
+    assert len(points) == 1
+    assert points[0].energy == 750.0
+    assert points[0].price == 1.25
