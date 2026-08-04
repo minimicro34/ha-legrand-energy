@@ -58,7 +58,7 @@ The format is based on Keep a Changelog.
 - Prevented repeated private API requests every polling cycle during prolonged timeouts or connection failures.
 - Improved stability when `gethomemeasure` temporarily returns timeouts, connection resets, or backend errors.
 
-[1.0.7]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.6...v1.0.7
+[1.0.7]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.6...v1.1.0
 
 ---
 
