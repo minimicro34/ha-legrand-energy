@@ -42,14 +42,14 @@ def _response(*points: tuple[datetime, float, float]) -> dict[str, Any]:
 
 
 class FakePrivateApi:
-    """Return separate historical and current-day responses."""
+    """Return controlled historical and current-day responses."""
 
     def __init__(self) -> None:
-        """Initialize recorded calls."""
+        """Initialize recorded calls and failures."""
         self.calls: list[dict[str, Any]] = []
         self.historical_failures = 0
 
-    async def get_electricity_measures(self, **kwargs: Any) -> dict[str, Any]:
+    async def get_fluid_measures(self, **kwargs: Any) -> dict[str, Any]:
         """Return data matching the requested scale."""
         self.calls.append(kwargs)
 
@@ -95,14 +95,20 @@ async def _update(service: MeasurementService) -> None:
 async def test_fetches_year_history_and_current_day(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Build each period from year history plus detailed current-day data."""
+    """Build each period from year history plus current-day data."""
     now = datetime(2026, 7, 31, 12, tzinfo=UTC)
     monkeypatch.setattr(service_module.dt_util, "now", lambda: now)
 
     api = FakePrivateApi()
     service = MeasurementService(cast(LegrandPrivateApi, api))
 
-    measurements, _, _ = await service.async_get_all(
+    (
+        measurements,
+        _,
+        _,
+        _,
+        _,
+    ) = await service.async_get_all(
         home_id="home-id",
         modules=_modules(),
         contract=None,
@@ -173,7 +179,7 @@ async def test_refreshes_history_after_day_change(
 async def test_retries_failed_history_after_fifteen_minutes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Delay history retries while current-day refreshes continue."""
+    """Delay historical retries while current-day refreshes continue."""
     current_now = datetime(2026, 7, 31, 12, tzinfo=UTC)
     monkeypatch.setattr(service_module.dt_util, "now", lambda: current_now)
 

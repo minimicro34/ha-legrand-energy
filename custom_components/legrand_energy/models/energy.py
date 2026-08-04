@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 
 from ..tariff_engine import TariffState
 from .contract import Contract
+from .fluid import FluidType
+from .fluid_measurements import FluidMeasurements
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,6 +17,7 @@ class LegrandModule:
     id: str
     name: str
     type: str
+    fluid_type: FluidType = FluidType.ELECTRICITY
     bridge: str | None = None
     room: str | None = None
     setup_date: int | None = None
@@ -64,4 +67,23 @@ class LegrandEnergyData:
     tariff: TariffState | None = None
     measurements: LegrandMeasurements | None = None
     measurements_by_module: dict[str, LegrandMeasurements] = field(default_factory=dict)
+    water_measurements_by_module: dict[str, FluidMeasurements] = field(
+        default_factory=dict
+    )
+    gas_measurements_by_module: dict[str, FluidMeasurements] = field(
+        default_factory=dict
+    )
     projections: LegrandProjections | None = None
+
+    def module_measurements(
+        self,
+        module: LegrandModule,
+    ) -> LegrandMeasurements | FluidMeasurements | None:
+        """Return measurements for the requested module."""
+        if module.fluid_type is FluidType.ELECTRICITY:
+            return self.measurements_by_module.get(module.id)
+
+        if module.fluid_type is FluidType.WATER:
+            return self.water_measurements_by_module.get(module.id)
+
+        return self.gas_measurements_by_module.get(module.id)

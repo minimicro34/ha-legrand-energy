@@ -1,28 +1,64 @@
-# Legrand Energy for Home Assistant
+# Legrand Energy
 
-[![GitHub release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
+> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water and gas monitoring.
+
+<p align="center">
+
+[![GitHub Release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
 [![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml)
-[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE.md)
-[![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml)
 
-A Home Assistant custom integration for **Legrand EcoMeter** installations using **Home + Control / Netatmo** services.
+</p>
 
-The integration automatically discovers your EcoMeter installation and electrical circuits, retrieves energy measurements, calculates electricity costs according to your tariff, and exposes contract information directly in Home Assistant.
+⚡ Electricity • 💧 Water • 🔥 Gas • 💶 Costs • 📈 Projections
 
-> ⚠️ This integration relies on both public and undocumented Netatmo APIs. Some advanced features may stop working if Netatmo changes its web services.
+---
+
+Legrand Energy is a custom Home Assistant integration for the **Legrand with Netatmo EcoMeter**.
+
+It automatically discovers your electrical, water and gas circuits and provides native Home Assistant entities for:
+
+- ⚡ Electricity consumption
+- 💧 Water consumption
+- 🔥 Gas consumption
+- 💶 Cost monitoring
+- 📈 Consumption projections
+- 🔌 Per-circuit monitoring
+- 🏠 Contract and tariff information
+
+> **Note**
+>
+> This integration uses both the official Legrand APIs and the private Home + Control API to expose data that is not available through the public API alone.
+
+---
+
+## Contents
+
+- Features
+- Supported devices
+- Installation
+- Configuration
+- Available entities
+- Diagnostics
+- Troubleshooting
+- Roadmap
 
 ---
 
 ## Features
 
-### Energy monitoring
+### Energy and fluid monitoring
 
-- ⚡ Automatic EcoMeter and circuit discovery
-- 📊 Daily, weekly, monthly and yearly energy consumption
-- 💶 Energy cost calculation
-- 📈 Energy and cost projections
-- 🔌 Per-circuit energy and cost monitoring
+- ⚡ Automatic EcoMeter and electrical circuit discovery
+- 📊 Daily, weekly, monthly and yearly electricity consumption
+- 💶 Electricity cost calculation
+- 📈 Electricity consumption and cost projections
+- 🔌 Per-circuit electricity and cost monitoring
+- 💧 Cold and hot water consumption monitoring
+- 🔥 Gas consumption monitoring
+- 💶 Water and gas cost monitoring when provided by Home + Control
 
 ### Tariffs & contract
 
@@ -54,6 +90,9 @@ The integration automatically discovers your EcoMeter installation and electrica
 - Historical totals before January 1 of the current year are not exposed as entities.
 - Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
+- Water and gas entities depend on compatible fluid circuits being exposed by the Legrand EcoMeter.
+- Water and gas cost entities are available only when Home + Control returns fluid price measurements.
+- Fluid measurements may remain unavailable when no consumption history exists in Home + Control.
 
 ---
 
@@ -64,6 +103,9 @@ Currently tested with:
 - ✅ Legrand EcoMeter
 - ✅ Home + Control / Netatmo energy installations
 - ✅ Electrical circuits discovered from the EcoMeter
+- ✅ Cold water circuits exposed by the EcoMeter
+- ✅ Hot water circuits exposed by the EcoMeter
+- ✅ Gas circuits exposed by the EcoMeter
 
 Support for additional Legrand energy devices may be added in future releases.
 
@@ -135,7 +177,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 
 ### Main EcoMeter
 
-#### Energy
+### Energy
 
 - Energy today
 - Peak energy today
@@ -144,7 +186,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Energy this month
 - Energy this year
 
-#### Costs
+### Costs
 
 - Cost today
 - Peak cost today
@@ -153,7 +195,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Cost this month
 - Cost this year
 
-#### Projections
+### Projections
 
 - Projected energy today
 - Projected energy this month
@@ -162,7 +204,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Projected cost this month
 - Projected cost this year
 
-#### Contract
+### Contract
 
 - Contract type
 - Tariff option
@@ -183,6 +225,36 @@ Each electrical circuit exposes:
 - Cost today
 - Peak cost today
 - Off-peak cost today
+
+### Water circuits
+
+Each cold or hot water circuit exposes:
+
+- Consumption today
+- Consumption this week
+- Consumption this month
+- Consumption this year
+- Cost today
+- Cost this week
+- Cost this month
+- Cost this year
+
+Water consumption is exposed in litres.
+
+### Gas circuits
+
+Each gas circuit exposes:
+
+- Consumption today
+- Consumption this week
+- Consumption this month
+- Consumption this year
+- Cost today
+- Cost this week
+- Cost this month
+- Cost this year
+
+Home + Control reports gas consumption in dm³. Since 1 dm³ equals 1 litre, the integration exposes the native values using litres for Home Assistant compatibility.
 
 ---
 
@@ -208,10 +280,9 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 
 ## Roadmap
 
-- Water measurements
-- Gas measurements
-- Additional Legrand energy devices
+- Support for additional Legrand energy devices
 - Additional diagnostics
+- Fluid consumption projections
 
 ---
 
@@ -245,7 +316,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 Please open an Issue before submitting a Pull Request for significant changes.
 
-For security vulnerabilities, please refer to [SECURITY.md](SECURITY.md).
+⚠️ **Never publish authentication credentials, cookies, access tokens, refresh tokens, or private API secrets.**
 
 ---
 
@@ -262,6 +333,8 @@ It uses official public APIs together with undocumented endpoints required to pr
 Please use GitHub Issues for bug reports and feature requests.
 
 When reporting an issue, always attach diagnostics generated by Home Assistant whenever possible.
+
+Please include the integration version and Home Assistant version when reporting an issue.
 
 ## License
 

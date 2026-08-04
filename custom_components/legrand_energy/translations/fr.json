@@ -42,7 +42,23 @@
       "circuit_energy_off_peak_today": {"name": "Consommation HC aujourd'hui"},
       "circuit_cost_today": {"name": "Coût aujourd'hui"},
       "circuit_cost_peak_today": {"name": "Coût HP aujourd'hui"},
-      "circuit_cost_off_peak_today": {"name": "Coût HC aujourd'hui"}
+      "circuit_cost_off_peak_today": {"name": "Coût HC aujourd'hui"},
+      "water_consumption_today": {"name": "Eau aujourd'hui"},
+      "water_consumption_week": {"name": "Eau cette semaine"},
+      "water_consumption_month": {"name": "Eau ce mois"},
+      "water_consumption_year": {"name": "Eau cette année"  },
+      "water_cost_today": {"name": "Coût eau aujourd'hui"},
+      "water_cost_week": {"name": "Coût eau cette semaine"},
+      "water_cost_month": {"name": "Coût eau ce mois"},
+      "water_cost_year": {"name": "Coût eau cette année"},
+      "gas_consumption_today": {"name": "Gaz aujourd'hui"},
+      "gas_consumption_week": {"name": "Gaz cette semaine"},
+      "gas_consumption_month": {"name": "Gaz ce mois"},
+      "gas_consumption_year": {"name": "Gaz cette année"},
+      "gas_cost_today": {"name": "Coût gaz aujourd'hui"},
+      "gas_cost_week": {"name": "Coût gaz cette semaine"},
+      "gas_cost_month": {"name": "Coût gaz ce mois"},
+      "gas_cost_year": {"name": "Coût gaz cette année"}
     },
     "button": {
       "refresh": {

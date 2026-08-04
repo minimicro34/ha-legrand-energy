@@ -7,8 +7,12 @@ from .energy import (
     LegrandModule,
     LegrandProjections,
 )
+from .fluid import FluidType
+from .fluid_measurements import FluidMeasurements
 
 __all__ = [
+    "FluidType",
+    "FluidMeasurements",
     "LegrandEnergyData",
     "LegrandMeasurements",
     "LegrandModule",

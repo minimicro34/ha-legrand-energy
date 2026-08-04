@@ -42,7 +42,23 @@
       "circuit_energy_off_peak_today": {"name": "Off-peak energy today"},
       "circuit_cost_today": {"name": "Cost today"},
       "circuit_cost_peak_today": {"name": "Peak cost today"},
-      "circuit_cost_off_peak_today": {"name": "Off-peak cost today"}
+      "circuit_cost_off_peak_today": {"name": "Off-peak cost today"},
+      "water_consumption_today": {"name": "Water today"},
+      "water_consumption_week": {"name": "Water this week"},
+      "water_consumption_month": {"name": "Water this month"},
+      "water_consumption_year": {"name": "Water this year"},
+      "water_cost_today": {"name": "Water cost today"},
+      "water_cost_week": {"name": "Water cost this week"},
+      "water_cost_month": {"name": "Water cost this month"},
+      "water_cost_year": {"name": "Water cost this year"},
+      "gas_consumption_today": {"name": "Gas today"},
+      "gas_consumption_week": {"name": "Gas this week"},
+      "gas_consumption_month": {"name": "Gas this month"},
+      "gas_consumption_year": {"name": "Gas this year"},
+      "gas_cost_today": {"name": "Gas cost today"},
+      "gas_cost_week": {"name": "Gas cost this week"},
+      "gas_cost_month": {"name": "Gas cost this month"},
+      "gas_cost_year": {"name": "Gas cost this year"}
     },
     "button": {
       "refresh": {

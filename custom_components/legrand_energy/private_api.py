@@ -10,6 +10,8 @@ import aiohttp
 
 from .authentication import AuthenticationManager
 from .base_api import BaseApiClient
+from .helpers.fluid_types import private_measure_type
+from .models.fluid import FluidType
 from .services.private import (
     PrivateAuthServiceAuthenticationError,
     PrivateAuthServiceError,
@@ -18,18 +20,6 @@ from .services.private import (
 _LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
-
-PRIVATE_MEASURE_TYPE_ELECTRICITY = (
-    "sum_energy_elec,"
-    "sum_energy_elec$0,"
-    "sum_energy_elec$1,"
-    "sum_energy_elec$2,"
-    "sum_energy_price$0,"
-    "sum_energy_price$1,"
-    "sum_energy_price$2"
-)
-
-PRIVATE_MEASURE_TYPE_FLUID = "sum_fluid_consumption$0,sum_fluid_price$0"
 
 
 class LegrandPrivateApiError(Exception):
@@ -92,11 +82,6 @@ class LegrandPrivateApi(BaseApiClient):
 
             if retry_auth:
                 await self.refresh_web_token()
-
-                _LOGGER.debug(
-                    "Private authentication refreshed, retrying %s",
-                    endpoint,
-                )
 
                 return await self._get(
                     base_url,
@@ -216,7 +201,7 @@ class LegrandPrivateApi(BaseApiClient):
                 {
                     "id": module_id,
                     "bridge": bridge,
-                    "type": PRIVATE_MEASURE_TYPE_ELECTRICITY,
+                    "type": private_measure_type(FluidType.ELECTRICITY),
                 },
             ],
         }
@@ -232,22 +217,25 @@ class LegrandPrivateApi(BaseApiClient):
             },
         )
 
-    async def get_electricity_measures(
+    async def get_fluid_measures(
         self,
         home_id: str,
         modules: list[tuple[str, str]],
+        fluid_type: FluidType,
         date_begin: int,
         date_end: int,
         scale: str = "5min",
     ) -> dict[str, Any]:
-        """Return electricity measurements for multiple modules."""
+        """Return measurements for multiple modules of one fluid type."""
+        measure_type = private_measure_type(fluid_type)
+
         home_payload = {
             "id": home_id,
             "modules": [
                 {
                     "id": module_id,
                     "bridge": bridge,
-                    "type": PRIVATE_MEASURE_TYPE_ELECTRICITY,
+                    "type": measure_type,
                 }
                 for module_id, bridge in modules
             ],
@@ -264,6 +252,24 @@ class LegrandPrivateApi(BaseApiClient):
             },
         )
 
+    async def get_electricity_measures(
+        self,
+        home_id: str,
+        modules: list[tuple[str, str]],
+        date_begin: int,
+        date_end: int,
+        scale: str = "5min",
+    ) -> dict[str, Any]:
+        """Return electricity measurements for multiple modules."""
+        return await self.get_fluid_measures(
+            home_id=home_id,
+            modules=modules,
+            fluid_type=FluidType.ELECTRICITY,
+            date_begin=date_begin,
+            date_end=date_end,
+            scale=scale,
+        )
+
     async def getcontracts(self, home_id: str) -> dict[str, Any]:
         """Return the electricity contract."""
         return await self._get(
@@ -276,14 +282,7 @@ class LegrandPrivateApi(BaseApiClient):
         """Refresh the Netatmo private web access token."""
 
         try:
-            _LOGGER.debug("Refreshing Netatmo private authentication")
-
             session = await self._authentication.refresh_private()
-
-            _LOGGER.debug(
-                "Private authentication refreshed successfully, web_token=%s...",
-                session.web_token[:8],
-            )
 
         except PrivateAuthServiceAuthenticationError as err:
             raise LegrandPrivateApiAuthenticationError(
