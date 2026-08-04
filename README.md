@@ -99,8 +99,8 @@ It automatically discovers your electrical, water and gas circuits and provides 
 - Historical totals before January 1 of the current year are not exposed as entities.
 - Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
-- Water and gas entities depend on compatible fluid circuits being exposed by the Legrand EcoMeter.
-- Water and gas cost entities are available only when Home + Control returns fluid price measurements.
+- Water and gas cost entities depend on the information returned by Home + Control.
+- Some installations expose consumption data but do not provide fluid pricing. In this case, the corresponding cost entities remain unavailable.
 - Fluid measurements may remain unavailable when no consumption history exists in Home + Control.
 
 ---
