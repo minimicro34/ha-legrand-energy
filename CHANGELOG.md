@@ -33,7 +33,7 @@ The format is based on Keep a Changelog.
 - Preserved the existing electricity measurement and tariff pipelines.
 - Added reusable fluid measurement architecture for future supported resources.
 
-[1.1.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.7...v1.1.0
+[1.1.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.6...v1.1.0
 
 ---
 
