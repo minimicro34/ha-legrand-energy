@@ -1,10 +1,10 @@
 # Legrand Energy for Home Assistant
 
 [![GitHub release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
-[![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](...)
+[![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
 [![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE)
-[![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](...)
+[![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml)
 
 A Home Assistant custom integration for **Legrand EcoMeter** installations using **Home + Control / Netatmo** services.
 
@@ -48,26 +48,16 @@ The integration automatically discovers your EcoMeter installation and electrica
 - 📉 Graceful handling of Netatmo API rate limits
 - 🚀 Intelligent caching of historical measurements to reduce private API traffic
 
-## Integration
-
-- Home Assistant Config Flow
-- OAuth2 authentication
-- Options Flow
-- HACS compatible
-- Automatic device discovery
-- Device Registry support
-- Coordinator-based polling
-- Diagnostics support
-
 ## Known limitations
 
 - Week, month, and year totals use the historical measurements available from Home + Control for the current calendar year.
 - Historical totals before January 1 of the current year are not exposed as entities.
 - Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
+
 ---
 
-# Supported devices
+## Supported devices
 
 Currently tested with:
 
@@ -78,16 +68,19 @@ Currently tested with:
 Support for additional Legrand energy devices may be added in future releases.
 
 ---
+
 ## Requirements
 
 - Home Assistant 2026.7 or newer
 - Compatible with the Python version bundled with the supported Home Assistant releases.
 - A Legrand EcoMeter linked to a Home + Control / Netatmo account
 - A Netatmo developer application (OAuth2)
----
-# Installation
 
-## HACS
+---
+
+## Installation
+
+### HACS
 
 1. Open **HACS**
 2. Go to **Integrations**
@@ -110,9 +103,9 @@ Integration
 
 ---
 
-# Configuration
+## Configuration
 
-## Public API
+### Public API
 
 Create a Netatmo developer application and obtain a Client ID and Client Secret.
 
@@ -120,7 +113,7 @@ These credentials are required only during the initial setup.
 
 When adding the integration, Home Assistant automatically guides you through the OAuth2 authentication process using your **Client ID** and **Client Secret**.
 
-## Private API
+### Private API
 
 Some advanced features require authentication against the Netatmo web services.
 
@@ -138,11 +131,11 @@ Credentials are stored using Home Assistant's secure storage facilities.
 
 ---
 
-# Available entities
+## Available entities
 
-## Main EcoMeter
+### Main EcoMeter
 
-### Energy
+#### Energy
 
 - Energy today
 - Peak energy today
@@ -151,7 +144,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Energy this month
 - Energy this year
 
-### Costs
+#### Costs
 
 - Cost today
 - Peak cost today
@@ -160,7 +153,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Cost this month
 - Cost this year
 
-### Projections
+#### Projections
 
 - Projected energy today
 - Projected energy this month
@@ -169,7 +162,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Projected cost this month
 - Projected cost this year
 
-### Contract
+#### Contract
 
 - Contract type
 - Tariff option
@@ -180,7 +173,7 @@ Credentials are stored using Home Assistant's secure storage facilities.
 - Current electricity price
 - Next tariff change
 
-## Individual circuits
+### Individual circuits
 
 Each electrical circuit exposes:
 
@@ -193,19 +186,19 @@ Each electrical circuit exposes:
 
 ---
 
-# API rate limits
+## API rate limits
 
 The Netatmo APIs may occasionally return temporary errors or rate-limit responses.
 
 To improve reliability, historical measurements are cached in memory and refreshed only when necessary (startup, day change, or after a retry delay following a temporary failure). Current-day measurements continue to refresh normally.
 
-The integration preserves the last successfully retrieved values while waiting for the private API to recover, avoiding unnecessary entity unavailability and significantly reducing calls to the Netatmo private endpoints.
+The integration preserves the last successfully retrieved values while waiting for the private API to recover, avoiding unnecessary entity unavailability and significantly reducing unnecessary calls to the Netatmo private endpoints.
 
 Electricity contract information is cached and refreshed periodically to reduce unnecessary requests.
 
 ---
 
-# Private authentication
+## Private authentication
 
 The integration automatically refreshes the private Netatmo authentication session while it remains valid.
 
@@ -213,7 +206,7 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 
 ---
 
-# Roadmap
+## Roadmap
 
 - Water measurements
 - Gas measurements
@@ -222,13 +215,13 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 
 ---
 
-# Screenshots
+## Screenshots
 
 *Coming soon.*
 
 ---
 
-# Development
+## Development
 
 Development instructions and contribution guidelines are available in [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -238,12 +231,13 @@ Common commands:
 make format
 make check
 make clean
+```
+
+`make check` runs the same quality checks as the GitHub CI workflow.
 
 ---
 
-# Contributing
-
-# Contributing
+## Contributing
 
 Contributions are welcome.
 
@@ -251,23 +245,24 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 Please open an Issue before submitting a Pull Request for significant changes.
 
-⚠️ **Never publish authentication credentials, cookies, access tokens, refresh tokens, or private API secrets.**
+For security vulnerabilities, please refer to [SECURITY.md](SECURITY.md).
 
 ---
 
-# Disclaimer
+## Disclaimer
 
 This project is **not affiliated with, endorsed by, or supported by Legrand or Netatmo**.
 
 It uses official public APIs together with undocumented endpoints required to provide additional energy features. Those undocumented endpoints may change without notice.
 
 ---
-# Support
+
+## Support
 
 Please use GitHub Issues for bug reports and feature requests.
 
 When reporting an issue, always attach diagnostics generated by Home Assistant whenever possible.
 
-# License
+## License
 
 MIT
