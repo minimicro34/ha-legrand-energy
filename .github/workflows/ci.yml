@@ -23,14 +23,14 @@ jobs:
       - name: Compile
         run: python -m compileall custom_components
 
-      - name: Ruff
-        run: ruff check .
-
       - name: Ruff format
         run: ruff format --check .
 
-      - name: MyPy
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Mypy
         run: mypy custom_components/legrand_energy
 
       - name: Pytest
-        run: pytest -v
+        run: pytest -q

@@ -63,7 +63,7 @@ The integration automatically discovers your EcoMeter installation and electrica
 
 - Week, month, and year totals use the historical measurements available from Home + Control for the current calendar year.
 - Historical totals before January 1 of the current year are not exposed as entities.
-- Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo. features rely on undocumented Netatmo web services.
+- Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
 ---
 
@@ -195,9 +195,11 @@ Each electrical circuit exposes:
 
 # API rate limits
 
-The Netatmo APIs may occasionally return rate-limit errors.
+The Netatmo APIs may occasionally return temporary errors or rate-limit responses.
 
-The integration preserves the last successfully retrieved values while waiting for the API rate limit to reset, avoiding unnecessary entity unavailability.
+To improve reliability, historical measurements are cached in memory and refreshed only when necessary (startup, day change, or after a retry delay following a temporary failure). Current-day measurements continue to refresh normally.
+
+The integration preserves the last successfully retrieved values while waiting for the private API to recover, avoiding unnecessary entity unavailability and significantly reducing calls to the Netatmo private endpoints.
 
 Electricity contract information is cached and refreshed periodically to reduce unnecessary requests.
 
@@ -228,37 +230,28 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 
 # Development
 
-Run the following checks before submitting changes:
+Development instructions and contribution guidelines are available in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Common commands:
 
 ```bash
-python3 -m compileall custom_components
-
-ruff check .
-ruff format --check .
-
-mypy custom_components/legrand_energy
-
-pytest -v
-
-git diff --check
-```
+make format
+make check
+make clean
 
 ---
 
 # Contributing
 
+# Contributing
+
 Contributions are welcome.
 
-Please open an Issue before submitting a Pull Request.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
-When reporting an issue, include:
+Please open an Issue before submitting a Pull Request for significant changes.
 
-- Home Assistant version
-- Integration version
-- Diagnostic information
-- Relevant logs
-
-⚠️ **Never publish authentication credentials, cookies or tokens.**
+⚠️ **Never publish authentication credentials, cookies, access tokens, refresh tokens, or private API secrets.**
 
 ---
 
