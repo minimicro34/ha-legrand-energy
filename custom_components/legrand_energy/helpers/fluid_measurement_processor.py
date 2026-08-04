@@ -45,8 +45,6 @@ class FluidMeasurementProcessor:
         return sum(point.energy for point in points)
 
     @staticmethod
-    def _sum_cost(points: list[EnergyPoint]) -> float | None:
+    def _sum_cost(points: list[EnergyPoint]) -> float:
         """Return the sum of available cost values."""
-        values = [point.price for point in points if point.price is not None]
-
-        return sum(values) if values else None
+        return sum(point.price for point in points if point.price is not None)

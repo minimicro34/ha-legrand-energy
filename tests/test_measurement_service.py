@@ -296,10 +296,18 @@ async def test_empty_water_and_gas_measurements_return_zero(
     assert water.consumption_week == 0.0
     assert water.consumption_month == 0.0
     assert water.consumption_year == 0.0
-    assert water.cost_today is None
+
+    assert water.cost_today == 0.0
+    assert water.cost_week == 0.0
+    assert water.cost_month == 0.0
+    assert water.cost_year == 0.0
 
     assert gas.consumption_today == 0.0
     assert gas.consumption_week == 0.0
     assert gas.consumption_month == 0.0
     assert gas.consumption_year == 0.0
-    assert gas.cost_today is None
+
+    assert gas.cost_today == 0.0
+    assert gas.cost_week == 0.0
+    assert gas.cost_month == 0.0
+    assert gas.cost_year == 0.0

@@ -77,8 +77,8 @@ def test_build_measurements() -> None:
     assert measurements.cost_year == pytest.approx(5.9)
 
 
-def test_missing_costs_return_none() -> None:
-    """Return no cost when no point contains a price."""
+def test_missing_costs_return_zero() -> None:
+    """Return zero cost when no point contains a price."""
     now = datetime(2026, 8, 4, 12, tzinfo=UTC)
     points = [_point(now, 100.0, None)]
 
@@ -90,11 +90,18 @@ def test_missing_costs_return_none() -> None:
     )
 
     assert measurements.consumption_today == 100.0
-    assert measurements.cost_today is None
+    assert measurements.consumption_week == 100.0
+    assert measurements.consumption_month == 100.0
+    assert measurements.consumption_year == 100.0
+
+    assert measurements.cost_today == 0.0
+    assert measurements.cost_week == 0.0
+    assert measurements.cost_month == 0.0
+    assert measurements.cost_year == 0.0
 
 
-def test_empty_points_return_zero_consumption() -> None:
-    """Return zero consumption and no cost for an empty series."""
+def test_empty_points_return_zero_totals() -> None:
+    """Return zero consumption and cost for an empty series."""
     measurements = FluidMeasurementProcessor.build_measurements(
         today_points=[],
         week_points=[],
@@ -107,7 +114,29 @@ def test_empty_points_return_zero_consumption() -> None:
     assert measurements.consumption_month == 0.0
     assert measurements.consumption_year == 0.0
 
-    assert measurements.cost_today is None
-    assert measurements.cost_week is None
-    assert measurements.cost_month is None
-    assert measurements.cost_year is None
+    assert measurements.cost_today == 0.0
+    assert measurements.cost_week == 0.0
+    assert measurements.cost_month == 0.0
+    assert measurements.cost_year == 0.0
+
+
+def test_ignores_missing_prices_when_other_prices_exist() -> None:
+    """Sum available prices while ignoring missing price values."""
+    now = datetime(2026, 8, 4, 12, tzinfo=UTC)
+
+    points = [
+        _point(now, 100.0, None),
+        _point(now + timedelta(minutes=5), 25.0, 0.2),
+        _point(now + timedelta(minutes=10), 10.0, None),
+        _point(now + timedelta(minutes=15), 5.0, 0.1),
+    ]
+
+    measurements = FluidMeasurementProcessor.build_measurements(
+        today_points=points,
+        week_points=points,
+        month_points=points,
+        year_points=points,
+    )
+
+    assert measurements.consumption_today == 140.0
+    assert measurements.cost_today == pytest.approx(0.3)
