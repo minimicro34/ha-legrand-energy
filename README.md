@@ -1,6 +1,6 @@
 # Legrand Energy
 
-> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water and gas monitoring.
+> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water, gas and cost monitoring.
 
 <p align="center">
 
@@ -36,14 +36,23 @@ It automatically discovers your electrical, water and gas circuits and provides 
 
 ## Contents
 
-- Features
-- Supported devices
-- Installation
-- Configuration
-- Available entities
-- Diagnostics
-- Troubleshooting
-- Roadmap
+- [Features](#features)
+- [Known limitations](#known-limitations)
+- [Supported devices](#supported-devices)
+- [Compatibility](#compatibility)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Available entities](#available-entities)
+- [API rate limits](#api-rate-limits)
+- [Private authentication](#private-authentication)
+- [Roadmap](#roadmap)
+- [Screenshots](#screenshots)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer)
+- [Support](#support)
+- [License](#license)
 
 ---
 
@@ -58,7 +67,7 @@ It automatically discovers your electrical, water and gas circuits and provides 
 - 🔌 Per-circuit electricity and cost monitoring
 - 💧 Cold and hot water consumption monitoring
 - 🔥 Gas consumption monitoring
-- 💶 Water and gas cost monitoring when provided by Home + Control
+💶 Water and gas cost monitoring (when supported by Home + Control)
 
 ### Tariffs & contract
 
@@ -91,8 +100,8 @@ It automatically discovers your electrical, water and gas circuits and provides 
 - Some advanced features rely on undocumented Netatmo web services and may be affected by future changes made by Netatmo.
 - Changes to Netatmo private APIs may temporarily affect contract or tariff information.
 - Water and gas entities depend on compatible fluid circuits being exposed by the Legrand EcoMeter.
-- Water and gas cost entities are available only when Home + Control returns fluid price measurements.
-- Fluid measurements may remain unavailable when no consumption history exists in Home + Control.
+- Water and gas cost entities are available only when Home + Control provides fluid pricing information.
+- Fluid consumption may remain unavailable until Home + Control has recorded measurement history.
 
 ---
 
@@ -108,6 +117,20 @@ Currently tested with:
 - ✅ Gas circuits exposed by the EcoMeter
 
 Support for additional Legrand energy devices may be added in future releases.
+
+---
+
+## Compatibility
+
+| Component | Supported |
+|-----------|-----------|
+| Home Assistant | ✅ |
+| HACS | ✅ |
+| Home + Control | ✅ |
+| Legrand EcoMeter | ✅ |
+| Electricity | ✅ |
+| Water | ✅ |
+| Gas | ✅ |
 
 ---
 
@@ -157,6 +180,8 @@ When adding the integration, Home Assistant automatically guides you through the
 
 ### Private API
 
+No browser extensions, cookie extraction or manual token management is required.
+
 Some advanced features require authentication against the Netatmo web services.
 
 The integration securely stores your Netatmo credentials and automatically maintains the private authentication session required to retrieve:
@@ -166,8 +191,6 @@ The integration securely stores your Netatmo credentials and automatically maint
 - Peak / Off-peak tariff data
 - Cost calculations
 - Consumption projections
-
-No manual extraction of cookies or authentication tokens is required.
 
 Credentials are stored using Home Assistant's secure storage facilities.
 
@@ -234,6 +257,9 @@ Each cold or hot water circuit exposes:
 - Consumption this week
 - Consumption this month
 - Consumption this year
+
+When Home + Control provides water pricing information, the following entities are also available:
+
 - Cost today
 - Cost this week
 - Cost this month
@@ -249,6 +275,9 @@ Each gas circuit exposes:
 - Consumption this week
 - Consumption this month
 - Consumption this year
+
+When Home + Control provides water pricing information, the following entities are also available:
+
 - Cost today
 - Cost this week
 - Cost this month
@@ -262,7 +291,7 @@ Home + Control reports gas consumption in dm³. Since 1 dm³ equals 1 litre, the
 
 The Netatmo APIs may occasionally return temporary errors or rate-limit responses.
 
-To improve reliability, historical measurements are cached in memory and refreshed only when necessary (startup, day change, or after a retry delay following a temporary failure). Current-day measurements continue to refresh normally.
+To improve reliability, historical measurements are cached in memory and refreshed only when necessary (startup, day change, or after a retry delay following a temporary failure). Current-day measurements automatically use a progressive retry backoff after temporary failures while continuing to expose the last successfully retrieved values.
 
 The integration preserves the last successfully retrieved values while waiting for the private API to recover, avoiding unnecessary entity unavailability and significantly reducing unnecessary calls to the Netatmo private endpoints.
 
@@ -288,9 +317,7 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 
 ## Screenshots
 
-*Coming soon.*
-
----
+Screenshots will be added once the integration reaches feature completeness.
 
 ## Development
 
@@ -299,12 +326,17 @@ Development instructions and contribution guidelines are available in [CONTRIBUT
 Common commands:
 
 ```bash
+make compile
 make format
+make format-check
+make lint
+make typecheck
+make test
 make check
 make clean
 ```
 
-`make check` runs the same quality checks as the GitHub CI workflow.
+`make check` runs the complete local validation pipeline (compile, formatting, linting, type checking, tests and Git working tree checks), matching the GitHub CI workflow.
 
 ---
 
@@ -334,7 +366,7 @@ Please use GitHub Issues for bug reports and feature requests.
 
 When reporting an issue, always attach diagnostics generated by Home Assistant whenever possible.
 
-Please include the integration version and Home Assistant version when reporting an issue.
+Please include the integration version, Home Assistant version and diagnostics whenever possible.
 
 ## License
 

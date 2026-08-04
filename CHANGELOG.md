@@ -10,15 +10,19 @@ The format is based on Keep a Changelog.
 
 ### Added
 
-- Added water and gas module detection.
+- Added automatic detection of water and gas modules.
 - Added support for cold water, hot water, and gas measurements.
 - Added daily, weekly, monthly, and yearly fluid consumption entities.
 - Added water and gas cost entities when price data is available from Home + Control.
 - Added generic fluid measurement types and private API measurement handling.
 - Added a generic decoder for electricity, water, and gas responses.
 - Added dedicated fluid measurement models and processing helpers.
+- Added progressive retry backoff for current-day private measurements (2, 5, 10 and 15 minutes).
+- Added retry backoff support for historical private measurements.
+- Added recovery logs when private measurements become available again.
+- Added reusable retry backoff helper.
 - Added English and French translations for water and gas entities.
-- Added automated tests for fluid type detection, decoding, processing, and data access.
+- Added automated tests for fluid type detection, decoding, processing, retry backoff, and data access.
 
 ### Changed
 
@@ -26,14 +30,23 @@ The format is based on Keep a Changelog.
 - Extended the measurement service and coordinator to store fluid measurements separately from electricity.
 - Updated module discovery to classify electricity, water, and gas circuits.
 - Updated the sensor platform to expose entities according to each module's fluid type.
+- Cached historical private measurements to reduce unnecessary API calls.
+- Reduced repeated calls to the Home + Control private API during temporary outages.
+- Cached measurements continue to be exposed while waiting for the private API to recover.
 - Gas values reported by Home + Control in dm³ are exposed as litres for Home Assistant compatibility.
+
+### Fixed
+
+- Prevented repeated private API requests every polling cycle during prolonged timeouts or connection failures.
+- Improved stability when `gethomemeasure` temporarily returns timeouts, connection resets, or backend errors.
 
 ### Internal
 
 - Preserved the existing electricity measurement and tariff pipelines.
 - Added reusable fluid measurement architecture for future supported resources.
+- Refactored the private measurement decoder for improved readability and maintainability.
 
-[1.1.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.7...v1.1.0
+[1.1.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.6...v1.1.0
 
 ---
 
