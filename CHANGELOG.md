@@ -50,6 +50,31 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.0.7] - 2026-08-04
+
+### Added
+
+- Added progressive retry backoff for current-day private measurements.
+- Added retry backoff support for historical private measurements.
+- Added recovery logs when private measurements become available again.
+- Added automated tests for retry timing, reset behavior, and recovery handling.
+
+### Changed
+
+- Reduced repeated calls to the private Home + Control API during temporary outages.
+- Current-day measurement retries now progressively wait 2, 5, 10, then 15 minutes after consecutive failures.
+- Historical measurement retries remain delayed by 15 minutes after a failure.
+- Cached measurements continue to be exposed while waiting for the private API to recover.
+
+### Fixed
+
+- Prevented repeated private API requests every polling cycle during prolonged timeouts or connection failures.
+- Improved stability when `gethomemeasure` temporarily returns timeouts, connection resets, or backend errors.
+
+[1.0.7]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.0.6...v1.1.0
+
+---
+
 ## [1.0.6] - 2026-08-04
 
 ### Changed
