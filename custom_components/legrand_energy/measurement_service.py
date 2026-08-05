@@ -1,9 +1,9 @@
-"""Electricity measurement orchestration service."""
+"""Electricity and fluid measurement orchestration service."""
 
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from homeassistant.util import dt as dt_util
 
@@ -11,6 +11,7 @@ from .helpers.energy_series import EnergyPoint
 from .helpers.fluid_measurement_processor import FluidMeasurementProcessor
 from .helpers.measurement_processor import MeasurementProcessor
 from .helpers.private_measure_decoder import decode_points_by_module
+from .helpers.retry_backoff import RetryBackoff
 from .models import (
     FluidMeasurements,
     LegrandEnergyData,
@@ -30,18 +31,28 @@ from .tariff_engine import TariffEngine
 
 _LOGGER = logging.getLogger(__name__)
 
-HISTORICAL_RETRY_INTERVAL = timedelta(minutes=15)
+HISTORICAL_RETRY_DELAYS = (timedelta(minutes=15),)
+
+CURRENT_DAY_RETRY_DELAYS = (
+    timedelta(minutes=2),
+    timedelta(minutes=5),
+    timedelta(minutes=10),
+    timedelta(minutes=15),
+)
 
 
 class MeasurementService:
-    """Fetch and process electricity measurements."""
+    """Fetch and process electricity and fluid measurements."""
 
     def __init__(self, private_api: LegrandPrivateApi) -> None:
         """Initialize the measurement service."""
         self._private_api = private_api
+
         self._historical_points_by_module: dict[str, list[EnergyPoint]] = {}
         self._historical_cache_date: date | None = None
-        self._historical_retry_at: datetime | None = None
+        self._historical_backoff = RetryBackoff(HISTORICAL_RETRY_DELAYS)
+
+        self._current_day_backoff = RetryBackoff(CURRENT_DAY_RETRY_DELAYS)
 
     def _modules_for_fluid(
         self,
@@ -137,23 +148,23 @@ class MeasurementService:
             FluidType.GAS,
         )
 
-        if not (electricity_modules or water_modules or gas_modules):
-            return None, {}, {}, {}, None
-
-        should_refresh_history = self._historical_cache_date != today_start.date() and (
-            self._historical_retry_at is None or now >= self._historical_retry_at
+        fluid_module_groups = (
+            (FluidType.ELECTRICITY, electricity_modules),
+            (FluidType.WATER, water_modules),
+            (FluidType.GAS, gas_modules),
         )
 
-        if should_refresh_history:
+        if not any(fluid_modules for _fluid_type, fluid_modules in fluid_module_groups):
+            return None, {}, {}, {}, None
+
+        history_is_outdated = self._historical_cache_date != today_start.date()
+
+        if history_is_outdated and self._historical_backoff.is_ready(now):
             try:
                 historical_points_by_module: dict[str, list[EnergyPoint]] = {}
 
                 if year_start < today_start:
-                    for fluid_type, fluid_modules in (
-                        (FluidType.ELECTRICITY, electricity_modules),
-                        (FluidType.WATER, water_modules),
-                        (FluidType.GAS, gas_modules),
-                    ):
+                    for fluid_type, fluid_modules in fluid_module_groups:
                         historical_points_by_module.update(
                             await self._fetch_points_by_module(
                                 home_id=home_id,
@@ -172,27 +183,35 @@ class MeasurementService:
                 raise
 
             except LegrandPrivateApiError as err:
-                self._historical_retry_at = now + HISTORICAL_RETRY_INTERVAL
+                retry_delay = self._historical_backoff.record_failure(now)
 
                 _LOGGER.warning(
                     "Unable to update historical private measurements, "
-                    "keeping cached data: %s",
+                    "keeping cached data and retrying in %s: %s",
+                    retry_delay,
                     err,
                 )
 
             else:
                 self._historical_points_by_module = historical_points_by_module
                 self._historical_cache_date = today_start.date()
-                self._historical_retry_at = None
+
+                previous_failure_count = self._historical_backoff.reset()
+
+                if previous_failure_count:
+                    _LOGGER.info(
+                        "Historical private measurements recovered "
+                        "after %s failed update(s)",
+                        previous_failure_count,
+                    )
+
+        if not self._current_day_backoff.is_ready(now):
+            return self._cached_result(previous_data)
 
         try:
             today_points_by_module: dict[str, list[EnergyPoint]] = {}
 
-            for fluid_type, fluid_modules in (
-                (FluidType.ELECTRICITY, electricity_modules),
-                (FluidType.WATER, water_modules),
-                (FluidType.GAS, gas_modules),
-            ):
+            for fluid_type, fluid_modules in fluid_module_groups:
                 today_points_by_module.update(
                     await self._fetch_points_by_module(
                         home_id=home_id,
@@ -211,22 +230,24 @@ class MeasurementService:
             raise
 
         except LegrandPrivateApiError as err:
+            retry_delay = self._current_day_backoff.record_failure(now)
+
             _LOGGER.warning(
                 "Unable to update current-day private measurements, "
-                "keeping cached data: %s",
+                "keeping cached data and retrying in %s: %s",
+                retry_delay,
                 err,
             )
 
-            if previous_data is not None:
-                return (
-                    previous_data.measurements,
-                    previous_data.measurements_by_module,
-                    previous_data.water_measurements_by_module,
-                    previous_data.gas_measurements_by_module,
-                    previous_data.projections,
-                )
+            return self._cached_result(previous_data)
 
-            return None, {}, {}, {}, None
+        previous_failure_count = self._current_day_backoff.reset()
+
+        if previous_failure_count:
+            _LOGGER.info(
+                "Current-day private measurements recovered after %s failed update(s)",
+                previous_failure_count,
+            )
 
         historical_points = self._historical_points_by_module
 
@@ -321,8 +342,7 @@ class MeasurementService:
 
             if module.fluid_type is FluidType.WATER:
                 water_measurements_by_module[module_id] = fluid_measurements
-
-            elif module.fluid_type is FluidType.GAS:
+            else:
                 gas_measurements_by_module[module_id] = fluid_measurements
 
         total_module = MeasurementProcessor.find_total_module(modules)
@@ -348,4 +368,26 @@ class MeasurementService:
             water_measurements_by_module,
             gas_measurements_by_module,
             projections,
+        )
+
+    @staticmethod
+    def _cached_result(
+        previous_data: LegrandEnergyData | None,
+    ) -> tuple[
+        LegrandMeasurements | None,
+        dict[str, LegrandMeasurements],
+        dict[str, FluidMeasurements],
+        dict[str, FluidMeasurements],
+        LegrandProjections | None,
+    ]:
+        """Return previously cached measurements when available."""
+        if previous_data is None:
+            return None, {}, {}, {}, None
+
+        return (
+            previous_data.measurements,
+            previous_data.measurements_by_module,
+            previous_data.water_measurements_by_module,
+            previous_data.gas_measurements_by_module,
+            previous_data.projections,
         )

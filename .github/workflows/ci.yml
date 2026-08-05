@@ -6,12 +6,15 @@ on:
 
 jobs:
   quality:
+    name: Quality checks
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
@@ -20,17 +23,5 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements_dev.txt
 
-      - name: Compile
-        run: python -m compileall custom_components
-
-      - name: Ruff format
-        run: ruff format --check .
-
-      - name: Ruff lint
-        run: ruff check .
-
-      - name: Mypy
-        run: mypy custom_components/legrand_energy
-
-      - name: Pytest
-        run: pytest -q
+      - name: Run quality checks
+        run: make check
