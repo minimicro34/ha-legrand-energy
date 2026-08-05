@@ -14,13 +14,12 @@ The format is based on Keep a Changelog.
 - Added support for cold water, hot water, and gas measurements.
 - Added daily, weekly, monthly, and yearly fluid consumption entities.
 - Added water and gas cost entities when price data is available from Home + Control.
-- Added generic fluid measurement types and private API measurement handling.
+- Added generic fluid measurement types, models, processing helpers, and private API measurement handling.
 - Added a generic decoder for electricity, water, and gas responses.
-- Added dedicated fluid measurement models and processing helpers.
+- Added reusable retry backoff helper shared by historical and current-day private measurement updates.
 - Added progressive retry backoff for current-day private measurements (2, 5, 10 and 15 minutes).
-- Added retry backoff support for historical private measurements.
+- Added automatic retry backoff for historical private measurements.
 - Added recovery logs when private measurements become available again.
-- Added reusable retry backoff helper.
 - Added English and French translations for water and gas entities.
 - Added automated tests for fluid type detection, decoding, processing, retry backoff, and data access.
 
@@ -30,15 +29,15 @@ The format is based on Keep a Changelog.
 - Extended the measurement service and coordinator to store fluid measurements separately from electricity.
 - Updated module discovery to classify electricity, water, and gas circuits.
 - Updated the sensor platform to expose entities according to each module's fluid type.
-- Cached historical private measurements to reduce unnecessary API calls.
+- Cached historical private measurements continue to be refreshed only when needed.
+- Cached measurements remain available while waiting for the private API to recover.
 - Reduced repeated calls to the Home + Control private API during temporary outages.
-- Cached measurements continue to be exposed while waiting for the private API to recover.
 - Gas values reported by Home + Control in dm³ are exposed as litres for Home Assistant compatibility.
 
 ### Fixed
 
 - Prevented repeated private API requests every polling cycle during prolonged timeouts or connection failures.
-- Improved stability when `gethomemeasure` temporarily returns timeouts, connection resets, or backend errors.
+- Improved resilience when Home + Control private measurements temporarily return timeouts, connection resets, or backend errors.
 
 ### Internal
 
@@ -55,18 +54,14 @@ The format is based on Keep a Changelog.
 ### Changed
 
 - Cached historical (`scale=1day`) private measurements in memory.
-- Historical measurements are now refreshed only:
-  - at startup,
-  - after a day change,
-  - after a 15-minute retry delay following a temporary failure.
+- Historical measurements are refreshed only at startup and after a calendar day change.
 - Current-day (`scale=5min`) measurements continue to refresh every coordinator update.
 - Refactored the private measurement decoder for improved readability and maintainability.
 
 ### Improved
 
-- Significantly reduced calls to the Netatmo private `gethomemeasure` endpoint.
+- Significantly reduced calls to the Home + Control private measurement endpoints.
 - Reduced the risk of HTTP 500/502 errors caused by repeated historical requests.
-- Historical measurements are preserved during temporary private API failures.
 - Expanded unit test coverage for measurement caching and private response decoding.
 
 ---
@@ -74,6 +69,7 @@ The format is based on Keep a Changelog.
 ## [1.0.5] - 2026-08-03
 
 ### Fixed
+
 - Fixed parsing of `gethomemeasure` responses using the compact `sum_energy_elec` format.
 - Added automatic fallback between total energy (`sum_energy_elec`) and tariff-specific values (`sum_energy_elec$0/$1/$2`).
 - Improved compatibility with different Legrand Energy API response formats.
@@ -145,28 +141,3 @@ The format is based on Keep a Changelog.
 - Automatic circuit discovery.
 - Automatic OAuth token refresh.
 - Automatic private Netatmo session management.
-
----
-
-## [1.0.0]
-
-🎉 First stable release
-
-Initial stable release of the Legrand Energy integration for Home Assistant.
-
-- Features
-- OAuth2 authentication
-- Private API support
-- Electricity contract parsing
-- Peak / Off-Peak tariff detection
-- Current tariff and next change sensors
-- Daily, monthly and yearly consumption
-- Cost calculation
-- Consumption projections
-- Diagnostics support
-- HACS compatible
-- Quality
-- Full type checking with mypy
-- Ruff formatted
-- Automated tests
-- Home Assistant best practices

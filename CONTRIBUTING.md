@@ -143,15 +143,18 @@ Please remove or anonymize any sensitive information before publishing logs.
 
 ## Code style
 
-This project follows the standard Home Assistant development guidelines.
+This project follows the Home Assistant development conventions whenever applicable.
 
-Code should:
+Please refer to:
 
-- pass `ruff`;
-- pass `mypy`;
-- pass all tests;
+https://developers.home-assistant.io/
+
+All contributions should:
+
+- pass `make check`;
+- include tests when appropriate;
 - remain fully typed;
-- follow existing project conventions.
+- follow the existing project style.
 
 ---
 

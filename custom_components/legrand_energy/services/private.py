@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import Mapping
 from http.cookies import Morsel
 from urllib.parse import unquote
@@ -12,8 +11,6 @@ import aiohttp
 from yarl import URL
 
 from custom_components.legrand_energy.models.auth import PrivateSession
-
-_LOGGER = logging.getLogger(__name__)
 
 AUTH_BASE = "https://auth.netatmo.com"
 HOME_DASHBOARD_URL = "https://home.netatmo.com/control/dashboard"
@@ -391,11 +388,6 @@ class PrivateAuthService:
                     if new_web_token.casefold() == "deleted" or len(new_web_token) < 20:
                         raise PrivateAuthServiceAuthenticationError(
                             "Netatmo did not return a valid web access token"
-                        )
-
-                    if new_web_token == session.web_token:
-                        _LOGGER.debug(
-                            "Netatmo refresh returned the same web token value"
                         )
 
                     self._update_rotated_cookies(
