@@ -300,7 +300,29 @@ class MeasurementService:
                     year_start,
                 )
 
+                _LOGGER.debug(
+                    "Private measurements decoded for %s: historical=%s today=%s",
+                    module_id,
+                    len(historical_points.get(module_id, [])),
+                    len(today_points_by_module.get(module_id, [])),
+                )
+
                 if not today_points:
+                    _LOGGER.debug(
+                        "No current-day electricity points yet for %s; "
+                        "keeping cached measurements",
+                        module_id,
+                    )
+
+                    previous_measurements = (
+                        previous_data.measurements_by_module.get(module_id)
+                        if previous_data is not None
+                        else None
+                    )
+
+                    if previous_measurements is not None:
+                        measurements_by_module[module_id] = previous_measurements
+
                     continue
 
                 measurements_by_module[module_id] = (
@@ -313,8 +335,6 @@ class MeasurementService:
                         off_peak_price=off_peak_price,
                     )
                 )
-
-                continue
 
             today_points = FluidMeasurementProcessor.points_since(
                 points,
