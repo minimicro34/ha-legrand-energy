@@ -61,7 +61,7 @@ async def async_setup_entry(
             hass,
             entry,
         )
-    except config_entry_oauth2_flow.ImplementationUnavailableError as err:
+    except config_entry_oauth2_flow.ImplementationUnavailableError as err:  # type: ignore[attr-defined]
         raise ConfigEntryNotReady(
             "OAuth2 implementation temporarily unavailable"
         ) from err
