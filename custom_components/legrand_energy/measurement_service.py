@@ -300,20 +300,7 @@ class MeasurementService:
                     year_start,
                 )
 
-                _LOGGER.debug(
-                    "Private measurements decoded for %s: historical=%s today=%s",
-                    module_id,
-                    len(historical_points.get(module_id, [])),
-                    len(today_points_by_module.get(module_id, [])),
-                )
-
                 if not today_points:
-                    _LOGGER.debug(
-                        "No current-day electricity points yet for %s; "
-                        "keeping cached measurements",
-                        module_id,
-                    )
-
                     previous_measurements = (
                         previous_data.measurements_by_module.get(module_id)
                         if previous_data is not None

@@ -1,4 +1,4 @@
-PYTHON ?= python3
+PYTHON ?= python3.14
 .PHONY: help compile format format-check lint typecheck test check clean
 
 help:
@@ -28,7 +28,7 @@ typecheck:
 	mypy custom_components/legrand_energy
 
 test:
-	pytest -q
+	$(PYTHON) -m pytest -q
 
 check: compile format-check lint typecheck test
 

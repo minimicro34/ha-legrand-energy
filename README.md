@@ -67,7 +67,7 @@ It automatically discovers your electrical, water and gas circuits and provides 
 - 🔌 Per-circuit electricity and cost monitoring
 - 💧 Cold and hot water consumption monitoring
 - 🔥 Gas consumption monitoring
-💶 Water and gas cost monitoring (when supported by Home + Control)
+- 💶 Water and gas cost monitoring (when supported by Home + Control)
 
 ### Tariffs & contract
 
@@ -274,14 +274,14 @@ Each gas circuit exposes:
 - Consumption this month
 - Consumption this year
 
-When Home + Control provides water pricing information, the following entities are also available:
+When Home + Control provides gas pricing information, the following entities are also available:
 
 - Cost today
 - Cost this week
 - Cost this month
 - Cost this year
 
-Home + Control reports gas consumption in dm³. Since 1 dm³ equals 1 litre, the integration exposes the native values using litres for Home Assistant compatibility.
+Home + Control reports gas consumption in dm³. Since 1 dm³ equals 1 litre, the integration exposes gas consumption in litres for Home Assistant compatibility.
 
 ---
 
@@ -316,6 +316,8 @@ No manual renewal of cookies, WebTokens or other authentication values is requir
 ## Screenshots
 
 Screenshots will be added once the integration reaches feature completeness.
+
+---
 
 ## Development
 
