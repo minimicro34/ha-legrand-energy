@@ -38,6 +38,9 @@ The format is based on Keep a Changelog.
 
 - Prevented repeated private API requests every polling cycle during prolonged timeouts or connection failures.
 - Improved resilience when Home + Control private measurements temporarily return timeouts, connection resets, or backend errors.
+- Improve OAuth2 setup robustness.
+- Automatically retry setup when Netatmo OAuth servers are temporarily unavailable.
+- Trigger Home Assistant reauthentication when OAuth refresh fails with an authentication error.
 
 ### Internal
 

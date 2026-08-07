@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -66,8 +67,19 @@ async def async_setup_entry(
             "OAuth2 implementation temporarily unavailable"
         ) from err
 
-    # Refresh the token immediately when it is already expired.
-    await oauth_session.async_ensure_token_valid()
+    try:
+        await oauth_session.async_ensure_token_valid()
+    except aiohttp.ClientResponseError as err:
+        if 400 <= err.status < 500:
+            raise ConfigEntryAuthFailed from err
+
+        raise ConfigEntryNotReady(
+            "Unable to validate OAuth2 token, will retry"
+        ) from err
+    except aiohttp.ClientError as err:
+        raise ConfigEntryNotReady(
+            "Unable to validate OAuth2 token, will retry"
+        ) from err
 
     private_service = PrivateAuthService(
         session=session,
