@@ -74,7 +74,7 @@ class LegrandPrivateApi(BaseApiClient):
         )
 
         if response.status in (401, 403):
-            _LOGGER.debug(
+            _LOGGER.info(
                 "Private API returned %s for %s, attempting authentication refresh",
                 response.status,
                 endpoint,

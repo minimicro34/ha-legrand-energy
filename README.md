@@ -336,7 +336,9 @@ make check
 make clean
 ```
 
-`make check` runs the complete local validation pipeline (compile, formatting, linting, type checking, tests and Git working tree checks), matching the GitHub CI workflow.
+`make check` runs the complete local validation pipeline
+(compile, formatting, linting, type checking and tests),
+matching the GitHub CI workflow.
 
 ---
 
