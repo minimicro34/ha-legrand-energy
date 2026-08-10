@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import date, timedelta
 
 from homeassistant.util import dt as dt_util
@@ -53,6 +54,7 @@ class MeasurementService:
         self._historical_backoff = RetryBackoff(HISTORICAL_RETRY_DELAYS)
 
         self._current_day_backoff = RetryBackoff(CURRENT_DAY_RETRY_DELAYS)
+        self._waiting_today_points: set[str] = set()
 
     def _modules_for_fluid(
         self,
@@ -307,10 +309,33 @@ class MeasurementService:
                         else None
                     )
 
+                    if module_id not in self._waiting_today_points:
+                        _LOGGER.info(
+                            "No current-day electricity points yet for %s; "
+                            "using zero for today",
+                            module_id,
+                        )
+                        self._waiting_today_points.add(module_id)
+
                     if previous_measurements is not None:
-                        measurements_by_module[module_id] = previous_measurements
+                        measurements_by_module[module_id] = replace(
+                            previous_measurements,
+                            energy_today=0.0,
+                            energy_peak_today=0.0,
+                            energy_off_peak_today=0.0,
+                            cost_today=0.0,
+                            cost_peak_today=0.0,
+                            cost_off_peak_today=0.0,
+                        )
 
                     continue
+
+                if module_id in self._waiting_today_points:
+                    _LOGGER.info(
+                        "Current-day electricity points available for %s",
+                        module_id,
+                    )
+                    self._waiting_today_points.remove(module_id)
 
                 measurements_by_module[module_id] = (
                     MeasurementProcessor.build_measurements(

@@ -149,7 +149,7 @@ class AuthenticationManager:
 
         await self._private_service.refresh(session)
 
-        _LOGGER.debug(
+        _LOGGER.info(
             "Private session refreshed (changed=%s, old=%s...%s, new=%s...%s)",
             old_token != session.web_token,
             old_token[:8],
