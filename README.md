@@ -8,6 +8,7 @@
 [![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml)
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/minimicro34)
 [![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE.md)
 
 </p>
@@ -363,6 +364,24 @@ It uses official public APIs together with undocumented endpoints required to pr
 ---
 
 ## Support
+
+## Support
+
+If you find Legrand Energy useful and would like to support its development, you can buy me a coffee.
+
+<p align="center">
+  <a href="https://buymeacoffee.com/minimicro34">
+    <img
+      src="https://github.com/appcraftstudio/buymeacoffee/raw/master/Images/snapshot-bmc-button.png"
+      alt="Buy Me a Coffee"
+      width="300"
+    />
+  </a>
+</p>
+
+Your support helps me dedicate more time to improving the integration, adding new features and fixing issues.
+
+Bug reports, feature suggestions, contributions and GitHub stars are also greatly appreciated.
 
 Please use GitHub Issues for bug reports and feature requests.
 
