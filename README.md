@@ -9,7 +9,7 @@
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/minimicro34)
-[![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE.md)
+[![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE)
 
 </p>
 
