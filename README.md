@@ -366,8 +366,6 @@ It uses official public APIs together with undocumented endpoints required to pr
 
 ## Support
 
-## Support
-
 If you find Legrand Energy useful and would like to support its development, you can buy me a coffee.
 
 <p align="center">
