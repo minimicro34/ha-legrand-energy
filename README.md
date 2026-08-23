@@ -391,4 +391,6 @@ Please include the integration version, Home Assistant version and diagnostics w
 
 ## License
 
-MIT
+Copyright (c) 2026 minimicro34
+
+This project is licensed under the [GNU General Public License v3.0 or later](LICENSE).
