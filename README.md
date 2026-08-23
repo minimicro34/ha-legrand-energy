@@ -7,7 +7,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
 [![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml)
 [![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml)
-[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz/)
+[![HACS](https://img.shields.io/badge/HACS-Custom-blue.svg)](https://hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/minimicro34)
 [![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE)
