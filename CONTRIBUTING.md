@@ -76,6 +76,19 @@ make test
 
 ---
 
+## Translations
+
+When adding or changing user-facing strings:
+
+- update `custom_components/legrand-energy/strings.json`;
+- update the corresponding files in `custom_components/legrand-energy/translations/`;
+- keep translation keys synchronized between languages;
+- do not remove existing translation keys without checking their usage.
+
+Run the project validation checks before committing translation changes.
+
+---
+
 ## Pull requests
 
 Before opening a Pull Request:
