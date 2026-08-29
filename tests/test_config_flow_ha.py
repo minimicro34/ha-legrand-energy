@@ -235,3 +235,56 @@ async def test_oauth_reauth_updates_entry_and_preserves_private_auth(
     assert entry.data["web_token"] == "private-web-token"
     assert entry.data["refresh_token_web"] == "private-refresh-token"
     assert entry.data["laravel_session"] == "private-session"
+
+
+@pytest.mark.asyncio
+async def test_oauth_reauth_can_switch_application_credential(
+    hass: HomeAssistant,
+) -> None:
+    """Test OAuth reauth can switch to a new application credential."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Legrand EcoMeter",
+        data={
+            "auth_implementation": "old-credential",
+            "token": {
+                "access_token": "old-access-token",
+                "refresh_token": "old-refresh-token",
+            },
+            "username": "user@example.com",
+            "password": "private-password",
+            "web_token": "private-web-token",
+        },
+        source=config_entries.SOURCE_USER,
+        unique_id=DOMAIN,
+    )
+    entry.add_to_hass(hass)
+
+    flow = LegrandEnergyConfigFlow()
+    flow.hass = hass
+    flow.context = {
+        "source": config_entries.SOURCE_REAUTH,
+        "entry_id": entry.entry_id,
+    }
+
+    oauth_data = {
+        "auth_implementation": "new-credential",
+        "token": {
+            "access_token": "new-access-token",
+            "refresh_token": "new-refresh-token",
+        },
+    }
+
+    result = await flow.async_oauth_create_entry(oauth_data)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+
+    assert entry.data["auth_implementation"] == "new-credential"
+    assert entry.data["token"]["access_token"] == "new-access-token"
+    assert entry.data["token"]["refresh_token"] == "new-refresh-token"
+
+    # Private Home + Control authentication is preserved.
+    assert entry.data["username"] == "user@example.com"
+    assert entry.data["password"] == "private-password"
+    assert entry.data["web_token"] == "private-web-token"
