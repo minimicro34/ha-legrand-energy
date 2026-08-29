@@ -81,9 +81,8 @@ It automatically discovers your electrical, water and gas circuits and provides 
 ### Home Assistant
 
 - 🏠 Energy Dashboard compatible
-- 🔄 Config Flow
-- 🔐 OAuth2 authentication
-- ⚙️ Options Flow
+- 🔄 Native Config Flow and reconfiguration
+- 🔐 OAuth2 authentication and reauthentication
 - 🩺 Diagnostics support
 - 📦 HACS compatible
 
@@ -139,9 +138,8 @@ Support for additional Legrand energy devices may be added in future releases.
 ## Requirements
 
 - Home Assistant 2026.7 or newer
-- Compatible with the Python version bundled with the supported Home Assistant releases.
-- A Legrand EcoMeter linked to a Home + Control / Netatmo account
-- A Netatmo developer application (OAuth2)
+- A Legrand EcoMeter linked to a Netatmo / Legrand Home + Control account
+- A Netatmo developer application with a Client ID and Client Secret
 
 ---
 
@@ -172,29 +170,76 @@ Integration
 
 ## Configuration
 
-### Public API
+Legrand Energy uses two separate authentication mechanisms:
 
-Create a Netatmo developer application and obtain a Client ID and Client Secret.
+- **Netatmo OAuth2** for the official public API
+- **Netatmo / Home + Control account credentials** for private energy and contract data
 
-These credentials are required only during the initial setup.
+### Netatmo developer application
 
-When adding the integration, Home Assistant automatically guides you through the OAuth2 authentication process using your **Client ID** and **Client Secret**.
+Create a Netatmo developer application at:
 
-### Private API
+https://dev.netatmo.com/apps/
 
-No browser extensions, cookie extraction or manual token management is required.
+Create a new application and obtain its:
 
-Some advanced features require authentication against the Netatmo web services.
+- **Client ID**
+- **Client Secret**
 
-The integration securely stores your Netatmo credentials and automatically maintains the private authentication session required to retrieve:
+Leave the following fields empty:
+
+- **Redirect URI**
+- **Webhook URI**
+
+No manual token generation is required.
+
+### Application credentials
+
+Legrand Energy uses Home Assistant's native **Application Credentials** support for the Netatmo OAuth2 Client ID and Client Secret.
+
+In Home Assistant:
+
+1. Go to **Settings → Devices & services**
+2. Open the **⋮** menu
+3. Select **Application credentials**
+4. Add credentials for **Legrand Energy**
+5. Enter the Client ID and Client Secret from your Netatmo developer application
+
+When adding Legrand Energy, Home Assistant will use these credentials and guide you through the Netatmo OAuth2 authorization process.
+
+OAuth access and refresh tokens are managed automatically by Home Assistant.
+
+If the Netatmo OAuth authorization becomes invalid, Home Assistant will automatically start a reauthentication flow.
+
+### Home + Control authentication
+
+During initial setup, Legrand Energy also asks for the email address and password of your Netatmo / Legrand Home + Control account.
+
+These credentials are used to establish the private authentication session required for data that is not available through the public API alone, including:
 
 - Electricity contract
 - Detailed energy measurements
 - Peak / Off-peak tariff data
 - Cost calculations
 - Consumption projections
+- Water and gas measurements when available
 
-Credentials are stored using Home Assistant's secure storage facilities.
+No browser extensions, cookie extraction, WebToken extraction or manual token management is required.
+
+### Changing credentials
+
+The two authentication mechanisms are managed separately.
+
+To change your **Home + Control email address or password**:
+
+1. Go to **Settings → Devices & services**
+2. Open **Legrand Energy**
+3. Select **Reconfigure**
+4. Enter the new email address and password
+
+Legrand Energy validates the new credentials, creates a new private authentication session and reloads the integration automatically.
+
+The **Netatmo OAuth Client ID and Client Secret** are managed by Home Assistant under **Application credentials**, rather than through the Legrand Energy reconfiguration form.
 
 ---
 
@@ -301,9 +346,13 @@ Electricity contract information is cached and refreshed periodically to reduce 
 
 ## Private authentication
 
-The integration automatically refreshes the private Netatmo authentication session while it remains valid.
+Legrand Energy automatically manages the private Netatmo / Home + Control authentication session.
 
-No manual renewal of cookies, WebTokens or other authentication values is required.
+The integration stores the authentication data in the Home Assistant config entry and automatically renews the private session when required.
+
+No manual renewal of cookies, WebTokens or other private authentication values is required.
+
+If your Home + Control account credentials change, use the integration's **Reconfigure** action to authenticate again.
 
 ---
 

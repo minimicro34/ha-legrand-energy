@@ -6,6 +6,37 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.2.0] - 2026-08-29
+
+### Added
+
+- Added native Home Assistant reconfiguration for Netatmo / Home + Control email and password.
+- Added OAuth2 reauthentication when the Netatmo authorization becomes invalid.
+- Added automated tests covering configuration, reconfiguration, and OAuth2 reauthentication flows.
+
+### Changed
+
+- Replaced the private authentication Options Flow with Home Assistant's native config entry reconfiguration flow.
+- Private Home + Control authentication data is now stored and updated directly in the config entry.
+- Reconfiguration now validates the new Home + Control credentials before updating and reloading the integration.
+- OAuth2 reauthentication updates the existing config entry while preserving private Home + Control authentication data.
+- Updated authentication documentation to distinguish OAuth2 Application Credentials from Home + Control account credentials.
+
+### Fixed
+
+- Prevented duplicate config entry reloads caused by combining an update listener with config flow reload methods.
+- Improved compatibility with Home Assistant 2026.12, where the previous double-reload pattern is no longer supported.
+
+### Internal
+
+- Removed the legacy `LegrandEnergyOptionsFlow`.
+- Removed the manual config entry update listener used by the previous Options Flow.
+- Added unit and Home Assistant framework tests for the authentication flows.
+
+[1.2.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.1.0...v1.2.0
+
+---
+
 ## [1.1.0] - 2026-08-04
 
 ### Added

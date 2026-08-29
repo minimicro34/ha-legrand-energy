@@ -46,7 +46,7 @@
       "water_consumption_today": {"name": "Eau aujourd'hui"},
       "water_consumption_week": {"name": "Eau cette semaine"},
       "water_consumption_month": {"name": "Eau ce mois"},
-      "water_consumption_year": {"name": "Eau cette année"  },
+      "water_consumption_year": {"name": "Eau cette année"},
       "water_cost_today": {"name": "Coût eau aujourd'hui"},
       "water_cost_week": {"name": "Coût eau cette semaine"},
       "water_cost_month": {"name": "Coût eau ce mois"},
@@ -66,6 +66,7 @@
       }
     }
   },
+
   "config": {
     "step": {
       "private": {
@@ -79,21 +80,11 @@
           "username": "Adresse e-mail utilisée avec l'application Home + Control ou votre compte Netatmo.",
           "password": "Mot de passe du compte Netatmo ou Legrand Home + Control."
         }
-      }
-    },
-    "abort": {
-      "oauth_error": "L'authentification OAuth a échoué."
-    },
-    "error": {
-      "invalid_auth": "Identifiants Netatmo ou Home + Control invalides.",
-      "cannot_connect": "Impossible de se connecter au service Netatmo."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Connexion Netatmo / Home + Control",
-        "description": "Modifiez les identifiants de votre compte Netatmo ou Legrand Home + Control. Une nouvelle session privée sera créée automatiquement.",
+      },
+
+      "reconfigure": {
+        "title": "Reconfigurer l'authentification Home + Control",
+        "description": "Modifiez les identifiants de votre compte Netatmo ou Legrand Home + Control. Une nouvelle session d'authentification privée sera créée automatiquement et l'intégration sera rechargée.",
         "data": {
           "username": "Adresse e-mail",
           "password": "Mot de passe"
@@ -102,13 +93,24 @@
           "username": "Adresse e-mail utilisée avec l'application Home + Control ou votre compte Netatmo.",
           "password": "Mot de passe du compte Netatmo ou Legrand Home + Control."
         }
+      },
+      "reauth_confirm": {
+        "title": "Réauthentifier Netatmo",
+        "description": "Votre autorisation Netatmo n'est plus valide. Connectez-vous à nouveau pour rétablir l'accès."
       }
-    },
+      },
+      "abort": {
+        "oauth_error": "L'authentification OAuth a échoué.",
+        "reconfigure_successful": "L'authentification Home + Control a été mise à jour avec succès.",
+        "reauth_successful": "L'authentification Netatmo a été renouvelée avec succès."
+      },
+
     "error": {
       "invalid_auth": "Identifiants Netatmo ou Home + Control invalides.",
       "cannot_connect": "Impossible de se connecter au service Netatmo."
     }
   },
+
   "application_credentials": {
     "description": "Créez une application dans le portail développeur Netatmo, puis saisissez le Client ID et le Client Secret."
   }

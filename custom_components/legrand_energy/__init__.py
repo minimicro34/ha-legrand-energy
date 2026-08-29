@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -30,11 +28,6 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
 ]
 
-PRIVATE_AUTH_KEYS = (
-    "web_token",
-    *PRIVATE_COOKIE_NAMES,
-)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -45,15 +38,15 @@ async def async_setup_entry(
 
     def private_value(key: str) -> str | None:
         """Return a private authentication value."""
-        option_value = entry.options.get(key)
-
-        if isinstance(option_value, str) and option_value:
-            return option_value
-
         data_value = entry.data.get(key)
 
         if isinstance(data_value, str) and data_value:
             return data_value
+
+        option_value = entry.options.get(key)
+
+        if isinstance(option_value, str) and option_value:
+            return option_value
 
         return None
 
@@ -152,32 +145,6 @@ async def async_setup_entry(
 
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
-
-    async def async_entry_updated(
-        hass: HomeAssistant,
-        updated_entry: ConfigEntry,
-    ) -> None:
-        """Apply user-updated options and reload the integration."""
-        new_data: dict[str, Any] = dict(updated_entry.data)
-
-        for key in PRIVATE_AUTH_KEYS:
-            option_value = updated_entry.options.get(key)
-
-            if isinstance(option_value, str):
-                if option_value:
-                    new_data[key] = option_value
-                else:
-                    new_data.pop(key, None)
-
-        if new_data != updated_entry.data:
-            hass.config_entries.async_update_entry(
-                updated_entry,
-                data=new_data,
-            )
-
-        await hass.config_entries.async_reload(updated_entry.entry_id)
-
-    entry.async_on_unload(entry.add_update_listener(async_entry_updated))
 
     await hass.config_entries.async_forward_entry_setups(
         entry,

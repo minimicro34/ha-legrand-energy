@@ -45,11 +45,7 @@ class ConfigEntryAuthenticationStore:
         new_data: dict[str, Any] = dict(self._entry.data)
         new_data.update(auth_data)
 
-        new_options: dict[str, Any] = dict(self._entry.options)
-        new_options.update(auth_data)
-
         self._hass.config_entries.async_update_entry(
             self._entry,
             data=new_data,
-            options=new_options,
         )

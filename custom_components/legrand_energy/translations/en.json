@@ -66,6 +66,7 @@
       }
     }
   },
+
   "config": {
     "step": {
       "private": {
@@ -79,21 +80,11 @@
           "username": "Email address used with the Home + Control app or your Netatmo account.",
           "password": "Password for the Netatmo or Legrand Home + Control account."
         }
-      }
-    },
-    "abort": {
-      "oauth_error": "OAuth authentication failed."
-    },
-    "error": {
-      "invalid_auth": "Invalid Netatmo or Home + Control credentials.",
-      "cannot_connect": "Unable to connect to the Netatmo service."
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Netatmo / Home + Control sign-in",
-        "description": "Update your Netatmo or Legrand Home + Control account credentials. A new private session will be created automatically.",
+      },
+
+      "reconfigure": {
+        "title": "Reconfigure Home + Control authentication",
+        "description": "Update your Netatmo or Legrand Home + Control account credentials. A new private authentication session will be created automatically and the integration will be reloaded.",
         "data": {
           "username": "Email address",
           "password": "Password"
@@ -102,13 +93,24 @@
           "username": "Email address used with the Home + Control app or your Netatmo account.",
           "password": "Password for the Netatmo or Legrand Home + Control account."
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Netatmo",
+        "description": "Your Netatmo authorization is no longer valid. Sign in again to restore access."
       }
     },
+    "abort": {
+      "oauth_error": "OAuth authentication failed.",
+      "reconfigure_successful": "Home + Control authentication was successfully updated.",
+      "reauth_successful": "Netatmo authentication was successfully renewed."
+    },
+
     "error": {
       "invalid_auth": "Invalid Netatmo or Home + Control credentials.",
       "cannot_connect": "Unable to connect to the Netatmo service."
     }
   },
+
   "application_credentials": {
     "description": "Create an application in the Netatmo Developer Portal, then enter the Client ID and Client Secret below."
   }
