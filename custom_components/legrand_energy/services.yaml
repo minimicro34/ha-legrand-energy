@@ -3,3 +3,9 @@ debug_homestatus:
   description: >-
     Probe the private Home + Control homestatus endpoint and write a sanitized
     summary of power- and energy-related fields to the Home Assistant log.
+
+debug_measure_types:
+  name: Debug Home + Control measurement types
+  description: >-
+    Probe a small set of candidate private measurement types and write a
+    sanitized summary of their responses to the Home Assistant log.
