@@ -22,10 +22,18 @@ from custom_components.legrand_energy.services.private import (
 
 
 def _cookies(**values: str) -> dict[str, str]:
-    return {name: values.get(name, f"value-{index}") for index, name in enumerate(REQUIRED_REFRESH_COOKIES)}
+    return {
+        name: values.get(name, f"value-{index}")
+        for index, name in enumerate(REQUIRED_REFRESH_COOKIES)
+    }
 
 
-def _response(status: int = 200, *, location: str | None = None, url: str = "https://auth.netatmo.com/access/keychain"):
+def _response(
+    status: int = 200,
+    *,
+    location: str | None = None,
+    url: str = "https://auth.netatmo.com/access/keychain",
+):
     response = MagicMock()
     response.status = status
     response.headers = {} if location is None else {"Location": location}
@@ -126,9 +134,16 @@ def test_extract_session_cookies_and_web_token() -> None:
 
     valid_token = "abcdefghijklmnopqrstuvwxyz"
     assert service._extract_web_token({ACCESS_TOKEN_COOKIE: valid_token}) == valid_token
-    assert service._extract_web_token({ACCESS_TOKEN_COOKIE: "abc%2Ddefghijklmnopqrstuvwxyz"}) == "abc-defghijklmnopqrstuvwxyz"
+    assert (
+        service._extract_web_token(
+            {ACCESS_TOKEN_COOKIE: "abc%2Ddefghijklmnopqrstuvwxyz"}
+        )
+        == "abc-defghijklmnopqrstuvwxyz"
+    )
 
-    with pytest.raises(PrivateAuthServiceSessionError, match="invalid web access token"):
+    with pytest.raises(
+        PrivateAuthServiceSessionError, match="invalid web access token"
+    ):
         service._extract_web_token({ACCESS_TOKEN_COOKIE: "short"})
 
 
@@ -158,7 +173,9 @@ def test_refresh_cookie_helpers() -> None:
 
     assert service._can_refresh(session) is True
     built = service._build_refresh_cookies(session)
-    assert all(built[name] == session.cookies[name] for name in REQUIRED_REFRESH_COOKIES)
+    assert all(
+        built[name] == session.cookies[name] for name in REQUIRED_REFRESH_COOKIES
+    )
     assert all(built[name] == value for name, value in DEFAULT_REFRESH_COOKIES.items())
 
     session.cookies.pop(REQUIRED_REFRESH_COOKIES[0])
