@@ -99,9 +99,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                         if isinstance(child, (str, int, float, bool)) or child is None:
                             matches.append(f"{child_path}={child!r}")
                         else:
-                            matches.append(
-                                f"{child_path}=<{type(child).__name__}>"
-                            )
+                            matches.append(f"{child_path}=<{type(child).__name__}>")
                     walk(child, child_path)
             elif isinstance(value, list):
                 for index, child in enumerate(value):
