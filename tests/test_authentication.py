@@ -60,30 +60,24 @@ def test_private_session_properties_and_state() -> None:
     with pytest.raises(
         PrivateAuthenticationUnavailableError, match="session is unavailable"
     ):
-        manager.private
+        _ = manager.private
 
 
 def test_oauth_properties() -> None:
     manager, _, _, _ = _manager()
     assert manager.oauth_token["access_token"] == "access-token"
     assert manager.access_token == "access-token"
-    assert manager.authorization_headers == {
-        "Authorization": "Bearer access-token"
-    }
+    assert manager.authorization_headers == {"Authorization": "Bearer access-token"}
 
     manager, _, _, _ = _manager(
         token={"access_token": "access-token", "token_type": "Custom"}
     )
-    assert manager.authorization_headers == {
-        "Authorization": "Custom access-token"
-    }
+    assert manager.authorization_headers == {"Authorization": "Custom access-token"}
 
     manager, _, _, _ = _manager(
         token={"access_token": "access-token", "token_type": ""}
     )
-    assert manager.authorization_headers == {
-        "Authorization": "Bearer access-token"
-    }
+    assert manager.authorization_headers == {"Authorization": "Bearer access-token"}
 
 
 def test_oauth_property_errors() -> None:
@@ -91,14 +85,14 @@ def test_oauth_property_errors() -> None:
     with pytest.raises(
         OAuthAuthenticationUnavailableError, match="token is unavailable"
     ):
-        manager.oauth_token
+        _ = manager.oauth_token
 
     for token in ({}, {"access_token": ""}, {"access_token": 123}):
         manager, _, _, _ = _manager(token=token)
         with pytest.raises(
             OAuthAuthenticationUnavailableError, match="access token is unavailable"
         ):
-            manager.access_token
+            _ = manager.access_token
 
 
 @pytest.mark.asyncio

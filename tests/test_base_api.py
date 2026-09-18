@@ -10,12 +10,12 @@ import pytest
 from custom_components.legrand_energy.base_api import ApiResponse, BaseApiClient
 
 
-class TestApiError(Exception):
+class ApiTestError(Exception):
     """Test API error."""
 
 
 def _client(session: MagicMock | None = None) -> BaseApiClient:
-    return BaseApiClient(session or MagicMock(), TestApiError)
+    return BaseApiClient(session or MagicMock(), ApiTestError)
 
 
 @pytest.mark.asyncio
@@ -71,11 +71,11 @@ async def test_request_errors() -> None:
     client = _client(session)
 
     session.request.side_effect = TimeoutError
-    with pytest.raises(TestApiError, match="timed out"):
+    with pytest.raises(ApiTestError, match="timed out"):
         await client._request("GET", "https://example.test/timeout")
 
     session.request.side_effect = aiohttp.ClientError("network")
-    with pytest.raises(TestApiError, match="failed: network"):
+    with pytest.raises(ApiTestError, match="failed: network"):
         await client._request("GET", "https://example.test/error")
 
 
@@ -86,12 +86,12 @@ def test_parse_json_response() -> None:
         ApiResponse(200, '{"value": 42}', "https://example.test/api")
     ) == {"value": 42}
 
-    with pytest.raises(TestApiError, match="Invalid JSON"):
+    with pytest.raises(ApiTestError, match="Invalid JSON"):
         client._parse_json_response(
             ApiResponse(200, "{invalid", "https://example.test/api")
         )
 
-    with pytest.raises(TestApiError, match="Unexpected response type"):
+    with pytest.raises(ApiTestError, match="Unexpected response type"):
         client._parse_json_response(
             ApiResponse(200, "[1, 2, 3]", "https://example.test/api")
         )

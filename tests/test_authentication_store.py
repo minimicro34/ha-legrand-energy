@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from custom_components.legrand_energy.authentication_store import (
-    ConfigEntryAuthenticationStore,
     PRIVATE_COOKIE_NAMES,
+    ConfigEntryAuthenticationStore,
 )
 from custom_components.legrand_energy.models.auth import PrivateSession
 
