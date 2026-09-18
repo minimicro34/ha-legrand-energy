@@ -1,0 +1,5 @@
+debug_homestatus:
+  name: Debug Home + Control status
+  description: >-
+    Probe the private Home + Control homestatus endpoint and write a sanitized
+    summary of power- and energy-related fields to the Home Assistant log.
