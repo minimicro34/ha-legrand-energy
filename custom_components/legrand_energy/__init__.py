@@ -5,7 +5,7 @@ from __future__ import annotations
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -16,6 +16,7 @@ from .authentication_store import (
     PRIVATE_COOKIE_NAMES,
     ConfigEntryAuthenticationStore,
 )
+from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
 from .models.auth import PrivateSession
 from .oauth2 import async_get_session
@@ -149,6 +150,16 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
+    )
+
+    async def debug_homestatus(_call: ServiceCall) -> None:
+        """Run a sanitized private Home + Control status probe."""
+        await coordinator.async_debug_homestatus()
+
+    hass.services.async_register(
+        DOMAIN,
+        "debug_homestatus",
+        debug_homestatus,
     )
 
     return True
