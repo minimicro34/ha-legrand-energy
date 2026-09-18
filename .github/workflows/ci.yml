@@ -23,19 +23,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements_dev.txt
 
-      - name: Show Home Assistant test environment
-        run: |
-          python -m pip show homeassistant pytest-homeassistant-custom-component
-          python - <<'PY'
-          from homeassistant.helpers import device_registry as dr
-          from homeassistant.helpers.device_registry import DeviceInfo
-
-          print("DeviceInfo annotations:", DeviceInfo.__annotations__)
-          print(
-              "async_get_device_id_by_identifier:",
-              hasattr(dr, "async_get_device_id_by_identifier"),
-          )
-          PY
 
       - name: Run quality checks
         run: make check
