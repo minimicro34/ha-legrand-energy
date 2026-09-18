@@ -129,12 +129,14 @@ async def test_setup_rejects_invalid_oauth_token(hass, status) -> None:
         )
     )
 
-    with patch(
-        "custom_components.legrand_energy.async_get_session",
-        new=AsyncMock(return_value=oauth_session),
+    with (
+        patch(
+            "custom_components.legrand_energy.async_get_session",
+            new=AsyncMock(return_value=oauth_session),
+        ),
+        pytest.raises(ConfigEntryAuthFailed),
     ):
-        with pytest.raises(ConfigEntryAuthFailed):
-            await async_setup_entry(hass, entry)
+        await async_setup_entry(hass, entry)
 
 
 @pytest.mark.asyncio
@@ -150,12 +152,14 @@ async def test_setup_retries_server_oauth_error(hass) -> None:
         )
     )
 
-    with patch(
-        "custom_components.legrand_energy.async_get_session",
-        new=AsyncMock(return_value=oauth_session),
+    with (
+        patch(
+            "custom_components.legrand_energy.async_get_session",
+            new=AsyncMock(return_value=oauth_session),
+        ),
+        pytest.raises(ConfigEntryNotReady, match="validate OAuth2 token"),
     ):
-        with pytest.raises(ConfigEntryNotReady, match="validate OAuth2 token"):
-            await async_setup_entry(hass, entry)
+        await async_setup_entry(hass, entry)
 
 
 @pytest.mark.asyncio
@@ -167,12 +171,14 @@ async def test_setup_retries_network_oauth_error(hass) -> None:
         side_effect=aiohttp.ClientConnectionError("offline")
     )
 
-    with patch(
-        "custom_components.legrand_energy.async_get_session",
-        new=AsyncMock(return_value=oauth_session),
+    with (
+        patch(
+            "custom_components.legrand_energy.async_get_session",
+            new=AsyncMock(return_value=oauth_session),
+        ),
+        pytest.raises(ConfigEntryNotReady, match="validate OAuth2 token"),
     ):
-        with pytest.raises(ConfigEntryNotReady, match="validate OAuth2 token"):
-            await async_setup_entry(hass, entry)
+        await async_setup_entry(hass, entry)
 
 
 @pytest.mark.asyncio
@@ -219,12 +225,14 @@ async def test_oauth_helpers(hass) -> None:
         assert await async_get_access_token(hass, entry) == "access-token"
 
     session.token = {}
-    with patch(
-        "custom_components.legrand_energy.oauth2.async_get_session",
-        new=AsyncMock(return_value=session),
+    with (
+        patch(
+            "custom_components.legrand_energy.oauth2.async_get_session",
+            new=AsyncMock(return_value=session),
+        ),
+        pytest.raises(ValueError, match="access token missing"),
     ):
-        with pytest.raises(ValueError, match="access token missing"):
-            await async_get_access_token(hass, entry)
+        await async_get_access_token(hass, entry)
 
 
 @pytest.mark.asyncio
