@@ -1,5 +1,5 @@
 PYTHON ?= python3.14
-.PHONY: help compile format format-check lint typecheck test check clean
+.PHONY: help compile format format-check lint typecheck test coverage check clean
 
 help:
 	@echo "Available targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  lint          Run Ruff lint"
 	@echo "  typecheck     Run mypy"
 	@echo "  test          Run pytest"
+	@echo "  coverage      Run pytest with an 80% coverage floor"
 	@echo "  check         Run the complete CI locally"
 	@echo "  clean         Remove Python cache files"
 
@@ -30,7 +31,10 @@ typecheck:
 test:
 	$(PYTHON) -m pytest -q
 
-check: compile format-check lint typecheck test
+coverage:
+	$(PYTHON) -m pytest -q --cov=custom_components/legrand_energy --cov-report=term-missing --cov-fail-under=80
+
+check: compile format-check lint typecheck coverage
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
