@@ -162,6 +162,16 @@ async def async_setup_entry(
         debug_homestatus,
     )
 
+    async def debug_measure_types(_call: ServiceCall) -> None:
+        """Probe candidate private Home + Control measurement types."""
+        await coordinator.async_debug_measure_types()
+
+    hass.services.async_register(
+        DOMAIN,
+        "debug_measure_types",
+        debug_measure_types,
+    )
+
     return True
 
 
