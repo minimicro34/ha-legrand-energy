@@ -113,6 +113,91 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             matches or ["<none>"],
         )
 
+    async def async_debug_measure_types(self) -> None:
+        """Probe candidate private measurement types for discovered modules."""
+        if self.private_api is None:
+            _LOGGER.warning("Private Home + Control API is unavailable")
+            return
+
+        home_id = self.api.get_first_home_id()
+        if home_id is None:
+            _LOGGER.warning("Unable to probe measurements: no home found")
+            return
+
+        modules = await self._module_service.async_get()
+        candidates = (
+            "sum_energy_elec",
+            "power",
+            "power_consumption",
+            "sum_power",
+        )
+
+        results: list[str] = []
+
+        def summarize(payload: object) -> str:
+            if not isinstance(payload, dict):
+                return f"type={type(payload).__name__}"
+
+            body = payload.get("body")
+            if not isinstance(body, dict):
+                return f"keys={sorted(payload)}"
+
+            devices = body.get("devices")
+            if not isinstance(devices, list):
+                return f"body_keys={sorted(body)}"
+
+            series_count = 0
+            value_count = 0
+            latest: object = None
+
+            def walk(value: object) -> None:
+                nonlocal series_count, value_count, latest
+                if isinstance(value, list):
+                    for child in value:
+                        walk(child)
+                elif isinstance(value, dict):
+                    for key, child in value.items():
+                        if key == "value":
+                            value_count += 1
+                            latest = child
+                        elif key in ("values", "value") and isinstance(child, list):
+                            series_count += 1
+                        walk(child)
+
+            walk(devices)
+            return (
+                f"devices={len(devices)},series={series_count},"
+                f"values={value_count},latest={latest!r}"
+            )
+
+        for index, module in enumerate(modules.values()):
+            if module.fluid_type.value != "electricity":
+                continue
+
+            module_label = f"{module.type}[{index}]"
+            for measure_type in candidates:
+                try:
+                    payload = await self.private_api.get_measure(
+                        home_id=home_id,
+                        module_id=module.id,
+                        measure_type=measure_type,
+                        bridge=module.bridge,
+                    )
+                except Exception as err:  # noqa: BLE001 - temporary diagnostic probe
+                    results.append(
+                        f"{module_label}:{measure_type}=error:{type(err).__name__}"
+                    )
+                    continue
+
+                results.append(
+                    f"{module_label}:{measure_type}=success:{summarize(payload)}"
+                )
+
+        _LOGGER.warning(
+            "Legrand Energy gethomemeasure probe: %s",
+            results or ["<no electricity modules>"],
+        )
+
     async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""
         try:
