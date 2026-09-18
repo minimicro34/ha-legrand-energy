@@ -1,7 +1,6 @@
 ruff
 pytest
 pytest-cov
-pytest-homeassistant-custom-component==0.13.364
+pytest-homeassistant-custom-component
 pytest<9
 mypy
-types-python-dateutil
