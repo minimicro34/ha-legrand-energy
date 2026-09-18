@@ -61,6 +61,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
 
         self.api = api
+        self.private_api = private_api
         self._module_service = ModuleService(api)
 
         self._contract_service = (
@@ -68,6 +69,50 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
         self._measurement_service = (
             MeasurementService(private_api) if private_api is not None else None
+        )
+
+    async def async_debug_homestatus(self) -> None:
+        """Log a sanitized summary of the private Home + Control status."""
+        if self.private_api is None:
+            _LOGGER.warning("Private Home + Control API is unavailable")
+            return
+
+        home_id = self.api.get_first_home_id()
+        if home_id is None:
+            _LOGGER.warning("Unable to probe Home + Control status: no home found")
+            return
+
+        payload = await self.private_api.homestatus(home_id)
+        interesting = ("power", "current", "energy", "consumption", "measure", "load")
+        matches: list[str] = []
+        module_types: set[str] = set()
+
+        def walk(value: object, path: str = "root") -> None:
+            if isinstance(value, dict):
+                module_type = value.get("type")
+                if isinstance(module_type, str):
+                    module_types.add(module_type)
+
+                for key, child in value.items():
+                    child_path = f"{path}.{key}"
+                    if any(term in key.lower() for term in interesting):
+                        if isinstance(child, (str, int, float, bool)) or child is None:
+                            matches.append(f"{child_path}={child!r}")
+                        else:
+                            matches.append(
+                                f"{child_path}=<{type(child).__name__}>"
+                            )
+                    walk(child, child_path)
+            elif isinstance(value, list):
+                for index, child in enumerate(value):
+                    walk(child, f"{path}[{index}]")
+
+        walk(payload)
+
+        _LOGGER.warning(
+            "Legrand Energy homestatus probe: module_types=%s; matching_fields=%s",
+            sorted(module_types),
+            matches or ["<none>"],
         )
 
     async def _async_update_data(self) -> LegrandEnergyData:
