@@ -48,7 +48,7 @@ make check
 - Ruff formatting verification
 - Ruff lint
 - mypy
-- pytest
+- pytest with coverage (minimum 80%)
 
 Individual commands are also available:
 
@@ -59,6 +59,7 @@ make format-check
 make lint
 make typecheck
 make test
+make coverage
 make clean
 ```
 
@@ -73,6 +74,14 @@ Run the complete test suite:
 ```bash
 make test
 ```
+
+Run the test suite with coverage reporting:
+
+```bash
+make coverage
+```
+
+The CI quality gate requires at least **80% total coverage**. The project currently targets roughly **90% coverage** while prioritizing meaningful behavioral tests over tests written only to increase the percentage.
 
 ---
 
