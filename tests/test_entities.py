@@ -152,7 +152,9 @@ async def test_binary_sensor_setup_and_state(hass) -> None:
     entry = SimpleNamespace(runtime_data=coordinator)
     added = []
 
-    await async_setup_binary_sensors(hass, entry, lambda entities: added.extend(entities))
+    await async_setup_binary_sensors(
+        hass, entry, lambda entities: added.extend(entities)
+    )
 
     assert len(added) == 1
     entity = added[0]
@@ -210,17 +212,15 @@ async def test_sensor_setup_and_values(hass) -> None:
     ):
         await async_setup_sensors(hass, entry, added.extend)
 
-    assert len(added) == len(GLOBAL_SENSOR_DESCRIPTIONS) + len(MODULE_SENSOR_DESCRIPTIONS)
+    assert len(added) == len(GLOBAL_SENSOR_DESCRIPTIONS) + len(
+        MODULE_SENSOR_DESCRIPTIONS
+    )
 
     global_sensor = next(
-        entity
-        for entity in added
-        if entity.unique_id == "main_energy_today"
+        entity for entity in added if entity.unique_id == "main_energy_today"
     )
     module_sensor = next(
-        entity
-        for entity in added
-        if entity.unique_id == "main#0_energy_today"
+        entity for entity in added if entity.unique_id == "main#0_energy_today"
     )
 
     assert isinstance(global_sensor, LegrandSensor)
