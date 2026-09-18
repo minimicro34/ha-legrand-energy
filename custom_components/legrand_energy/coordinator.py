@@ -142,13 +142,14 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             if not isinstance(body, dict):
                 return f"keys={sorted(payload)}"
 
-            devices = body.get("devices")
-            if not isinstance(devices, list):
+            home = body.get("home")
+            if not isinstance(home, dict):
                 return f"body_keys={sorted(body)}"
 
             series_count = 0
             value_count = 0
             latest: object = None
+            leaf_keys: set[str] = set()
 
             def walk(value: object) -> None:
                 nonlocal series_count, value_count, latest
@@ -160,14 +161,17 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                         if key == "value":
                             value_count += 1
                             latest = child
-                        elif key in ("values", "value") and isinstance(child, list):
+                        if key == "values" and isinstance(child, list):
                             series_count += 1
+                        if isinstance(child, (str, int, float, bool)) or child is None:
+                            leaf_keys.add(key)
                         walk(child)
 
-            walk(devices)
+            walk(home)
             return (
-                f"devices={len(devices)},series={series_count},"
-                f"values={value_count},latest={latest!r}"
+                f"home_keys={sorted(home)},series={series_count},"
+                f"values={value_count},latest={latest!r},"
+                f"leaf_keys={sorted(leaf_keys)}"
             )
 
         for index, module in enumerate(modules.values()):
