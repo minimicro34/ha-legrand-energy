@@ -48,9 +48,7 @@ def test_private_properties() -> None:
 @pytest.mark.asyncio
 async def test_get_success_and_auth_retry() -> None:
     api, authentication = _api()
-    api._request = AsyncMock(
-        side_effect=[_response(401), _response(200)]
-    )
+    api._request = AsyncMock(side_effect=[_response(401), _response(200)])
     api._parse_json_response = MagicMock(return_value={"body": {"ok": True}})
 
     result = await api._get(APP_API_BASE, "homestatus")
@@ -163,9 +161,7 @@ async def test_electricity_and_fluid_measure_helpers() -> None:
     api, _ = _api()
     api._get = AsyncMock(return_value={"body": {}})
 
-    await api.get_electricity_measure(
-        "home-id", "module-id", "bridge-id", 100, 200
-    )
+    await api.get_electricity_measure("home-id", "module-id", "bridge-id", 100, 200)
     params = api._get.await_args.args[2]
     payload = json.loads(params["home"])
     assert payload["modules"][0]["id"] == "module-id"
@@ -214,12 +210,10 @@ async def test_refresh_web_token() -> None:
     api, authentication = _api()
     assert await api.refresh_web_token() == "new-token"
 
-    authentication.refresh_private.side_effect = (
-        PrivateAuthServiceAuthenticationError("expired")
+    authentication.refresh_private.side_effect = PrivateAuthServiceAuthenticationError(
+        "expired"
     )
-    with pytest.raises(
-        LegrandPrivateApiAuthenticationError, match="Unable to refresh"
-    ):
+    with pytest.raises(LegrandPrivateApiAuthenticationError, match="Unable to refresh"):
         await api.refresh_web_token()
 
     authentication.refresh_private.side_effect = PrivateAuthServiceError("network")
