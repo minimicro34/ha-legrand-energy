@@ -53,17 +53,17 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
         module = coordinator.data.modules[module_id]
         is_main_module = module_id == get_main_module_id(coordinator)
 
-        device_info = DeviceInfo(
+        self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, module_id)},
             manufacturer=MANUFACTURER,
             model="EcoMeter" if is_main_module else "EcoMeter Circuit",
             name=module.name,
+            via_device_id=(
+                (DOMAIN, module.bridge)
+                if not is_main_module and module.bridge is not None
+                else None
+            ),
         )
-
-        if not is_main_module and module.bridge is not None:
-            device_info["via_device"] = (DOMAIN, module.bridge)
-
-        self._attr_device_info = device_info
 
     @property
     def module(self) -> LegrandModule | None:
