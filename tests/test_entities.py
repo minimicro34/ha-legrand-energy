@@ -6,18 +6,19 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.helpers import device_registry as dr
 
 from custom_components.legrand_energy.binary_sensor import (
-    BINARY_SENSOR_DESCRIPTIONS,
     LegrandBinarySensor,
+)
+from custom_components.legrand_energy.binary_sensor import (
     async_setup_entry as async_setup_binary_sensors,
 )
 from custom_components.legrand_energy.button import (
     LegrandRefreshButton,
+)
+from custom_components.legrand_energy.button import (
     async_setup_entry as async_setup_buttons,
 )
-from custom_components.legrand_energy.const import DOMAIN
 from custom_components.legrand_energy.entity import LegrandEntity, get_main_module_id
 from custom_components.legrand_energy.models import (
     FluidType,
@@ -27,8 +28,10 @@ from custom_components.legrand_energy.models import (
 )
 from custom_components.legrand_energy.sensor import (
     GLOBAL_SENSOR_DESCRIPTIONS,
-    LegrandSensor,
     MODULE_SENSOR_DESCRIPTIONS,
+    LegrandSensor,
+)
+from custom_components.legrand_energy.sensor import (
     async_setup_entry as async_setup_sensors,
 )
 from custom_components.legrand_energy.tariff_engine import TariffState
@@ -71,7 +74,7 @@ def test_get_main_module_id_fallback_and_none(hass) -> None:
         "child": LegrandModule(
             id="child",
             name="Circuit",
-            type="NLE",
+            type="NLPC",
             bridge="bridge#physical",
         ),
     }
@@ -91,20 +94,18 @@ def test_entity_device_info_and_availability(hass) -> None:
     }
     coordinator = _coordinator(hass, modules)
 
-    registry = dr.async_get(hass)
-    parent = registry.async_get_or_create(
-        config_entry_id="entry-id",
-        identifiers={(DOMAIN, "main")},
-        name="EcoMeter",
-    )
-
-    main = LegrandEntity(coordinator, "main")
-    child = LegrandEntity(coordinator, "main#0")
+    with patch(
+        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
+        create=True,
+        return_value="parent-device-id",
+    ):
+        main = LegrandEntity(coordinator, "main")
+        child = LegrandEntity(coordinator, "main#0")
 
     assert main.device_info["model"] == "EcoMeter"
     assert "via_device_id" not in main.device_info
     assert child.device_info["model"] == "EcoMeter Circuit"
-    assert child.device_info["via_device_id"] == parent.id
+    assert child.device_info["via_device_id"] == "parent-device-id"
     assert child.module == modules["main#0"]
     assert child.available is True
 
@@ -208,6 +209,7 @@ async def test_sensor_setup_and_values(hass) -> None:
 
     with patch(
         "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
+        create=True,
         return_value="parent-device-id",
     ):
         await async_setup_sensors(hass, entry, added.extend)
@@ -220,7 +222,7 @@ async def test_sensor_setup_and_values(hass) -> None:
         entity for entity in added if entity.unique_id == "main_energy_today"
     )
     module_sensor = next(
-        entity for entity in added if entity.unique_id == "main#0_energy_today"
+        entity for entity in added if entity.unique_id == "main#0_circuit_energy_today"
     )
 
     assert isinstance(global_sensor, LegrandSensor)
