@@ -565,7 +565,7 @@ class LegrandEnergyCard extends HTMLElement {
       };
       for (const circuit of values) {
         const name = (circuit.name || circuit.entity)
-          .replace(/\\s+Consommation aujourd['’]hui$/i, "");
+          .replace(/\s+Consommation aujourd['’]hui$/i, "");
         addCircuit(name, this._state(circuit.entity) ? circuit.energy : NaN,
           circuit.power_entity, circuit.entity);
       }
