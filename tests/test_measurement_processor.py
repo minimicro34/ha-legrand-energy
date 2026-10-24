@@ -129,3 +129,39 @@ def test_latest_average_power_freshness(
         assert result is None
     else:
         assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("now", "energy", "cost"),
+    [
+        (datetime(2026, 1, 1, tzinfo=UTC), None, None),
+        (datetime(2026, 10, 1, 12, tzinfo=UTC), 31.0, 6.2),
+    ],
+)
+def test_project_month_boundaries(
+    now: datetime, energy: float | None, cost: float | None
+) -> None:
+    """Handle the month boundary and partial-day extrapolation."""
+    projected_energy, projected_cost = MeasurementProcessor.project_month(
+        now=now, energy_month=0.5 if energy is not None else None,
+        cost_month=0.1 if cost is not None else None,
+    )
+    if energy is None:
+        assert projected_energy is None
+        assert projected_cost is None
+    else:
+        assert projected_energy == pytest.approx(energy)
+        assert projected_cost == pytest.approx(cost)
+
+
+def test_latest_average_power_without_now() -> None:
+    """A missing reference time must never imply a fresh power reading."""
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    point = EnergyPoint(
+        timestamp=datetime(2026, 10, 24, tzinfo=UTC),
+        energy=4.0,
+        interval_seconds=1800,
+    )
+    assert MeasurementProcessor.latest_average_power([point], now=None) is None
+    assert MeasurementProcessor.latest_average_power([], now=None) is None
