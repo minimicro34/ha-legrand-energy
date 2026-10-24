@@ -404,9 +404,9 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
         last_reset_fn=lambda _data, _module: _start_of_year(),
     ),
     _global_measurement_description(
-        key="power",
-        translation_key="power",
-        field="power",
+        key="average_power",
+        translation_key="average_power",
+        field="average_power",
         device_class=SensorDeviceClass.POWER,
         unit=UnitOfPower.WATT,
         state_class=SensorStateClass.MEASUREMENT,
@@ -588,6 +588,15 @@ GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
 
 
 MODULE_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (
+    _module_measurement_description(
+        key="circuit_average_power",
+        translation_key="circuit_average_power",
+        field="average_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        precision=0,
+    ),
     _module_measurement_description(
         key="circuit_energy_today",
         translation_key="circuit_energy_today",
