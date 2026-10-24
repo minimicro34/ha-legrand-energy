@@ -65,3 +65,35 @@ def test_calculate_cost_prefers_api_historical_prices() -> None:
         peak_price=99.0,
         off_peak_price=99.0,
     ) == pytest.approx(0.54)
+
+@pytest.mark.parametrize(
+    ("energy", "interval", "expected"),
+    [
+        (4.0, 1800, 8.0),
+        (100.0, 1800, 200.0),
+        (0.0, 300, 0.0),
+        (1.0, 0, None),
+        (1.0, -60, None),
+        (1.0, None, None),
+        (-1.0, 300, None),
+        (float("nan"), 300, None),
+        (float("inf"), 300, None),
+    ],
+)
+def test_average_power_for_point(
+    energy: float, interval: int | None, expected: float | None
+) -> None:
+    """Use actual API interval duration and reject invalid readings."""
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    point = EnergyPoint(
+        timestamp=datetime(2026, 10, 24, tzinfo=UTC),
+        energy=energy,
+        interval_seconds=interval,
+    )
+
+    result = MeasurementProcessor.average_power_for_point(point)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == pytest.approx(expected)
