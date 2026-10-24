@@ -146,7 +146,7 @@ test("reads Recorder statistics and computes period consumption", async () => {
   assert.equal(card._history.length, 2);
   assert.ok(Math.abs(card._history[0].value - 1.5) < 0.001);
   const chart = card._chart();
-  assert.equal(chart.children[0].children.length, 2);
+  assert.equal(chart.children[0].children.filter((element) => element.tagName === "rect").length, 2);
 });
 
 test("distinguishes history request failure from missing measurements", async () => {
