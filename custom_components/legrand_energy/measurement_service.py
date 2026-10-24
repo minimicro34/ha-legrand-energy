@@ -418,9 +418,21 @@ class MeasurementService:
         if previous_data is None:
             return None, {}, {}, {}, None
 
+        # Cached energy totals remain useful, but a failed poll cannot
+        # establish that an interval-average power reading is still fresh.
+        measurements = (
+            replace(previous_data.measurements, average_power=None)
+            if previous_data.measurements is not None
+            else None
+        )
+        measurements_by_module = {
+            module_id: replace(value, average_power=None)
+            for module_id, value in previous_data.measurements_by_module.items()
+        }
+
         return (
-            previous_data.measurements,
-            previous_data.measurements_by_module,
+            measurements,
+            measurements_by_module,
             previous_data.water_measurements_by_module,
             previous_data.gas_measurements_by_module,
             previous_data.projections,
