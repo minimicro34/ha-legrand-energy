@@ -42,7 +42,7 @@ Run the complete local quality checks:
 make check
 ```
 
-`make check` runs the same checks as the GitHub CI workflow:
+`make check` runs the same checks as the GitHub CI workflow, including the full pytest suite with coverage. **You do not need to run `make coverage` separately after `make check`.**
 
 - Python bytecode compilation
 - Ruff formatting verification
@@ -75,7 +75,7 @@ Run the complete test suite:
 make test
 ```
 
-Run the test suite with coverage reporting:
+Run the test suite with coverage reporting (without rerunning compilation, Ruff, or mypy):
 
 ```bash
 make coverage
