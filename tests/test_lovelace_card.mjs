@@ -125,7 +125,7 @@ test("auto-discovers period and contract sensors for the selected EcoMeter", () 
   assert.equal(card.getGridOptions().columns, 12);
 });
 
-test("reads compact Home Assistant history values and timestamps", async () => {
+test("reads Recorder statistics and computes period consumption", async () => {
   const { card } = createCard();
   card.setConfig({ entity: "sensor.energy" });
   let request;
@@ -133,18 +133,20 @@ test("reads compact Home Assistant history values and timestamps", async () => {
     states: { "sensor.energy": { state: "3.4" } },
     callWS: async (payload) => {
       request = payload;
-      return [[
-        { s: "1.5", lu: Date.now() / 1000 - 120 },
-        { s: "3.4", lu: Date.now() / 1000 },
-      ]];
+      return { "sensor.energy": [
+        { start: Date.now() / 1000 - 7200, sum: 100 },
+        { start: Date.now() / 1000 - 3600, sum: 101.5 },
+        { start: Date.now() / 1000, sum: 103.4 },
+      ] };
     },
   };
   await card._loadHistory();
-  assert.equal(request.type, "history/history_during_period");
-  assert.equal(request.entity_ids[0], "sensor.energy");
+  assert.equal(request.type, "recorder/statistics_during_period");
+  assert.equal(request.statistic_ids[0], "sensor.energy");
   assert.equal(card._history.length, 2);
+  assert.ok(Math.abs(card._history[0].value - 1.5) < 0.001);
   const chart = card._chart();
-  assert.equal(chart.children[0].children[0].points.split(" ").length, 2);
+  assert.equal(chart.children[0].children.length, 2);
 });
 
 test("distinguishes history request failure from missing measurements", async () => {
