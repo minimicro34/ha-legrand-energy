@@ -263,18 +263,29 @@ class LegrandEnergyCard extends HTMLElement {
   _chart() {
     const box = this._element("div", undefined, "position:relative");
     const recorded = this._history || [];
+    const now = new Date();
+    const today = this._dateRange().start;
+    const liveEnergy = Number(this._state(this._config.entity)?.state);
+    // During the first hour, the day sensor itself is the exact partial-hour
+    // total. Never add it to Recorder data, which would double-count energy.
+    const firstHour = this._period === "day" && now.getHours() === 0 &&
+      !recorded.some((point) => point.time >= today.getTime()) &&
+      Number.isFinite(liveEnergy) && liveEnergy >= 0 && !this._historyError;
+    const displayRecorded = firstHour
+      ? [{ time: today.getTime(), value: liveEnergy, live: true }]
+      : recorded;
     // Keep all twelve calendar months visible; missing statistics are not zero.
-    const points = this._period === "year" && recorded.length
+    const points = this._period === "year" && displayRecorded.length
       ? Array.from({ length: 12 }, (_, month) => {
         const year = this._dateRange().start.getFullYear();
-        const matching = recorded.find((point) => {
+        const matching = displayRecorded.find((point) => {
           const date = new Date(point.time);
           return date.getFullYear() === year && date.getMonth() === month;
         });
         return matching || { time: new Date(year, month, 1).getTime(), value: null };
       })
-      : recorded;
-    if (!recorded.length) {
+      : displayRecorded;
+    if (!displayRecorded.length) {
       box.appendChild(this._element("div",
         this._history === null ? "Chargement des statistiques…" :
           this._historyError ? "Statistiques indisponibles (requête Home Assistant en échec)." :
@@ -285,7 +296,7 @@ class LegrandEnergyCard extends HTMLElement {
     const locale = this._hass?.locale?.language || "fr-FR";
     const width = 800, height = 230, left = 56, right = 12, top = 18, bottom = 46;
     const plotHeight = height - top - bottom;
-    const max = Math.max(0.001, ...recorded.map((point) => point.value));
+    const max = Math.max(0.001, ...displayRecorded.map((point) => point.value));
     const scale = Math.pow(10, Math.floor(Math.log10(max)));
     const step = Math.max(0.001, Math.ceil(max / scale / 4) * scale);
     const ceiling = Math.ceil(max / step) * step;
@@ -451,17 +462,48 @@ class LegrandEnergyCard extends HTMLElement {
       details.open = openSections.has("Circuits");
       details.appendChild(this._element("summary", "Circuits",
         "cursor:pointer;font-weight:600;padding:8px 0"));
-      for (const circuit of circuits) {
-        if (!circuit || !circuit.entity) continue;
-        const tile = this._element("div", undefined,
-          "padding:14px;border:1px solid var(--divider-color);border-radius:12px;background:var(--secondary-background-color,var(--card-background-color))");
-        tile.appendChild(this._element("strong", circuit.name || circuit.entity));
-        tile.appendChild(this._element("div", "Énergie aujourd’hui : " + this._value(circuit.entity, 3),
-          "margin-top:8px"));
-        if (circuit.power_entity) tile.appendChild(this._element("div",
-          "Puissance moyenne : " + this._value(circuit.power_entity, 0), "margin-top:4px"));
+      const total = Number(this._state(this._config.entity)?.state);
+      const measured = circuits.filter((circuit) => circuit?.entity &&
+        !/total/i.test(circuit.name || "") && circuit.entity !== this._config.entity);
+      const values = measured.map((circuit) => ({
+        ...circuit, energy: Number(this._state(circuit.entity)?.state),
+      }));
+      const allValid = Number.isFinite(total) && total >= 0 &&
+        values.every((circuit) => this._state(circuit.entity) &&
+          Number.isFinite(circuit.energy) && circuit.energy >= 0);
+      const remainder = allValid
+        ? Math.max(0, total - values.reduce((sum, circuit) => sum + circuit.energy, 0))
+        : null;
+      const locale = this._hass?.locale?.language || "fr-FR";
+      const fmt = new Intl.NumberFormat(locale, { maximumFractionDigits: 3 });
+      const addCircuit = (name, energy, powerEntity, fallbackEntity) => {
+        const tile = this._element("div", undefined, "padding:10px 0;border-bottom:1px solid var(--divider-color)");
+        const heading = this._element("div", undefined, "display:flex;justify-content:space-between;gap:12px;font-weight:600");
+        heading.append(this._element("span", name),
+          this._element("span", Number.isFinite(energy) ? fmt.format(energy) + " kWh" :
+            fallbackEntity ? this._value(fallbackEntity, 3) : "—"));
+        tile.appendChild(heading);
+        if (Number.isFinite(energy) && Number.isFinite(total) && total > 0) {
+          const track = this._element("div", undefined,
+            "height:7px;border-radius:5px;background:var(--divider-color);margin-top:8px;overflow:hidden");
+          const fill = this._element("div", undefined,
+            "height:100%;background:var(--primary-color);width:" +
+            Math.min(100, Math.max(0, energy / total * 100)) + "%");
+          track.appendChild(fill);
+          tile.appendChild(track);
+        }
+        if (powerEntity) tile.appendChild(this._element("div",
+          "Puissance moyenne : " + this._value(powerEntity, 0),
+          "font-size:12px;color:var(--secondary-text-color);margin-top:5px"));
         details.appendChild(tile);
+      };
+      for (const circuit of values) {
+        const name = (circuit.name || circuit.entity)
+          .replace(/\\s+Consommation aujourd['’]hui$/i, "");
+        addCircuit(name, this._state(circuit.entity) ? circuit.energy : NaN,
+          circuit.power_entity, circuit.entity);
       }
+      if (remainder !== null) addCircuit("Reste de la maison", remainder, null, null);
       wrapper.appendChild(details);
     }
 
