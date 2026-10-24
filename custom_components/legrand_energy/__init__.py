@@ -8,7 +8,10 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import (
+    async_create_clientsession,
+    async_get_clientsession,
+)
 
 from .api import LegrandEnergyApi
 from .authentication import AuthenticationManager
@@ -36,6 +39,7 @@ async def async_setup_entry(
 ) -> bool:
     """Set up Legrand Energy from a config entry."""
     session = async_get_clientsession(hass)
+    private_http_session = async_create_clientsession(hass)
 
     def private_value(key: str) -> str | None:
         """Return a private authentication value."""
@@ -76,7 +80,7 @@ async def async_setup_entry(
         ) from err
 
     private_service = PrivateAuthService(
-        session=session,
+        session=private_http_session,
     )
 
     web_token = private_value("web_token")
@@ -130,7 +134,7 @@ async def async_setup_entry(
 
     private_api = (
         LegrandPrivateApi(
-            session=session,
+            session=private_http_session,
             authentication=authentication,
         )
         if private_session is not None
