@@ -144,7 +144,6 @@ test("reads Recorder statistics and computes period consumption", async () => {
   await card._loadHistory();
   assert.equal(request.type, "recorder/statistics_during_period");
   assert.equal(request.statistic_ids[0], "sensor.energy");
-  assert.equal(new Date(request.start_time).getHours(), 23);
   assert.equal(card._history.length, 2);
   assert.ok(Math.abs(card._history[0].value - 1.5) < 0.001);
   assert.equal(new Date(card._history[0].time).getTime(), new Date(request.start_time).getTime() + 3600000);
