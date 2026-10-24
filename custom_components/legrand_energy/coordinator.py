@@ -192,13 +192,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     if isinstance(row, list)
                 ]
 
-                step_times = sorted(
-                    {
-                        measure.get("step_time")
-                        for measure in measures
-                        if isinstance(measure.get("step_time"), int)
-                    }
-                )
+                step_times: set[int] = set()
+                for measure in measures:
+                    step_time = measure.get("step_time")
+                    if isinstance(step_time, int):
+                        step_times.add(step_time)
 
                 _LOGGER.warning(
                     "Legrand Energy scale probe %s: "
@@ -207,7 +205,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     len(returned_modules),
                     len(measures),
                     len(samples),
-                    step_times,
+                    sorted(step_times),
                     samples[-3:],
                 )
 
