@@ -150,12 +150,8 @@ class AuthenticationManager:
         await self._private_service.refresh(session)
 
         _LOGGER.info(
-            "Private session refreshed (changed=%s, old=%s...%s, new=%s...%s)",
+            "Private session refreshed (changed=%s)",
             old_token != session.web_token,
-            old_token[:8],
-            old_token[-8:],
-            session.web_token[:8],
-            session.web_token[-8:],
         )
 
         await self._store.async_save_private(session)
