@@ -18,6 +18,11 @@ TO_REDACT = {
     "username",
     "password",
     "web_token",
+    "email",
+    "id",
+    "name",
+    "coordinates",
+    "altitude",
     *PRIVATE_COOKIE_NAMES.keys(),
 }
 
