@@ -98,8 +98,8 @@ test("renders period tabs, circuits and collapsible diagnostics", () => {
   }};
   const wrapper = card.children[0].children[0];
   assert.equal(wrapper.children[2].children.length, 4);
-  assert.equal(wrapper.children[4].children[0].textContent, "Circuits");
-  assert.equal(wrapper.children[5].children[0].textContent, "Contrat et diagnostics");
+  assert.equal(wrapper.children[5].children[0].textContent, "Circuits");
+  assert.equal(wrapper.children[6].children[0].textContent, "Contrat et diagnostics");
   wrapper.children[2].children[1].on_click();
   assert.match(card.children[0].children[0].children[3].children[1].textContent, /12 kWh/);
 });
