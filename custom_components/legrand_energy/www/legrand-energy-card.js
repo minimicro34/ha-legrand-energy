@@ -95,6 +95,37 @@ class LegrandEnergyCard extends HTMLElement {
     return null;
   }
 
+  _circuits() {
+    if (Array.isArray(this._config?.circuits) && this._config.circuits.length) {
+      return this._config.circuits;
+    }
+    const registry = this._hass?.entities;
+    const anchor = registry?.[this._config?.entity];
+    if (!anchor?.unique_id?.endsWith("_energy_today")) return [];
+    const moduleId = anchor.unique_id.slice(0, -"_energy_today".length);
+    const entries = Object.values(registry).filter((entry) =>
+      entry.platform === "legrand_energy" &&
+      typeof entry.unique_id === "string" &&
+      entry.unique_id.startsWith(moduleId + "#") &&
+      entry.unique_id.endsWith("_circuit_energy_today") &&
+      this._hass?.states?.[entry.entity_id]
+    );
+    return entries.map((entry) => {
+      const moduleKey = entry.unique_id.slice(0, -"_circuit_energy_today".length);
+      const power = Object.values(registry).find((candidate) =>
+        candidate.platform === "legrand_energy" &&
+        candidate.unique_id === moduleKey + "_circuit_average_power" &&
+        this._hass?.states?.[candidate.entity_id]
+      );
+      const friendly = this._hass.states[entry.entity_id].attributes?.friendly_name;
+      return {
+        name: entry.name || friendly || entry.entity_id,
+        entity: entry.entity_id,
+        power_entity: power?.entity_id,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   _periodEntity() {
     const c = this._config;
     return {
@@ -324,7 +355,7 @@ class LegrandEnergyCard extends HTMLElement {
       periodEntity ? this._value(periodEntity, 3) : "Capteur non configuré"));
     if (periodEntity) wrapper.appendChild(this._chart());
 
-    const circuits = this._config.circuits;
+    const circuits = this._circuits();
     if (Array.isArray(circuits) && circuits.length) {
       const details = this._element("details", undefined, "margin-top:16px");
       details.open = openSections.has("Circuits");
@@ -332,8 +363,14 @@ class LegrandEnergyCard extends HTMLElement {
         "cursor:pointer;font-weight:600;padding:8px 0"));
       for (const circuit of circuits) {
         if (!circuit || !circuit.entity) continue;
-        details.appendChild(this._row(circuit.name || circuit.entity,
-          this._value(circuit.entity)));
+        const tile = this._element("div", undefined,
+          "padding:14px;border:1px solid var(--divider-color);border-radius:12px;background:var(--secondary-background-color,var(--card-background-color))");
+        tile.appendChild(this._element("strong", circuit.name || circuit.entity));
+        tile.appendChild(this._element("div", "Énergie aujourd’hui : " + this._value(circuit.entity, 3),
+          "margin-top:8px"));
+        if (circuit.power_entity) tile.appendChild(this._element("div",
+          "Puissance moyenne : " + this._value(circuit.power_entity, 0), "margin-top:4px"));
+        details.appendChild(tile);
       }
       wrapper.appendChild(details);
     }
