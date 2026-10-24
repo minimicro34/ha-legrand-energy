@@ -1,7 +1,7 @@
 /* Legrand Energy Lovelace card — bundled with the integration. */
 class LegrandEnergyCard extends HTMLElement {
   setConfig(config) {
-    if (!config || !config.entity) {
+    if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
       throw new Error("Legrand Energy: an energy entity is required");
     }
     this._config = { ...config };
@@ -18,7 +18,7 @@ class LegrandEnergyCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "sensor.legrand_ecometer_energy_today" };
+    return { entity: "" };
   }
 
   _render() {
@@ -49,7 +49,7 @@ class LegrandEnergyCard extends HTMLElement {
       name.textContent = label;
       const value = document.createElement("strong");
       value.textContent = state && !["unknown", "unavailable"].includes(state.state)
-        ? state.state + (state.attributes.unit_of_measurement ? " " + state.attributes.unit_of_measurement : "")
+        ? state.state + (state.attributes?.unit_of_measurement ? " " + state.attributes.unit_of_measurement : "")
         : "—";
       row.append(name, value);
       wrapper.appendChild(row);
