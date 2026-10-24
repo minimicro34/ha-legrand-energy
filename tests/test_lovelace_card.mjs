@@ -122,7 +122,7 @@ test("auto-discovers period and contract sensors for the selected EcoMeter", () 
     card._period = period;
     assert.equal(card._periodEntity(), prefix + suffix);
   }
-  assert.equal(card.getGridOptions().columns, 12);
+  assert.equal(card.getGridOptions().columns, 36);
 });
 
 test("reads Recorder statistics and computes period consumption", async () => {
