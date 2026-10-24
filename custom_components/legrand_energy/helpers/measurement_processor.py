@@ -51,6 +51,7 @@ class MeasurementProcessor:
         year_points: list[EnergyPoint],
         peak_price: float,
         off_peak_price: float,
+        now: datetime | None = None,
     ) -> LegrandMeasurements:
         """Build measurements for one electricity module."""
         energy_today_wh = cls.total_energy(today_points)
@@ -92,7 +93,7 @@ class MeasurementProcessor:
         )
 
         return LegrandMeasurements(
-            power=None,
+            average_power=cls.latest_average_power(today_points, now=now),
             energy_today=(energy_today_wh / 1000),
             energy_peak_today=(energy_peak_today_wh / 1000),
             energy_off_peak_today=(energy_off_peak_today_wh / 1000),
@@ -116,6 +117,23 @@ class MeasurementProcessor:
         if not 0 <= point.energy < float("inf"):
             return None
         return point.energy * 3600 / interval
+
+    @classmethod
+    def latest_average_power(
+        cls, points: list[EnergyPoint], *, now: datetime | None
+    ) -> float | None:
+        """Return recent interval-average power, never a stale reading."""
+        if now is None:
+            return None
+        for point in sorted(points, key=lambda item: item.timestamp, reverse=True):
+            interval = point.interval_seconds
+            if interval is None or interval <= 0:
+                continue
+            age = (now - point.timestamp).total_seconds()
+            if age < 0 or age > 2 * interval:
+                return None
+            return cls.average_power_for_point(point)
+        return None
 
     @staticmethod
     def total_energy(
