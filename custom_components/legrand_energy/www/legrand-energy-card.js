@@ -125,7 +125,7 @@ class LegrandEnergyCard extends HTMLElement {
     const box = this._element("div");
     const points = (this._history || []).map((item) => ({
       time: typeof item.lu === "number" ? item.lu * 1000 : Date.parse(item.last_changed || item.last_updated || item.lu),
-      value: Number(item.state),
+      value: Number(item.state ?? item.s),
     })).filter((point) => Number.isFinite(point.time) && Number.isFinite(point.value));
     if (!points.length) {
       box.appendChild(this._element("div",
@@ -136,8 +136,6 @@ class LegrandEnergyCard extends HTMLElement {
     const { start, end } = this._dateRange();
     const min = Math.min(0, ...points.map((point) => point.value));
     const max = Math.max(1, ...points.map((point) => point.value));
-    const width = 600;
-    const height = 150;
     const x = (time) => 10 + 580 * (time - start.getTime()) / Math.max(1, end.getTime() - start.getTime());
     const y = (value) => 135 - 120 * (value - min) / Math.max(0.001, max - min);
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
