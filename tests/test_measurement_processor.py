@@ -99,6 +99,7 @@ def test_average_power_for_point(
     else:
         assert result == pytest.approx(expected)
 
+
 @pytest.mark.parametrize(
     ("age_seconds", "interval", "expected"),
     [
