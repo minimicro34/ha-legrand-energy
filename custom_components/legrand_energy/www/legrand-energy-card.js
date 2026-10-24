@@ -212,6 +212,10 @@ class LegrandEnergyCard extends HTMLElement {
       this._card = document.createElement("ha-card");
       this.appendChild(this._card);
     }
+    const openSections = new Set();
+    for (const child of this._card.children[0]?.children || []) {
+      if (child.tagName === "DETAILS" && child.open) openSections.add(child.children[0]?.textContent);
+    }
     this._card.replaceChildren();
     const wrapper = this._element("div", undefined, "padding:16px");
     wrapper.appendChild(this._element("h2", this._config.title || "Legrand Energy",
@@ -276,6 +280,7 @@ class LegrandEnergyCard extends HTMLElement {
     const circuits = this._config.circuits;
     if (Array.isArray(circuits) && circuits.length) {
       const details = this._element("details", undefined, "margin-top:16px");
+      details.open = openSections.has("Circuits");
       details.appendChild(this._element("summary", "Circuits",
         "cursor:pointer;font-weight:600;padding:8px 0"));
       for (const circuit of circuits) {
@@ -297,6 +302,7 @@ class LegrandEnergyCard extends HTMLElement {
     ].filter((item) => item[1]);
     if (diagnostics.length) {
       const details = this._element("details", undefined, "margin-top:16px");
+      details.open = openSections.has("Contrat et diagnostics");
       details.appendChild(this._element("summary", "Contrat et diagnostics",
         "cursor:pointer;font-weight:600;padding:8px 0"));
       for (const [label, id] of diagnostics) {
