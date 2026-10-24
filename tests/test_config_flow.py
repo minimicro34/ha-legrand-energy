@@ -60,7 +60,7 @@ def config_flow_module(
     selector.TextSelector = TextSelector
 
     aiohttp_client = types.ModuleType("homeassistant.helpers.aiohttp_client")
-    aiohttp_client.async_get_clientsession = Mock()
+    aiohttp_client.async_create_clientsession = Mock()
 
     helpers.config_entry_oauth2_flow = oauth2_flow
     helpers.selector = selector
