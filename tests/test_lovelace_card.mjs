@@ -190,3 +190,26 @@ test("discovers renamed sensors by registry unique ID without mixing EcoMeters",
   assert.equal(card._autoEntity(null, ["energie_2"], "energy_month"), null);
   assert.equal(card._autoEntity("sensor.manual", ["energie"], "energy_week"), "sensor.manual");
 });
+
+test("auto-discovers only circuits attached to the selected EcoMeter", () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.main_energy" });
+  card.hass = {
+    states: {
+      "sensor.main_energy": { state: "10" },
+      "sensor.circuit_energy": { state: "2", attributes: { friendly_name: "Chauffage énergie" } },
+      "sensor.circuit_power": { state: "350" },
+      "sensor.other_circuit": { state: "99" },
+    },
+    entities: {
+      "sensor.main_energy": { entity_id: "sensor.main_energy", platform: "legrand_energy", unique_id: "meterA_energy_today" },
+      "sensor.circuit_energy": { entity_id: "sensor.circuit_energy", platform: "legrand_energy", unique_id: "meterA#0_circuit_energy_today" },
+      "sensor.circuit_power": { entity_id: "sensor.circuit_power", platform: "legrand_energy", unique_id: "meterA#0_circuit_average_power" },
+      "sensor.other_circuit": { entity_id: "sensor.other_circuit", platform: "legrand_energy", unique_id: "meterB#0_circuit_energy_today" },
+    },
+  };
+  const circuits = card._circuits();
+  assert.equal(circuits.length, 1);
+  assert.equal(circuits[0].entity, "sensor.circuit_energy");
+  assert.equal(circuits[0].power_entity, "sensor.circuit_power");
+});
