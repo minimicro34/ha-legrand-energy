@@ -9,6 +9,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._history = null;
     this._historyKey = null;
     this._tariffHistory = null;
+    this._splitHistory = null;
     this._render();
   }
 
@@ -215,6 +216,46 @@ class LegrandEnergyCard extends HTMLElement {
       this._history = [];
       this._historyError = true;
     }
+    // Read actual HP/HC cumulative energy statistics. The tariff transition
+    // time alone cannot tell how much energy was used on either side.
+    if (this._period === "day" && !this._historyError) {
+      const peakId = this._autoEntity(this._config.peak_energy_entity,
+        ["consommation_heures_pleines_aujourd_hui"], "energy_peak_today");
+      const offPeakId = this._autoEntity(this._config.offpeak_energy_entity,
+        ["consommation_heures_creuses_aujourd_hui"], "energy_off_peak_today");
+      if (peakId && offPeakId) {
+        try {
+          const splitResult = await this._hass.callWS({
+            type: "recorder/statistics_during_period",
+            start_time: queryStart.toISOString(),
+            end_time: end.toISOString(),
+            statistic_ids: [peakId, offPeakId],
+            period: "hour",
+            types: ["sum"],
+          });
+          if (this._historyKey === key) {
+            const deltas = (id) => {
+              const rows = splitResult?.[id] || [];
+              const values = new Map();
+              rows.forEach((row, index) => {
+                if (!index || row.sum == null || rows[index - 1].sum == null) return;
+                const time = typeof row.start === "number"
+                  ? (row.start > 1e11 ? row.start : row.start * 1000)
+                  : Date.parse(row.start);
+                const delta = Number(row.sum) - Number(rows[index - 1].sum);
+                if (Number.isFinite(time) && Number.isFinite(delta) && delta >= 0)
+                  values.set(time, delta);
+              });
+              return values;
+            };
+            this._splitHistory = { peak: deltas(peakId), offPeak: deltas(offPeakId),
+              peakId, offPeakId };
+          }
+        } catch (_error) {
+          // No invented HP/HC split when Recorder has insufficient data.
+        }
+      }
+    }
     // Historical tariff states are needed: today's current HP/HC state cannot
     // reliably classify earlier hourly consumption.
     if (this._period === "day" && !this._historyError) {
@@ -337,14 +378,32 @@ class LegrandEnergyCard extends HTMLElement {
       const date = new Date(point.time);
       if (point.value !== null) {
         const barHeight = plotHeight * point.value / ceiling;
-        const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
-          width: Math.max(1, slot - 4), height: barHeight,
-          fill: this._period === "day" && this._hourTariff(point.time) === "HP" ? "#4f86f7" :
-            this._period === "day" && this._hourTariff(point.time) === "HC" ? "#28558b" :
-              "var(--primary-color)", rx: 2, tabindex: 0 });
+        const split = this._splitHistory;
+        let hp = split?.peak.get(point.time);
+        let hc = split?.offPeak.get(point.time);
+        if (point.live && split) {
+          const hpState = this._state(split.peakId);
+          const hcState = this._state(split.offPeakId);
+          hp = hpState ? Number(hpState.state) : NaN;
+          hc = hcState ? Number(hcState.state) : NaN;
+        }
+        const splitValid = this._period === "day" && Number.isFinite(hp) &&
+          Number.isFinite(hc) && hp >= 0 && hc >= 0 &&
+          Math.abs(hp + hc - point.value) <= Math.max(0.005, point.value * 0.02);
         const tariff = this._period === "day" ? this._hourTariff(point.time) : null;
         const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh" +
-          (tariff ? " · " + tariff : "");
+          (splitValid ? " · HP " + format.format(hp) + " · HC " + format.format(hc)
+            : tariff ? " · " + tariff : "");
+        const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
+          width: Math.max(1, slot - 4), height: barHeight,
+          fill: splitValid ? "#28558b" :
+            tariff === "HP" ? "#4f86f7" : tariff === "HC" ? "#28558b" :
+              "var(--primary-color)", rx: 2, tabindex: 0 });
+        if (splitValid && hp > 0) make("rect", {
+          x: x + 2, y: top + plotHeight - barHeight,
+          width: Math.max(1, slot - 4), height: plotHeight * hp / ceiling,
+          fill: "#4f86f7", rx: 2,
+        });
         bar.setAttribute("aria-label", info);
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
         title.textContent = info;
@@ -371,7 +430,7 @@ class LegrandEnergyCard extends HTMLElement {
           "font-size": 11 }, formatter.format(date));
       }
     });
-    if (this._period === "day" && this._tariffHistory?.length) {
+    if (this._period === "day" && (this._tariffHistory?.length || this._splitHistory)) {
       const legend = this._element("div", "■ HP (bleu clair)    ■ HC (bleu foncé)    ■ Indéterminé (couleur par défaut)",
         "font-size:12px;color:var(--secondary-text-color);padding:6px 0");
       box.appendChild(legend);
