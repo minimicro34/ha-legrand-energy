@@ -23,6 +23,11 @@ TO_REDACT = {
     "name",
     "coordinates",
     "altitude",
+    "latitude",
+    "longitude",
+    "lat",
+    "lon",
+    "lng",
     *PRIVATE_COOKIE_NAMES.keys(),
 }
 
