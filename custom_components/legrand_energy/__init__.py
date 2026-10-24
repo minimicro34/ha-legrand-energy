@@ -46,6 +46,18 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, object]) -> bool:
             )
         ]
     )
+    # Register the card in storage-managed Lovelace resources when available.
+    lovelace = hass.data.get("lovelace")
+    resources = getattr(lovelace, "resources", None)
+    if resources is not None and hasattr(resources, "async_load"):
+        await resources.async_load()
+        if not any(
+            item.get("url", "").split("?")[0] == CARD_URL
+            for item in resources.async_items()
+        ):
+            await resources.async_create_item(
+                {"res_type": "module", "url": CARD_URL}
+            )
     return True
 
 
