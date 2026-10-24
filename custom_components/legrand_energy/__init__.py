@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import aiohttp
+from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import (
     async_create_clientsession,
@@ -25,6 +27,23 @@ from .models.auth import PrivateSession
 from .oauth2 import async_get_session
 from .private_api import LegrandPrivateApi
 from .services.private import PrivateAuthService
+
+CARD_URL = "/legrand_energy/legrand-energy-card.js"
+
+
+async def async_setup(hass: HomeAssistant, _config: dict[str, object]) -> bool:
+    """Expose the bundled Lovelace card as a static frontend resource."""
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                CARD_URL,
+                str(Path(__file__).parent / "www" / "legrand-energy-card.js"),
+                False,
+            )
+        ]
+    )
+    return True
+
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
