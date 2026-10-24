@@ -72,6 +72,7 @@ def test_prefers_total_energy_value() -> None:
     assert len(points) == 1
     assert points[0].energy == 900
     assert points[0].price == pytest.approx(0.6)
+    assert points[0].interval_seconds == 300
 
 
 def test_decode_multiple_modules_and_sort_points() -> None:
@@ -201,6 +202,7 @@ def test_decode_water_measurements() -> None:
     assert points[0].price == 0.42
     assert points[1].energy == 20.0
     assert points[1].price is None
+    assert points[1].interval_seconds == 300
 
 
 def test_decode_gas_measurements() -> None:
