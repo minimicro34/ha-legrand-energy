@@ -162,7 +162,7 @@ class LegrandEnergyCard extends HTMLElement {
   }
 
   _chart() {
-    const box = this._element("div");
+    const box = this._element("div", undefined, "position:relative");
     const points = this._history || [];
     if (!points.length) {
       box.appendChild(this._element("div",
@@ -172,33 +172,80 @@ class LegrandEnergyCard extends HTMLElement {
         "padding:24px 0;color:var(--secondary-text-color);text-align:center"));
       return box;
     }
-    const width = 600;
-    const height = 150;
+    const locale = this._hass?.locale?.language || "fr-FR";
+    const width = 800, height = 230, left = 56, right = 12, top = 18, bottom = 46;
+    const plotHeight = height - top - bottom;
     const max = Math.max(0.001, ...points.map((point) => point.value));
+    const scale = Math.pow(10, Math.floor(Math.log10(max)));
+    const step = Math.max(0.001, Math.ceil(max / scale / 4) * scale);
+    const ceiling = Math.ceil(max / step) * step;
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Consommation par période en kWh");
     svg.style.cssText = "width:100%;height:auto;display:block";
-    const gap = 2;
-    const slot = (width - 20) / points.length;
+    const make = (tag, attrs, text) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
+      if (text !== undefined) el.textContent = text;
+      svg.appendChild(el);
+      return el;
+    };
+    const format = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
+    for (let tick = 0; tick <= 4; tick++) {
+      const value = ceiling * tick / 4;
+      const y = top + plotHeight * (1 - tick / 4);
+      make("line", { x1: left, y1: y, x2: width - right, y2: y,
+        stroke: "var(--divider-color)", "stroke-width": 1 });
+      make("text", { x: left - 8, y: y + 4, "text-anchor": "end",
+        fill: "var(--secondary-text-color)", "font-size": 11 }, format.format(value));
+    }
+    make("text", { x: 4, y: 12, fill: "var(--secondary-text-color)", "font-size": 11 }, "kWh");
+    const slot = (width - left - right) / points.length;
+    const formatter = new Intl.DateTimeFormat(locale,
+      this._period === "day" ? { hour: "2-digit", minute: "2-digit" } :
+        this._period === "year" ? { month: "short" } : { day: "2-digit", month: "2-digit" });
+    const fullDate = new Intl.DateTimeFormat(locale, {
+      weekday: "short", day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+    const tooltip = this._element("div", undefined,
+      "display:none;position:absolute;z-index:2;pointer-events:none;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px 12px;box-shadow:0 2px 12px #0005;font-size:13px;max-width:240px");
     points.forEach((point, index) => {
-      const barHeight = 120 * point.value / max;
-      const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      bar.setAttribute("x", 10 + index * slot + gap / 2);
-      bar.setAttribute("y", 135 - barHeight);
-      bar.setAttribute("width", Math.max(1, slot - gap));
-      bar.setAttribute("height", barHeight);
-      bar.setAttribute("fill", "var(--primary-color)");
-      bar.setAttribute("rx", 2);
-      const time = new Date(point.time).toLocaleString(this._hass?.locale?.language || "fr-FR");
-      bar.setAttribute("aria-label", time + " : " + point.value.toFixed(3) + " kWh");
+      const x = left + index * slot;
+      const barHeight = plotHeight * point.value / ceiling;
+      const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
+        width: Math.max(1, slot - 4), height: barHeight,
+        fill: "var(--primary-color)", rx: 2, tabindex: 0 });
+      const date = new Date(point.time);
+      const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh";
+      bar.setAttribute("aria-label", info);
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = time + " : " + point.value.toFixed(3) + " kWh";
+      title.textContent = info;
       bar.appendChild(title);
-      svg.appendChild(bar);
+      const show = () => {
+        tooltip.textContent = info;
+        tooltip.style.display = "block";
+        tooltip.style.left = Math.min(75, Math.max(5, 100 * (x + slot / 2) / width)) + "%";
+        tooltip.style.bottom = "25px";
+      };
+      const hide = () => { tooltip.style.display = "none"; };
+      bar.addEventListener("mouseenter", show);
+      bar.addEventListener("mouseleave", hide);
+      bar.addEventListener("focus", show);
+      bar.addEventListener("blur", hide);
+      bar.addEventListener("click", () => {
+        if (tooltip.style.display === "block") hide(); else show();
+      });
+      const labelEvery = Math.max(1, Math.ceil(points.length / 10));
+      if (index % labelEvery === 0 || index === points.length - 1) {
+        make("text", { x: x + slot / 2, y: height - 23,
+          "text-anchor": "middle", fill: "var(--secondary-text-color)",
+          "font-size": 11 }, formatter.format(date));
+      }
     });
     box.appendChild(svg);
+    box.appendChild(tooltip);
     box.appendChild(this._element("div",
       "Consommation par " + (this._period === "day" ? "heure" :
         this._period === "year" ? "mois" : "jour") + " · " + points.length + " périodes",
