@@ -114,7 +114,12 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
 
     async def async_debug_measure_types(self) -> None:
-        """Probe candidate private measurement types for discovered modules."""
+        """Compare known electricity measurements with a power probe."""
+        from datetime import UTC, datetime, timedelta
+
+        from .helpers.fluid_types import private_measure_type
+        from .models import FluidType
+
         if self.private_api is None:
             _LOGGER.warning("Private Home + Control API is unavailable")
             return
@@ -125,82 +130,84 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             return
 
         modules = await self._module_service.async_get()
-        candidates = (
-            "sum_energy_elec",
-            "power",
-            "power_consumption",
-            "sum_power",
+        module = next(
+            (
+                item
+                for item in modules.values()
+                if item.fluid_type is FluidType.ELECTRICITY and item.bridge is not None
+            ),
+            None,
         )
 
-        results: list[str] = []
+        if module is None:
+            _LOGGER.warning("Power probe: no eligible electricity module")
+            return
 
-        def summarize(payload: object) -> str:
-            if not isinstance(payload, dict):
-                return f"type={type(payload).__name__}"
+        now = datetime.now(UTC)
+        start = now - timedelta(hours=2)
 
-            body = payload.get("body")
-            if not isinstance(body, dict):
-                return f"keys={sorted(payload)}"
+        candidates = (
+            ("reference", private_measure_type(FluidType.ELECTRICITY)),
+            ("power", "power"),
+        )
 
-            home = body.get("home")
-            if not isinstance(home, dict):
-                return f"body_keys={sorted(body)}"
+        for label, measure_type in candidates:
+            home = {
+                "id": home_id,
+                "modules": [
+                    {
+                        "id": module.id,
+                        "bridge": module.bridge,
+                        "type": measure_type,
+                    }
+                ],
+                "rooms": [],
+            }
 
-            series_count = 0
-            value_count = 0
-            latest: object = None
-            leaf_keys: set[str] = set()
-
-            def walk(value: object) -> None:
-                nonlocal series_count, value_count, latest
-                if isinstance(value, list):
-                    for child in value:
-                        walk(child)
-                elif isinstance(value, dict):
-                    for key, child in value.items():
-                        if key == "value":
-                            value_count += 1
-                            latest = child
-                        if key == "values" and isinstance(child, list):
-                            series_count += 1
-                        if isinstance(child, (str, int, float, bool)) or child is None:
-                            leaf_keys.add(key)
-                        walk(child)
-
-            walk(home)
-            return (
-                f"home_keys={sorted(home)},series={series_count},"
-                f"values={value_count},latest={latest!r},"
-                f"leaf_keys={sorted(leaf_keys)}"
-            )
-
-        for index, module in enumerate(modules.values()):
-            if module.fluid_type.value != "electricity":
-                continue
-
-            module_label = f"{module.type}[{index}]"
-            for measure_type in candidates:
-                try:
-                    payload = await self.private_api.get_measure(
-                        home_id=home_id,
-                        module_id=module.id,
-                        measure_type=measure_type,
-                        bridge=module.bridge,
-                    )
-                except Exception as err:  # noqa: BLE001 - temporary diagnostic probe
-                    results.append(
-                        f"{module_label}:{measure_type}=error:{type(err).__name__}"
-                    )
-                    continue
-
-                results.append(
-                    f"{module_label}:{measure_type}=success:{summarize(payload)}"
+            try:
+                response = await self.private_api.get_home_measure(
+                    home=home,
+                    scale="5min",
+                    real_time=False,
+                    date_begin=int(start.timestamp()),
+                    date_end=int(now.timestamp()),
                 )
 
-        _LOGGER.warning(
-            "Legrand Energy gethomemeasure probe: %s",
-            results or ["<no electricity modules>"],
-        )
+                body = response.get("body", {})
+                home_result = body.get("home", {})
+                returned_modules = home_result.get("modules", [])
+
+                measures = [
+                    measure
+                    for returned_module in returned_modules
+                    if isinstance(returned_module, dict)
+                    for measure in returned_module.get("measures", [])
+                    if isinstance(measure, dict)
+                ]
+
+                samples = [
+                    row[:7]
+                    for measure in measures
+                    for row in measure.get("value", [])
+                    if isinstance(row, list)
+                ]
+
+                _LOGGER.warning(
+                    "Legrand Energy power probe %s: "
+                    "modules=%s measures=%s rows=%s samples=%s",
+                    label,
+                    len(returned_modules),
+                    len(measures),
+                    len(samples),
+                    samples[-3:],
+                )
+
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning(
+                    "Legrand Energy power probe %s failed: %s",
+                    label,
+                    type(err).__name__,
+                )
 
     async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""

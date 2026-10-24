@@ -166,3 +166,127 @@ async def test_oauth_error_requests_reauthentication(hass) -> None:
 
     with pytest.raises(ConfigEntryAuthFailed, match="OAuth authentication expired"):
         await coordinator._async_update_data()
+
+
+@pytest.mark.asyncio
+async def test_debug_measure_types_reference_and_power(hass, caplog) -> None:
+    """Probe known electricity data and power on the same module."""
+    from custom_components.legrand_energy.models import FluidType
+
+    coordinator = _coordinator(hass)
+    module = LegrandModule(
+        id="electric-module",
+        name="EcoMeter",
+        type="NLE",
+        bridge="bridge-id",
+        fluid_type=FluidType.ELECTRICITY,
+    )
+    coordinator.api.get_first_home_id.return_value = "home-id"
+    coordinator._module_service.async_get = AsyncMock(
+        return_value={"electric-module": module}
+    )
+
+    coordinator.private_api.get_home_measure = AsyncMock(
+        side_effect=[
+            {
+                "body": {
+                    "home": {
+                        "modules": [
+                            {
+                                "measures": [
+                                    {
+                                        "value": [
+                                            [1.0, 0.5, 0.3, 0.2],
+                                            [2.0, 1.0, 0.6, 0.4],
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "body": {
+                    "home": {"modules": [{"measures": [{"value": [[350.0], [420.0]]}]}]}
+                }
+            },
+        ]
+    )
+
+    await coordinator.async_debug_measure_types()
+
+    assert coordinator.private_api.get_home_measure.await_count == 2
+
+    reference_call, power_call = (
+        call.kwargs for call in coordinator.private_api.get_home_measure.await_args_list
+    )
+
+    assert reference_call["home"]["modules"][0]["id"] == "electric-module"
+    assert power_call["home"]["modules"][0]["id"] == "electric-module"
+    assert reference_call["home"]["modules"][0]["type"].startswith("sum_energy_elec")
+    assert power_call["home"]["modules"][0]["type"] == "power"
+
+    for call in (reference_call, power_call):
+        assert call["scale"] == "5min"
+        assert call["real_time"] is False
+        assert call["date_begin"] < call["date_end"]
+
+    assert "power probe reference" in caplog.text
+    assert "power probe power" in caplog.text
+    assert "350.0" in caplog.text
+    assert "420.0" in caplog.text
+    assert "electric-module" not in caplog.text
+    assert "bridge-id" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_debug_measure_types_without_private_api(hass, caplog) -> None:
+    """Do not probe when the private API is unavailable."""
+    coordinator = _coordinator(hass, private=False)
+
+    await coordinator.async_debug_measure_types()
+
+    assert "Private Home + Control API is unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_debug_measure_types_without_electric_module(hass, caplog) -> None:
+    """Do not probe if no eligible electricity module exists."""
+    coordinator = _coordinator(hass)
+    coordinator.api.get_first_home_id.return_value = "home-id"
+    coordinator._module_service.async_get = AsyncMock(return_value={})
+
+    await coordinator.async_debug_measure_types()
+
+    coordinator.private_api.get_home_measure.assert_not_called()
+    assert "no eligible electricity module" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_debug_measure_types_handles_api_errors(hass, caplog) -> None:
+    """Log probe errors without interrupting the diagnostic."""
+    from custom_components.legrand_energy.models import FluidType
+
+    coordinator = _coordinator(hass)
+    module = LegrandModule(
+        id="electric-module",
+        name="EcoMeter",
+        type="NLE",
+        bridge="bridge-id",
+        fluid_type=FluidType.ELECTRICITY,
+    )
+    coordinator.api.get_first_home_id.return_value = "home-id"
+    coordinator._module_service.async_get = AsyncMock(
+        return_value={"electric-module": module}
+    )
+    coordinator.private_api.get_home_measure = AsyncMock(
+        side_effect=LegrandEnergyApiError("private details")
+    )
+
+    await coordinator.async_debug_measure_types()
+
+    assert coordinator.private_api.get_home_measure.await_count == 2
+    assert "power probe reference failed" in caplog.text
+    assert "power probe power failed" in caplog.text
+    assert "private details" not in caplog.text
