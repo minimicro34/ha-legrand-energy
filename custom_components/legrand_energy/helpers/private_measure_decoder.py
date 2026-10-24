@@ -121,6 +121,7 @@ def decode_points_by_module(
                         ),
                         energy=consumption,
                         price=price,
+                        interval_seconds=step_time if step_time > 0 else None,
                     )
                 )
 
