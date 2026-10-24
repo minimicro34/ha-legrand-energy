@@ -55,9 +55,7 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, object]) -> bool:
             item.get("url", "").split("?")[0] == CARD_URL
             for item in resources.async_items()
         ):
-            await resources.async_create_item(
-                {"res_type": "module", "url": CARD_URL}
-            )
+            await resources.async_create_item({"res_type": "module", "url": CARD_URL})
     return True
 
 
