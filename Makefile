@@ -17,16 +17,16 @@ compile:
 	$(PYTHON) -m compileall custom_components
 
 format:
-	ruff format .
+	$(PYTHON) -m ruff format .
 
 format-check:
-	ruff format --check .
+	$(PYTHON) -m ruff format --check .
 
 lint:
-	ruff check .
+	$(PYTHON) -m ruff check .
 
 typecheck:
-	mypy custom_components/legrand_energy
+	$(PYTHON) -m mypy custom_components/legrand_energy
 
 test:
 	$(PYTHON) -m pytest -q

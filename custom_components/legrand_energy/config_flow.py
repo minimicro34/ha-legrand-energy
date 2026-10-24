@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import aiohttp
-import voluptuous as vol
+import probatio as vol
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlowResult
 from homeassistant.helpers import config_entry_oauth2_flow, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
