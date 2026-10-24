@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import aiohttp
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-defined]
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
