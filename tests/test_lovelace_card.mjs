@@ -133,18 +133,21 @@ test("reads Recorder statistics and computes period consumption", async () => {
     states: { "sensor.energy": { state: "3.4" } },
     callWS: async (payload) => {
       request = payload;
+      const beginning = new Date(payload.start_time).getTime();
       return { "sensor.energy": [
-        { start: Date.now() / 1000 - 7200, sum: 100 },
-        { start: Date.now() / 1000 - 3600, sum: 101.5 },
-        { start: Date.now() / 1000, sum: 103.4 },
+        { start: beginning, sum: 100 },
+        { start: beginning + 3600000, sum: 101.5 },
+        { start: beginning + 7200000, sum: 103.4 },
       ] };
     },
   };
   await card._loadHistory();
   assert.equal(request.type, "recorder/statistics_during_period");
   assert.equal(request.statistic_ids[0], "sensor.energy");
+  assert.equal(new Date(request.start_time).getHours(), 23);
   assert.equal(card._history.length, 2);
   assert.ok(Math.abs(card._history[0].value - 1.5) < 0.001);
+  assert.equal(new Date(card._history[0].time).getTime(), new Date(request.start_time).getTime() + 3600000);
   const chart = card._chart();
   assert.equal(chart.children[0].children.filter((element) => element.rx === 2).length, 2);
 });
