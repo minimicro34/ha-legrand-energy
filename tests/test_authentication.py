@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
@@ -142,3 +143,28 @@ async def test_refresh_private_persists_updated_session() -> None:
     assert session.web_token == "new-token-87654321"
     private_service.refresh.assert_awaited_once_with(session)
     store.async_save_private.assert_awaited_once_with(session)
+
+
+@pytest.mark.asyncio
+async def test_refresh_private_does_not_log_token_fragments(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Private bearer tokens must never appear in shared logs."""
+    old_token = "old-private-bearer-token-12345678"
+    new_token = "new-private-bearer-token-87654321"
+    session = PrivateSession(web_token=old_token, cookies={})
+    manager, _, private_service, _ = _manager(private_session=session)
+
+    async def refresh(current: PrivateSession) -> None:
+        current.web_token = new_token
+
+    private_service.refresh.side_effect = refresh
+
+    with caplog.at_level(logging.INFO):
+        await manager.refresh_private()
+
+    assert "changed=True" in caplog.text
+    assert old_token not in caplog.text
+    assert new_token not in caplog.text
+    assert "12345678" not in caplog.text
+    assert "87654321" not in caplog.text
