@@ -7,7 +7,12 @@ import pytest
 
 from custom_components.legrand_energy import measurement_service as service_module
 from custom_components.legrand_energy.measurement_service import MeasurementService
-from custom_components.legrand_energy.models import FluidType, LegrandModule
+from custom_components.legrand_energy.models import (
+    FluidType,
+    LegrandEnergyData,
+    LegrandMeasurements,
+    LegrandModule,
+)
 from custom_components.legrand_energy.private_api import (
     LegrandPrivateApi,
     LegrandPrivateApiError,
@@ -311,3 +316,28 @@ async def test_empty_water_and_gas_measurements_return_zero(
     assert gas.cost_week == 0.0
     assert gas.cost_month == 0.0
     assert gas.cost_year == 0.0
+
+
+def test_cached_result_invalidates_average_power_without_mutating_cache() -> None:
+    """A failed poll must not present an old average as a fresh reading."""
+    old = LegrandMeasurements(average_power=250.0, energy_today=4.2)
+    previous = LegrandEnergyData(
+        modules=_modules(),
+        measurements=old,
+        measurements_by_module={ELECTRICITY_MODULE_ID: old},
+    )
+
+    total, circuits, _, _, _ = MeasurementService._cached_result(previous)
+
+    assert total is not None
+    assert total.average_power is None
+    assert total.energy_today == 4.2
+    assert circuits[ELECTRICITY_MODULE_ID].average_power is None
+    assert circuits[ELECTRICITY_MODULE_ID].energy_today == 4.2
+    assert previous.measurements is old
+    assert old.average_power == 250.0
+
+
+def test_cached_result_without_previous_data() -> None:
+    """Missing cache must produce empty measurements."""
+    assert MeasurementService._cached_result(None) == (None, {}, {}, {}, None)
