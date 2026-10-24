@@ -103,3 +103,58 @@ test("renders period tabs, circuits and collapsible diagnostics", () => {
   wrapper.children[2].children[1].on_click();
   assert.match(card.children[0].children[0].children[3].children[1].textContent, /12 kWh/);
 });
+
+test("auto-discovers period and contract sensors for the selected EcoMeter", () => {
+  const { card } = createCard();
+  const prefix = "sensor.house_legrand_ecometer_";
+  card.setConfig({ entity: prefix + "consommation_aujourd_hui" });
+  card.hass = { states: {
+    [prefix + "consommation_aujourd_hui"]: { state: "3" },
+    [prefix + "energie"]: { state: "12" },
+    [prefix + "energie_2"]: { state: "40" },
+    [prefix + "energie_3"]: { state: "500" },
+    [prefix + "puissance_souscrite"]: { state: "6", attributes: { unit_of_measurement: "kVA" } },
+    "sensor.other_legrand_ecometer_energie": { state: "999" },
+  }};
+  assert.equal(card._autoEntity(null, ["puissance_souscrite"]), prefix + "puissance_souscrite");
+  assert.equal(card.children[0].children[0].children.at(-1).children[0].textContent, "Contrat et diagnostics");
+  for (const [period, suffix] of [["week", "energie"], ["month", "energie_2"], ["year", "energie_3"]]) {
+    card._period = period;
+    assert.equal(card._periodEntity(), prefix + suffix);
+  }
+  assert.equal(card.getGridOptions().columns, 12);
+});
+
+test("reads compact Home Assistant history values and timestamps", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  let request;
+  card.hass = {
+    states: { "sensor.energy": { state: "3.4" } },
+    callWS: async (payload) => {
+      request = payload;
+      return [[
+        { s: "1.5", lu: Date.now() / 1000 - 120 },
+        { s: "3.4", lu: Date.now() / 1000 },
+      ]];
+    },
+  };
+  await card._loadHistory();
+  assert.equal(request.type, "history/history_during_period");
+  assert.equal(request.entity_ids[0], "sensor.energy");
+  assert.equal(card._history.length, 2);
+  const chart = card._chart();
+  assert.equal(chart.children[0].children[0].points.split(" ").length, 2);
+});
+
+test("distinguishes history request failure from missing measurements", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card.hass = {
+    states: {},
+    callWS: async () => { throw new Error("Recorder unavailable"); },
+  };
+  await card._loadHistory();
+  assert.equal(card._historyError, true);
+  assert.match(card._chart().children[0].textContent, /requête Home Assistant en échec/);
+});
