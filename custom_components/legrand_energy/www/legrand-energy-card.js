@@ -8,6 +8,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._period = this._period || "day";
     this._history = null;
     this._historyKey = null;
+    this._tariffHistory = null;
     this._render();
   }
 
@@ -183,6 +184,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._historyKey = key;
     this._history = null;
     this._historyError = false;
+    this._tariffHistory = null;
     this._render();
     try {
       const result = await this._hass.callWS({
@@ -213,7 +215,49 @@ class LegrandEnergyCard extends HTMLElement {
       this._history = [];
       this._historyError = true;
     }
+    // Historical tariff states are needed: today's current HP/HC state cannot
+    // reliably classify earlier hourly consumption.
+    if (this._period === "day" && !this._historyError) {
+      const tariffEntity = this._autoEntity(this._config.tariff_entity,
+        ["tarif_actuel"], "current_tariff");
+      if (tariffEntity) {
+        try {
+          const history = await this._hass.callWS({
+            type: "history/history_during_period",
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            entity_ids: [tariffEntity],
+            minimal_response: false,
+            no_attributes: true,
+            significant_changes_only: false,
+          });
+          if (this._historyKey === key) {
+            const entries = (Array.isArray(history) ? history[0] : []) || [];
+            this._tariffHistory = entries.map((entry) => ({
+              time: Date.parse(entry.last_changed || entry.last_updated),
+              state: entry.s === "HP" || entry.state === "HP" ? "HP" :
+                entry.s === "HC" || entry.state === "HC" ? "HC" : null,
+            })).filter((entry) => Number.isFinite(entry.time))
+              .sort((a, b) => a.time - b.time);
+          }
+        } catch (_error) {
+          // The graph remains usable with neutral bars if history is unavailable.
+        }
+      }
+    }
     this._render();
+  }
+
+  _hourTariff(time) {
+    const entries = this._tariffHistory;
+    if (!entries?.length) return null;
+    let state = null;
+    for (const entry of entries) {
+      if (entry.time <= time) state = entry.state;
+      else if (entry.time < time + 3600000) return null; // Mixed hour.
+      else break;
+    }
+    return state;
   }
 
   _chart() {
@@ -284,8 +328,12 @@ class LegrandEnergyCard extends HTMLElement {
         const barHeight = plotHeight * point.value / ceiling;
         const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - 4), height: barHeight,
-          fill: "var(--primary-color)", rx: 2, tabindex: 0 });
-        const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh";
+          fill: this._period === "day" && this._hourTariff(point.time) === "HP" ? "#4f86f7" :
+            this._period === "day" && this._hourTariff(point.time) === "HC" ? "#28558b" :
+              "var(--primary-color)", rx: 2, tabindex: 0 });
+        const tariff = this._period === "day" ? this._hourTariff(point.time) : null;
+        const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh" +
+          (tariff ? " · " + tariff : "");
         bar.setAttribute("aria-label", info);
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
         title.textContent = info;
@@ -312,6 +360,11 @@ class LegrandEnergyCard extends HTMLElement {
           "font-size": 11 }, formatter.format(date));
       }
     });
+    if (this._period === "day" && this._tariffHistory?.length) {
+      const legend = this._element("div", "■ HP (bleu clair)    ■ HC (bleu foncé)    ■ Indéterminé (couleur par défaut)",
+        "font-size:12px;color:var(--secondary-text-color);padding:6px 0");
+      box.appendChild(legend);
+    }
     box.appendChild(svg);
     box.appendChild(tooltip);
     box.appendChild(this._element("div",
