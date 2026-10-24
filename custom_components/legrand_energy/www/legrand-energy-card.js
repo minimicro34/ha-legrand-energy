@@ -15,6 +15,23 @@ class LegrandEnergyCard extends HTMLElement {
     this._hass = hass;
     this._render();
     this._loadHistory();
+    this._loadEntityRegistry();
+  }
+
+  async _loadEntityRegistry() {
+    if (!this._hass?.callWS || this._registry || this._registryLoading) return;
+    this._registryLoading = true;
+    try {
+      const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
+      if (Array.isArray(entries)) {
+        this._registry = Object.fromEntries(entries.map((entry) => [entry.entity_id, entry]));
+        this._render();
+      }
+    } catch (_error) {
+      // Manual circuit configuration remains available if registry access fails.
+    } finally {
+      this._registryLoading = false;
+    }
   }
 
   getCardSize() { return 7; }
@@ -70,7 +87,7 @@ class LegrandEnergyCard extends HTMLElement {
   _autoEntity(explicit, suffixes, registryKey) {
     if (explicit) return explicit;
     const base = this._config?.entity || "";
-    const entities = this._hass?.entities;
+    const entities = this._registry || this._hass?.entities;
     const anchor = entities?.[base];
     // Registry unique IDs are stable across renames and translations.
     // Restrict matches to the exact EcoMeter module of the selected entity.
@@ -99,7 +116,7 @@ class LegrandEnergyCard extends HTMLElement {
     if (Array.isArray(this._config?.circuits) && this._config.circuits.length) {
       return this._config.circuits;
     }
-    const registry = this._hass?.entities;
+    const registry = this._registry || this._hass?.entities;
     const anchor = registry?.[this._config?.entity];
     if (!anchor?.unique_id?.endsWith("_energy_today")) return [];
     const moduleId = anchor.unique_id.slice(0, -"_energy_today".length);
