@@ -158,3 +158,33 @@ test("distinguishes history request failure from missing measurements", async ()
   assert.equal(card._historyError, true);
   assert.match(card._chart().children[0].textContent, /requête Home Assistant en échec/);
 });
+
+test("discovers renamed sensors by registry unique ID without mixing EcoMeters", () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.renamed_daily" });
+  card.hass = {
+    states: {
+      "sensor.renamed_daily": { state: "2" },
+      "sensor.renamed_week": { state: "15" },
+      "sensor.other_week": { state: "999" },
+    },
+    entities: {
+      "sensor.renamed_daily": {
+        entity_id: "sensor.renamed_daily", platform: "legrand_energy",
+        unique_id: "module_A_energy_today",
+      },
+      "sensor.renamed_week": {
+        entity_id: "sensor.renamed_week", platform: "legrand_energy",
+        unique_id: "module_A_energy_week",
+      },
+      "sensor.other_week": {
+        entity_id: "sensor.other_week", platform: "legrand_energy",
+        unique_id: "module_B_energy_week",
+      },
+    },
+  };
+  card._period = "week";
+  assert.equal(card._periodEntity(), "sensor.renamed_week");
+  assert.equal(card._autoEntity(null, ["energie_2"], "energy_month"), null);
+  assert.equal(card._autoEntity("sensor.manual", ["energie"], "energy_week"), "sensor.manual");
+});
