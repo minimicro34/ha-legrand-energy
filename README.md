@@ -243,6 +243,31 @@ The **Netatmo OAuth Client ID and Client Secret** are managed by Home Assistant 
 
 ---
 
+## Bundled Lovelace card (beta)
+
+The optional **Legrand Energy** card is shipped in this integration's release.
+It does not require a second HACS repository.
+
+1. Restart Home Assistant after installing or updating the integration.
+2. In **Settings → Dashboards → Resources**, add a JavaScript module resource
+   with URL `/legrand_energy/legrand-energy-card.js`.
+3. Add a **Manual** card to a dashboard, using the entity IDs from your installation:
+
+```yaml
+type: custom:legrand-energy-card
+title: Legrand Energy
+entity: sensor.your_energy_today
+power_entity: sensor.your_average_power
+cost_entity: sensor.your_cost_today
+tariff_entity: sensor.your_current_tariff
+```
+
+The `entity` field is required; the other fields are optional. This initial
+beta card displays a summary only. It does not create or modify energy entities.
+Use your actual entity IDs, which depend on the discovered installation.
+
+---
+
 ## Available entities
 
 ### Main EcoMeter
