@@ -320,6 +320,7 @@ class MeasurementService:
                     if previous_measurements is not None:
                         measurements_by_module[module_id] = replace(
                             previous_measurements,
+                            average_power=None,
                             energy_today=0.0,
                             energy_peak_today=0.0,
                             energy_off_peak_today=0.0,
@@ -345,6 +346,7 @@ class MeasurementService:
                         year_points=year_points,
                         peak_price=peak_price,
                         off_peak_price=off_peak_price,
+                        now=now,
                     )
                 )
 
