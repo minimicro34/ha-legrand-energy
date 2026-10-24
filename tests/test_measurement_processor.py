@@ -143,7 +143,8 @@ def test_project_month_boundaries(
 ) -> None:
     """Handle the month boundary and partial-day extrapolation."""
     projected_energy, projected_cost = MeasurementProcessor.project_month(
-        now=now, energy_month=0.5 if energy is not None else None,
+        now=now,
+        energy_month=0.5 if energy is not None else None,
         cost_month=0.1 if cost is not None else None,
     )
     if energy is None:
