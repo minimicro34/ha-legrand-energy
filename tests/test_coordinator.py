@@ -169,8 +169,8 @@ async def test_oauth_error_requests_reauthentication(hass) -> None:
 
 
 @pytest.mark.asyncio
-async def test_debug_measure_types_reference_and_power(hass, caplog) -> None:
-    """Probe known electricity data and power on the same module."""
+async def test_debug_measure_types_compares_scales(hass, caplog) -> None:
+    """Compare one- and five-minute measurements for the same module."""
     from custom_components.legrand_energy.models import FluidType
 
     coordinator = _coordinator(hass)
@@ -195,6 +195,7 @@ async def test_debug_measure_types_reference_and_power(hass, caplog) -> None:
                             {
                                 "measures": [
                                     {
+                                        "step_time": 60,
                                         "value": [
                                             [1.0, 0.5, 0.3, 0.2],
                                             [2.0, 1.0, 0.6, 0.4],
@@ -208,7 +209,7 @@ async def test_debug_measure_types_reference_and_power(hass, caplog) -> None:
             },
             {
                 "body": {
-                    "home": {"modules": [{"measures": [{"value": [[350.0], [420.0]]}]}]}
+                    "home": {"modules": [{"measures": [{"step_time": 300, "value": [[350.0], [420.0]]}]}]}
                 }
             },
         ]
@@ -218,22 +219,26 @@ async def test_debug_measure_types_reference_and_power(hass, caplog) -> None:
 
     assert coordinator.private_api.get_home_measure.await_count == 2
 
-    reference_call, power_call = (
+    one_min_call, five_min_call = (
         call.kwargs for call in coordinator.private_api.get_home_measure.await_args_list
     )
 
-    assert reference_call["home"]["modules"][0]["id"] == "electric-module"
-    assert power_call["home"]["modules"][0]["id"] == "electric-module"
-    assert reference_call["home"]["modules"][0]["type"].startswith("sum_energy_elec")
-    assert power_call["home"]["modules"][0]["type"] == "power"
+    assert one_min_call["home"]["modules"][0]["id"] == "electric-module"
+    assert five_min_call["home"]["modules"][0]["id"] == "electric-module"
+    assert one_min_call["home"]["modules"][0]["type"].startswith("sum_energy_elec")
+    assert five_min_call["home"]["modules"][0]["type"] == one_min_call["home"]["modules"][0]["type"]
 
-    for call in (reference_call, power_call):
-        assert call["scale"] == "5min"
+    assert one_min_call["scale"] == "1min"
+    assert five_min_call["scale"] == "5min"
+
+    for call in (one_min_call, five_min_call):
         assert call["real_time"] is False
         assert call["date_begin"] < call["date_end"]
 
-    assert "power probe reference" in caplog.text
-    assert "power probe power" in caplog.text
+    assert "scale probe reference-1min" in caplog.text
+    assert "scale probe reference-5min" in caplog.text
+    assert "step_times=[60]" in caplog.text
+    assert "step_times=[300]" in caplog.text
     assert "350.0" in caplog.text
     assert "420.0" in caplog.text
     assert "electric-module" not in caplog.text
@@ -287,6 +292,6 @@ async def test_debug_measure_types_handles_api_errors(hass, caplog) -> None:
     await coordinator.async_debug_measure_types()
 
     assert coordinator.private_api.get_home_measure.await_count == 2
-    assert "power probe reference failed" in caplog.text
-    assert "power probe power failed" in caplog.text
+    assert "scale probe reference-1min failed" in caplog.text
+    assert "scale probe reference-5min failed" in caplog.text
     assert "private details" not in caplog.text
