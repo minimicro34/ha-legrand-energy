@@ -121,9 +121,10 @@ class LegrandEnergyCard extends HTMLElement {
 
   async _loadHistory() {
     if (!this._hass?.callWS || !this._config) return;
-    const entity = this._periodEntity();
-    if (!entity) return;
+    const entity = this._config.entity;
     const { start, end } = this._dateRange();
+    const period = this._period === "day" ? "hour" :
+      this._period === "year" ? "month" : "day";
     const key = [entity, this._period, start.toISOString()].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
@@ -132,15 +133,26 @@ class LegrandEnergyCard extends HTMLElement {
     this._render();
     try {
       const result = await this._hass.callWS({
-        type: "history/history_during_period",
+        type: "recorder/statistics_during_period",
         start_time: start.toISOString(),
         end_time: end.toISOString(),
-        entity_ids: [entity],
-        minimal_response: true,
-        no_attributes: true,
+        statistic_ids: [entity],
+        period,
+        types: ["sum"],
       });
       if (this._historyKey !== key) return;
-      this._history = Array.isArray(result) ? (result[0] || []) : [];
+      const rows = result?.[entity] || [];
+      this._history = rows.map((row, index) => {
+        const previous = index ? rows[index - 1] : null;
+        const sum = Number(row.sum);
+        const before = Number(previous?.sum);
+        return {
+          time: typeof row.start === "number" ? row.start * 1000 : Date.parse(row.start),
+          value: previous && Number.isFinite(before) && Number.isFinite(sum)
+            ? Math.max(0, sum - before) : null,
+        };
+      }).filter((point) => Number.isFinite(point.time) &&
+        point.value !== null && Number.isFinite(point.value));
     } catch (_error) {
       if (this._historyKey !== key) return;
       this._history = [];
@@ -151,37 +163,45 @@ class LegrandEnergyCard extends HTMLElement {
 
   _chart() {
     const box = this._element("div");
-    const points = (this._history || []).map((item) => ({
-      time: typeof item.lu === "number" ? item.lu * 1000 : Date.parse(item.last_changed || item.last_updated || item.lu),
-      value: Number(item.state ?? item.s),
-    })).filter((point) => Number.isFinite(point.time) && Number.isFinite(point.value));
+    const points = this._history || [];
     if (!points.length) {
       box.appendChild(this._element("div",
-        this._history === null ? "Chargement de l'historique…" : this._historyError ? "Historique indisponible (requête Home Assistant en échec)." : "Aucun historique disponible pour cette période.",
+        this._history === null ? "Chargement des statistiques…" :
+          this._historyError ? "Statistiques indisponibles (requête Home Assistant en échec)." :
+          "Aucune statistique disponible pour cette période.",
         "padding:24px 0;color:var(--secondary-text-color);text-align:center"));
       return box;
     }
-    const { start, end } = this._dateRange();
-    const min = Math.min(0, ...points.map((point) => point.value));
-    const max = Math.max(1, ...points.map((point) => point.value));
-    const x = (time) => 10 + 580 * (time - start.getTime()) / Math.max(1, end.getTime() - start.getTime());
-    const y = (value) => 135 - 120 * (value - min) / Math.max(0.001, max - min);
+    const width = 600;
+    const height = 150;
+    const max = Math.max(0.001, ...points.map((point) => point.value));
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 600 150");
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Historique de consommation");
+    svg.setAttribute("aria-label", "Consommation par période en kWh");
     svg.style.cssText = "width:100%;height:auto;display:block";
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-    path.setAttribute("points", points.map((point) => x(point.time) + "," + y(point.value)).join(" "));
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke", "var(--primary-color)");
-    path.setAttribute("stroke-width", "2.5");
-    path.setAttribute("stroke-linecap", "round");
-    path.setAttribute("stroke-linejoin", "round");
-    svg.appendChild(path);
+    const gap = 2;
+    const slot = (width - 20) / points.length;
+    points.forEach((point, index) => {
+      const barHeight = 120 * point.value / max;
+      const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      bar.setAttribute("x", 10 + index * slot + gap / 2);
+      bar.setAttribute("y", 135 - barHeight);
+      bar.setAttribute("width", Math.max(1, slot - gap));
+      bar.setAttribute("height", barHeight);
+      bar.setAttribute("fill", "var(--primary-color)");
+      bar.setAttribute("rx", 2);
+      const time = new Date(point.time).toLocaleString(this._hass?.locale?.language || "fr-FR");
+      bar.setAttribute("aria-label", time + " : " + point.value.toFixed(3) + " kWh");
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = time + " : " + point.value.toFixed(3) + " kWh";
+      bar.appendChild(title);
+      svg.appendChild(bar);
+    });
     box.appendChild(svg);
     box.appendChild(this._element("div",
-      "Historique du compteur · " + points.length + " mesures",
+      "Consommation par " + (this._period === "day" ? "heure" :
+        this._period === "year" ? "mois" : "jour") + " · " + points.length + " périodes",
       "font-size:12px;color:var(--secondary-text-color);text-align:right"));
     return box;
   }
