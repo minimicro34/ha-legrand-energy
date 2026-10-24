@@ -352,9 +352,18 @@ class LegrandEnergyCard extends HTMLElement {
       details.open = openSections.has("Contrat et diagnostics");
       details.appendChild(this._element("summary", "Contrat et diagnostics",
         "cursor:pointer;font-weight:600;padding:8px 0"));
+      const grid = this._element("div", undefined,
+        "display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;margin-top:12px");
       for (const [label, id] of diagnostics) {
-        details.appendChild(this._row(label, label === "Prochain changement" ? (this._nextTariffChange() || "—") : this._value(id)));
+        const tile = this._element("div", undefined,
+          "padding:14px;border:1px solid var(--divider-color);border-radius:12px;background:var(--secondary-background-color,var(--card-background-color))");
+        tile.appendChild(this._element("div", label,
+          "font-size:12px;color:var(--secondary-text-color);margin-bottom:8px"));
+        tile.appendChild(this._element("strong", label === "Prochain changement" ? (this._nextTariffChange() || "—") : this._value(id),
+          "font-size:16px;overflow-wrap:anywhere"));
+        grid.appendChild(tile);
       }
+      details.appendChild(grid);
       wrapper.appendChild(details);
     }
     this._card.appendChild(wrapper);
