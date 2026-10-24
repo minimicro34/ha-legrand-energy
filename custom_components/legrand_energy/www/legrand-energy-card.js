@@ -156,6 +156,11 @@ class LegrandEnergyCard extends HTMLElement {
     const { start, end } = this._dateRange();
     const period = this._period === "day" ? "hour" :
       this._period === "year" ? "month" : "day";
+    // Include the preceding bucket to calculate the first visible delta.
+    const queryStart = new Date(start);
+    if (period === "hour") queryStart.setHours(queryStart.getHours() - 1);
+    else if (period === "month") queryStart.setMonth(queryStart.getMonth() - 1);
+    else queryStart.setDate(queryStart.getDate() - 1);
     const key = [entity, this._period, start.toISOString()].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
@@ -165,7 +170,7 @@ class LegrandEnergyCard extends HTMLElement {
     try {
       const result = await this._hass.callWS({
         type: "recorder/statistics_during_period",
-        start_time: start.toISOString(),
+        start_time: queryStart.toISOString(),
         end_time: end.toISOString(),
         statistic_ids: [entity],
         period,
@@ -178,11 +183,13 @@ class LegrandEnergyCard extends HTMLElement {
         const sum = Number(row.sum);
         const before = Number(previous?.sum);
         return {
-          time: typeof row.start === "number" ? row.start * 1000 : Date.parse(row.start),
+          time: typeof row.start === "number" ?
+            (row.start > 1e11 ? row.start : row.start * 1000) : Date.parse(row.start),
           value: previous && Number.isFinite(before) && Number.isFinite(sum)
             ? Math.max(0, sum - before) : null,
         };
       }).filter((point) => Number.isFinite(point.time) &&
+        point.time >= start.getTime() && point.time <= end.getTime() &&
         point.value !== null && Number.isFinite(point.value));
     } catch (_error) {
       if (this._historyKey !== key) return;
