@@ -137,6 +137,7 @@ test("reads Recorder statistics and computes period consumption", async () => {
   card.hass = {
     states: { "sensor.energy": { state: "3.4" } },
     callWS: async (payload) => {
+      if (payload.type === "config/entity_registry/list") return [];
       request = payload;
       const beginning = new Date(payload.start_time).getTime();
       return { "sensor.energy": [
@@ -219,4 +220,25 @@ test("auto-discovers only circuits attached to the selected EcoMeter", () => {
   assert.equal(circuits.length, 1);
   assert.equal(circuits[0].entity, "sensor.circuit_energy");
   assert.equal(circuits[0].power_entity, "sensor.circuit_power");
+});
+
+test("loads the entity registry and discovers circuits without hass.entities", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.main" });
+  card.hass = {
+    states: {
+      "sensor.main": { state: "4" },
+      "sensor.circuit": { state: "1" },
+    },
+    callWS: async ({ type }) => {
+      if (type === "config/entity_registry/list") return [
+        { entity_id: "sensor.main", platform: "legrand_energy", unique_id: "meter_energy_today" },
+        { entity_id: "sensor.circuit", platform: "legrand_energy", unique_id: "meter#0_circuit_energy_today" },
+      ];
+      return {};
+    },
+  };
+  await card._loadEntityRegistry();
+  assert.equal(card._circuits().length, 1);
+  assert.equal(card._circuits()[0].entity, "sensor.circuit");
 });
