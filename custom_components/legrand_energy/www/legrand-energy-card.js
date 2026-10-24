@@ -433,7 +433,7 @@ class LegrandEnergyCard extends HTMLElement {
           "padding:14px;border:1px solid var(--divider-color);border-radius:12px;background:var(--secondary-background-color,var(--card-background-color))");
         tile.appendChild(this._element("div", label,
           "font-size:12px;color:var(--secondary-text-color);margin-bottom:8px"));
-        tile.appendChild(this._element("strong", label === "Prochain changement" ? (this._nextTariffChange() || "—") : this._value(id),
+        tile.appendChild(this._element("strong", label === "Prochain changement" ? (this._nextTariffChange() || "—") : this._value(id, label.startsWith("Prix ") ? 4 : 2),
           "font-size:16px;overflow-wrap:anywhere"));
         grid.appendChild(tile);
       }
