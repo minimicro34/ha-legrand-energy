@@ -18,6 +18,7 @@ class LegrandEnergyCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
+  getGridOptions() { return { columns: 12, min_columns: 6 }; }
   static getStubConfig() { return { entity: "" }; }
 
   _state(id) {
@@ -49,17 +50,30 @@ class LegrandEnergyCard extends HTMLElement {
   _row(label, value) {
     const row = this._element("div", undefined,
       "display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--divider-color)");
+    row.title = label + " : " + value;
     row.append(this._element("span", label), this._element("strong", value));
     return row;
+  }
+
+  _autoEntity(explicit, suffixes) {
+    if (explicit) return explicit;
+    const base = this._config?.entity || "";
+    const prefix = base.replace(/consommation_aujourd_hui$/, "");
+    if (prefix === base) return null;
+    for (const suffix of suffixes) {
+      const id = prefix + suffix;
+      if (this._hass?.states?.[id]) return id;
+    }
+    return null;
   }
 
   _periodEntity() {
     const c = this._config;
     return {
       day: c.entity,
-      week: c.week_entity,
-      month: c.month_entity,
-      year: c.year_entity,
+      week: this._autoEntity(c.week_entity, ["energie"]),
+      month: this._autoEntity(c.month_entity, ["energie_2"]),
+      year: this._autoEntity(c.year_entity, ["energie_3"]),
     }[this._period];
   }
 
@@ -86,6 +100,7 @@ class LegrandEnergyCard extends HTMLElement {
     if (key === this._historyKey) return;
     this._historyKey = key;
     this._history = null;
+    this._historyError = false;
     this._render();
     try {
       const result = await this._hass.callWS({
@@ -101,6 +116,7 @@ class LegrandEnergyCard extends HTMLElement {
     } catch (_error) {
       if (this._historyKey !== key) return;
       this._history = [];
+      this._historyError = true;
     }
     this._render();
   }
@@ -108,12 +124,12 @@ class LegrandEnergyCard extends HTMLElement {
   _chart() {
     const box = this._element("div");
     const points = (this._history || []).map((item) => ({
-      time: Date.parse(item.last_changed || item.last_updated),
+      time: typeof item.lu === "number" ? item.lu * 1000 : Date.parse(item.last_changed || item.last_updated || item.lu),
       value: Number(item.state),
     })).filter((point) => Number.isFinite(point.time) && Number.isFinite(point.value));
     if (!points.length) {
       box.appendChild(this._element("div",
-        this._history === null ? "Chargement de l'historique…" : "Aucun historique disponible pour cette période.",
+        this._history === null ? "Chargement de l'historique…" : this._historyError ? "Historique indisponible (requête Home Assistant en échec)." : "Aucun historique disponible pour cette période.",
         "padding:24px 0;color:var(--secondary-text-color);text-align:center"));
       return box;
     }
@@ -166,6 +182,7 @@ class LegrandEnergyCard extends HTMLElement {
       if (!id) continue;
       const tile = this._element("div", undefined,
         "padding:12px;border:1px solid var(--divider-color);border-radius:10px;min-width:0");
+      tile.title = label + " · " + (id || "Capteur non configuré") + " · " + this._value(id, digits);
       tile.append(this._element("div", label,
         "font-size:12px;color:var(--secondary-text-color)"),
         this._element("div", this._value(id, digits),
@@ -214,13 +231,13 @@ class LegrandEnergyCard extends HTMLElement {
     }
 
     const diagnostics = [
-      ["Puissance souscrite", this._config.subscribed_power_entity],
-      ["Option tarifaire", this._config.tariff_option_entity],
-      ["Prix actuel", this._config.current_price_entity],
-      ["Prix heures pleines", this._config.peak_price_entity],
-      ["Prix heures creuses", this._config.offpeak_price_entity],
-      ["Prochain changement", this._config.next_tariff_change_entity],
-      ["Type de contrat", this._config.contract_entity],
+      ["Puissance souscrite", this._autoEntity(this._config.subscribed_power_entity, ["puissance_souscrite"])],
+      ["Option tarifaire", this._autoEntity(this._config.tariff_option_entity, ["option_tarifaire"])],
+      ["Prix actuel", this._autoEntity(this._config.current_price_entity, ["prix_actuel"])],
+      ["Prix heures pleines", this._autoEntity(this._config.peak_price_entity, ["prix_heures_pleines"])],
+      ["Prix heures creuses", this._autoEntity(this._config.offpeak_price_entity, ["prix_heures_creuses"])],
+      ["Prochain changement", this._autoEntity(this._config.next_tariff_change_entity, ["prochain_changement_de_tarif"])],
+      ["Type de contrat", this._autoEntity(this._config.contract_entity, ["type_de_contrat"])],
     ].filter((item) => item[1]);
     if (diagnostics.length) {
       const details = this._element("details", undefined, "margin-top:16px");
