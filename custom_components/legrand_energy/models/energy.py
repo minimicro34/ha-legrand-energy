@@ -27,7 +27,7 @@ class LegrandModule:
 class LegrandMeasurements:
     """Represent calculated energy measurements."""
 
-    power: float | None = None
+    average_power: float | None = None
 
     energy_today: float | None = None
     energy_peak_today: float | None = None
