@@ -38,8 +38,10 @@ def test_decode_energy_points() -> None:
     assert len(points) == 2
     assert points[0].energy == 598
     assert points[0].price == 0.1291
+    assert points[0].interval_seconds == 1500
     assert points[1].energy == 108
     assert points[1].price == 0.0155
+    assert points[1].interval_seconds == 1500
 
 
 def test_prefers_total_energy_value() -> None:
