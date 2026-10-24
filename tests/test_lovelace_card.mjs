@@ -128,6 +128,11 @@ test("auto-discovers period and contract sensors for the selected EcoMeter", () 
 test("reads Recorder statistics and computes period consumption", async () => {
   const { card } = createCard();
   card.setConfig({ entity: "sensor.energy" });
+  // Fixed interval avoids a midnight-dependent assertion when tests run just after 00:00.
+  card._dateRange = () => ({
+    start: new Date("2026-10-24T00:00:00Z"),
+    end: new Date("2026-10-24T04:00:00Z"),
+  });
   let request;
   card.hass = {
     states: { "sensor.energy": { state: "3.4" } },
