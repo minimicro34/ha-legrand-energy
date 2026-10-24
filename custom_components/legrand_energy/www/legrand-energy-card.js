@@ -18,7 +18,7 @@ class LegrandEnergyCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
-  getGridOptions() { return { columns: 12, min_columns: 6 }; }
+  getGridOptions() { return { columns: 36, min_columns: 12 }; }
   static getStubConfig() { return { entity: "" }; }
 
   _state(id) {
