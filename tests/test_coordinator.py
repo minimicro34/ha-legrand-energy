@@ -199,7 +199,7 @@ async def test_debug_measure_types_compares_scales(hass, caplog) -> None:
                                         "value": [
                                             [1.0, 0.5, 0.3, 0.2],
                                             [2.0, 1.0, 0.6, 0.4],
-                                        ]
+                                        ],
                                     }
                                 ]
                             }
@@ -209,7 +209,15 @@ async def test_debug_measure_types_compares_scales(hass, caplog) -> None:
             },
             {
                 "body": {
-                    "home": {"modules": [{"measures": [{"step_time": 300, "value": [[350.0], [420.0]]}]}]}
+                    "home": {
+                        "modules": [
+                            {
+                                "measures": [
+                                    {"step_time": 300, "value": [[350.0], [420.0]]}
+                                ]
+                            }
+                        ]
+                    }
                 }
             },
         ]
@@ -226,7 +234,10 @@ async def test_debug_measure_types_compares_scales(hass, caplog) -> None:
     assert one_min_call["home"]["modules"][0]["id"] == "electric-module"
     assert five_min_call["home"]["modules"][0]["id"] == "electric-module"
     assert one_min_call["home"]["modules"][0]["type"].startswith("sum_energy_elec")
-    assert five_min_call["home"]["modules"][0]["type"] == one_min_call["home"]["modules"][0]["type"]
+    assert (
+        five_min_call["home"]["modules"][0]["type"]
+        == one_min_call["home"]["modules"][0]["type"]
+    )
 
     assert one_min_call["scale"] == "1min"
     assert five_min_call["scale"] == "5min"
