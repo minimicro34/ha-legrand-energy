@@ -55,9 +55,25 @@ class LegrandEnergyCard extends HTMLElement {
     return row;
   }
 
-  _autoEntity(explicit, suffixes) {
+  _autoEntity(explicit, suffixes, registryKey) {
     if (explicit) return explicit;
     const base = this._config?.entity || "";
+    const entities = this._hass?.entities;
+    const anchor = entities?.[base];
+    // Registry unique IDs are stable across renames and translations.
+    // Restrict matches to the exact EcoMeter module of the selected entity.
+    if (anchor?.unique_id?.endsWith("_energy_today") && registryKey) {
+      const moduleId = anchor.unique_id.slice(0, -"_energy_today".length);
+      const matches = Object.values(entities).filter((entry) =>
+        entry.platform === "legrand_energy" &&
+        entry.unique_id === moduleId + "_" + registryKey &&
+        this._hass?.states?.[entry.entity_id]
+      );
+      if (matches.length === 1) return matches[0].entity_id;
+      // Never guess by translated entity names when registry metadata exists.
+      return null;
+    }
+    // Compatibility fallback for older HA frontends without registry metadata.
     const prefix = base.replace(/consommation_aujourd_hui$/, "");
     if (prefix === base) return null;
     for (const suffix of suffixes) {
@@ -71,9 +87,9 @@ class LegrandEnergyCard extends HTMLElement {
     const c = this._config;
     return {
       day: c.entity,
-      week: this._autoEntity(c.week_entity, ["energie"]),
-      month: this._autoEntity(c.month_entity, ["energie_2"]),
-      year: this._autoEntity(c.year_entity, ["energie_3"]),
+      week: this._autoEntity(c.week_entity, ["energie"], "energy_week"),
+      month: this._autoEntity(c.month_entity, ["energie_2"], "energy_month"),
+      year: this._autoEntity(c.year_entity, ["energie_3"], "energy_year"),
     }[this._period];
   }
 
@@ -229,13 +245,13 @@ class LegrandEnergyCard extends HTMLElement {
     }
 
     const diagnostics = [
-      ["Puissance souscrite", this._autoEntity(this._config.subscribed_power_entity, ["puissance_souscrite"])],
-      ["Option tarifaire", this._autoEntity(this._config.tariff_option_entity, ["option_tarifaire"])],
-      ["Prix actuel", this._autoEntity(this._config.current_price_entity, ["prix_actuel"])],
-      ["Prix heures pleines", this._autoEntity(this._config.peak_price_entity, ["prix_heures_pleines"])],
-      ["Prix heures creuses", this._autoEntity(this._config.offpeak_price_entity, ["prix_heures_creuses"])],
-      ["Prochain changement", this._autoEntity(this._config.next_tariff_change_entity, ["prochain_changement_de_tarif"])],
-      ["Type de contrat", this._autoEntity(this._config.contract_entity, ["type_de_contrat"])],
+      ["Puissance souscrite", this._autoEntity(this._config.subscribed_power_entity, ["puissance_souscrite"], "contract_power")],
+      ["Option tarifaire", this._autoEntity(this._config.tariff_option_entity, ["option_tarifaire"], "contract_option")],
+      ["Prix actuel", this._autoEntity(this._config.current_price_entity, ["prix_actuel"], "current_price")],
+      ["Prix heures pleines", this._autoEntity(this._config.peak_price_entity, ["prix_heures_pleines"], "peak_price")],
+      ["Prix heures creuses", this._autoEntity(this._config.offpeak_price_entity, ["prix_heures_creuses"], "off_peak_price")],
+      ["Prochain changement", this._autoEntity(this._config.next_tariff_change_entity, ["prochain_changement_de_tarif"], "next_tariff_change")],
+      ["Type de contrat", this._autoEntity(this._config.contract_entity, ["type_de_contrat"], "contract_type")],
     ].filter((item) => item[1]);
     if (diagnostics.length) {
       const details = this._element("details", undefined, "margin-top:16px");
