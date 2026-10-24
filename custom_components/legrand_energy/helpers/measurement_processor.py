@@ -108,6 +108,16 @@ class MeasurementProcessor:
         )
 
     @staticmethod
+    def average_power_for_point(point: EnergyPoint) -> float | None:
+        """Convert interval energy (Wh) to average power (W), when valid."""
+        interval = point.interval_seconds
+        if interval is None or interval <= 0:
+            return None
+        if not 0 <= point.energy < float("inf"):
+            return None
+        return point.energy * 3600 / interval
+
+    @staticmethod
     def total_energy(
         points: list[EnergyPoint],
     ) -> float:
