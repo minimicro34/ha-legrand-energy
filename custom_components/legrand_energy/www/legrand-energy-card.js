@@ -316,16 +316,23 @@ class LegrandEnergyCard extends HTMLElement {
       ? [{ time: today.getTime(), value: liveEnergy, live: true }]
       : recorded;
     // Keep all twelve calendar months visible; missing statistics are not zero.
-    const points = this._period === "year" && displayRecorded.length
-      ? Array.from({ length: 12 }, (_, month) => {
-        const year = this._dateRange().start.getFullYear();
-        const matching = displayRecorded.find((point) => {
-          const date = new Date(point.time);
-          return date.getFullYear() === year && date.getMonth() === month;
-        });
-        return matching || { time: new Date(year, month, 1).getTime(), value: null };
+    const points = this._period === "day"
+      ? Array.from({ length: 24 }, (_, hour) => {
+        const time = new Date(today);
+        time.setHours(hour);
+        return displayRecorded.find((point) => point.time === time.getTime()) ||
+          { time: time.getTime(), value: null };
       })
-      : displayRecorded;
+      : this._period === "year" && displayRecorded.length
+        ? Array.from({ length: 12 }, (_, month) => {
+          const year = this._dateRange().start.getFullYear();
+          const matching = displayRecorded.find((point) => {
+            const date = new Date(point.time);
+            return date.getFullYear() === year && date.getMonth() === month;
+          });
+          return matching || { time: new Date(year, month, 1).getTime(), value: null };
+        })
+        : displayRecorded;
     if (!displayRecorded.length) {
       box.appendChild(this._element("div",
         this._history === null ? "Chargement des statistiques…" :
@@ -439,7 +446,7 @@ class LegrandEnergyCard extends HTMLElement {
     box.appendChild(tooltip);
     box.appendChild(this._element("div",
       "Consommation par " + (this._period === "day" ? "heure" :
-        this._period === "year" ? "mois" : "jour") + " · " + recorded.length + " périodes",
+        this._period === "year" ? "mois" : "jour") + " · " + displayRecorded.length + " périodes",
       "font-size:12px;color:var(--secondary-text-color);text-align:right"));
     return box;
   }
