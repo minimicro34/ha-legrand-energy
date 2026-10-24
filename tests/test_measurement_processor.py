@@ -98,3 +98,33 @@ def test_average_power_for_point(
         assert result is None
     else:
         assert result == pytest.approx(expected)
+
+@pytest.mark.parametrize(
+    ("age_seconds", "interval", "expected"),
+    [
+        (1800, 1800, 8.0),
+        (3600, 1800, 8.0),
+        (3601, 1800, None),
+        (-1, 1800, None),
+        (300, 0, None),
+    ],
+)
+def test_latest_average_power_freshness(
+    age_seconds: int, interval: int, expected: float | None
+) -> None:
+    """Never expose stale or future interval readings as current power."""
+    from datetime import timedelta
+
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    now = datetime(2026, 10, 24, 12, tzinfo=UTC)
+    point = EnergyPoint(
+        timestamp=now - timedelta(seconds=age_seconds),
+        energy=4.0,
+        interval_seconds=interval,
+    )
+    result = MeasurementProcessor.latest_average_power([point], now=now)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == pytest.approx(expected)
