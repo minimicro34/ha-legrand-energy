@@ -218,8 +218,19 @@ class LegrandEnergyCard extends HTMLElement {
 
   _chart() {
     const box = this._element("div", undefined, "position:relative");
-    const points = this._history || [];
-    if (!points.length) {
+    const recorded = this._history || [];
+    // Keep all twelve calendar months visible; missing statistics are not zero.
+    const points = this._period === "year" && recorded.length
+      ? Array.from({ length: 12 }, (_, month) => {
+        const year = this._dateRange().start.getFullYear();
+        const matching = recorded.find((point) => {
+          const date = new Date(point.time);
+          return date.getFullYear() === year && date.getMonth() === month;
+        });
+        return matching || { time: new Date(year, month, 1).getTime(), value: null };
+      })
+      : recorded;
+    if (!recorded.length) {
       box.appendChild(this._element("div",
         this._history === null ? "Chargement des statistiques…" :
           this._historyError ? "Statistiques indisponibles (requête Home Assistant en échec)." :
@@ -230,7 +241,7 @@ class LegrandEnergyCard extends HTMLElement {
     const locale = this._hass?.locale?.language || "fr-FR";
     const width = 800, height = 230, left = 56, right = 12, top = 18, bottom = 46;
     const plotHeight = height - top - bottom;
-    const max = Math.max(0.001, ...points.map((point) => point.value));
+    const max = Math.max(0.001, ...recorded.map((point) => point.value));
     const scale = Math.pow(10, Math.floor(Math.log10(max)));
     const step = Math.max(0.001, Math.ceil(max / scale / 4) * scale);
     const ceiling = Math.ceil(max / step) * step;
@@ -268,31 +279,33 @@ class LegrandEnergyCard extends HTMLElement {
       "display:none;position:absolute;z-index:2;pointer-events:none;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px 12px;box-shadow:0 2px 12px #0005;font-size:13px;max-width:240px");
     points.forEach((point, index) => {
       const x = left + index * slot;
-      const barHeight = plotHeight * point.value / ceiling;
-      const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
-        width: Math.max(1, slot - 4), height: barHeight,
-        fill: "var(--primary-color)", rx: 2, tabindex: 0 });
       const date = new Date(point.time);
-      const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh";
-      bar.setAttribute("aria-label", info);
-      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = info;
-      bar.appendChild(title);
-      const show = () => {
-        tooltip.textContent = info;
-        tooltip.style.display = "block";
-        tooltip.style.left = Math.min(75, Math.max(5, 100 * (x + slot / 2) / width)) + "%";
-        tooltip.style.bottom = "25px";
-      };
-      const hide = () => { tooltip.style.display = "none"; };
-      bar.addEventListener("mouseenter", show);
-      bar.addEventListener("mouseleave", hide);
-      bar.addEventListener("focus", show);
-      bar.addEventListener("blur", hide);
-      bar.addEventListener("click", () => {
-        if (tooltip.style.display === "block") hide(); else show();
-      });
-      const labelEvery = Math.max(1, Math.ceil(points.length / 10));
+      if (point.value !== null) {
+        const barHeight = plotHeight * point.value / ceiling;
+        const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
+          width: Math.max(1, slot - 4), height: barHeight,
+          fill: "var(--primary-color)", rx: 2, tabindex: 0 });
+        const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh";
+        bar.setAttribute("aria-label", info);
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = info;
+        bar.appendChild(title);
+        const show = () => {
+          tooltip.textContent = info;
+          tooltip.style.display = "block";
+          tooltip.style.left = Math.min(75, Math.max(5, 100 * (x + slot / 2) / width)) + "%";
+          tooltip.style.bottom = "25px";
+        };
+        const hide = () => { tooltip.style.display = "none"; };
+        bar.addEventListener("mouseenter", show);
+        bar.addEventListener("mouseleave", hide);
+        bar.addEventListener("focus", show);
+        bar.addEventListener("blur", hide);
+        bar.addEventListener("click", () => {
+          if (tooltip.style.display === "block") hide(); else show();
+        });
+      }
+      const labelEvery = this._period === "year" ? 1 : Math.max(1, Math.ceil(points.length / 10));
       if (index % labelEvery === 0 || index === points.length - 1) {
         make("text", { x: x + slot / 2, y: height - 23,
           "text-anchor": "middle", fill: "var(--secondary-text-color)",
@@ -303,7 +316,7 @@ class LegrandEnergyCard extends HTMLElement {
     box.appendChild(tooltip);
     box.appendChild(this._element("div",
       "Consommation par " + (this._period === "day" ? "heure" :
-        this._period === "year" ? "mois" : "jour") + " · " + points.length + " périodes",
+        this._period === "year" ? "mois" : "jour") + " · " + recorded.length + " périodes",
       "font-size:12px;color:var(--secondary-text-color);text-align:right"));
     return box;
   }
