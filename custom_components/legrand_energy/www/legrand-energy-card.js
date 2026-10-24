@@ -40,6 +40,18 @@ class LegrandEnergyCard extends HTMLElement {
       ? " " + state.attributes.unit_of_measurement : "");
   }
 
+  _nextTariffChange() {
+    const id = this._autoEntity(this._config.next_tariff_change_entity,
+      ["prochain_changement_de_tarif"], "next_tariff_change");
+    const raw = this._state(id)?.state;
+    if (!raw) return null;
+    const date = new Date(raw);
+    if (!Number.isFinite(date.getTime())) return raw;
+    return new Intl.DateTimeFormat(this._hass?.locale?.language || "fr-FR", {
+      hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit",
+    }).format(date);
+  }
+
   _element(tag, text, css) {
     const el = document.createElement(tag);
     if (text !== undefined) el.textContent = text;
@@ -204,6 +216,16 @@ class LegrandEnergyCard extends HTMLElement {
       metrics.appendChild(tile);
     }
     wrapper.appendChild(metrics);
+    const tariff = this._state(this._config.tariff_entity)?.state;
+    const nextChange = this._nextTariffChange();
+    if (tariff || nextChange) {
+      const line = this._element("div", undefined,
+        "display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;margin-bottom:14px;border:1px solid var(--divider-color);border-radius:10px");
+      line.appendChild(this._element("strong",
+        tariff === "HP" ? "Heures pleines (HP)" : tariff === "HC" ? "Heures creuses (HC)" : tariff || "Tarif en cours"));
+      if (nextChange) line.appendChild(this._element("span", "Prochain changement : " + nextChange));
+      wrapper.appendChild(line);
+    }
 
     const tabs = this._element("div", undefined,
       "display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap");
@@ -258,7 +280,7 @@ class LegrandEnergyCard extends HTMLElement {
       details.appendChild(this._element("summary", "Contrat et diagnostics",
         "cursor:pointer;font-weight:600;padding:8px 0"));
       for (const [label, id] of diagnostics) {
-        details.appendChild(this._row(label, this._value(id)));
+        details.appendChild(this._row(label, label === "Prochain changement" ? (this._nextTariffChange() || "—") : this._value(id)));
       }
       wrapper.appendChild(details);
     }
