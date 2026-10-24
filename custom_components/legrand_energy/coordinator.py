@@ -114,7 +114,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
 
     async def async_debug_measure_types(self) -> None:
-        """Compare known electricity measurements with a power probe."""
+        """Compare electricity measurements at one- and five-minute scales."""
         from datetime import UTC, datetime, timedelta
 
         from .helpers.fluid_types import private_measure_type
@@ -147,11 +147,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         start = now - timedelta(hours=2)
 
         candidates = (
-            ("reference", private_measure_type(FluidType.ELECTRICITY)),
-            ("power", "power"),
+            ("reference-1min", private_measure_type(FluidType.ELECTRICITY), "1min"),
+            ("reference-5min", private_measure_type(FluidType.ELECTRICITY), "5min"),
         )
 
-        for label, measure_type in candidates:
+        for label, measure_type, scale in candidates:
             home = {
                 "id": home_id,
                 "modules": [
@@ -167,7 +167,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             try:
                 response = await self.private_api.get_home_measure(
                     home=home,
-                    scale="5min",
+                    scale=scale,
                     real_time=False,
                     date_begin=int(start.timestamp()),
                     date_end=int(now.timestamp()),
@@ -192,19 +192,26 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     if isinstance(row, list)
                 ]
 
+                step_times = sorted({
+                    measure.get("step_time")
+                    for measure in measures
+                    if isinstance(measure.get("step_time"), int)
+                })
+
                 _LOGGER.warning(
-                    "Legrand Energy power probe %s: "
-                    "modules=%s measures=%s rows=%s samples=%s",
+                    "Legrand Energy scale probe %s: "
+                    "modules=%s measures=%s rows=%s step_times=%s samples=%s",
                     label,
                     len(returned_modules),
                     len(measures),
                     len(samples),
+                    step_times,
                     samples[-3:],
                 )
 
             except Exception as err:  # noqa: BLE001
                 _LOGGER.warning(
-                    "Legrand Energy power probe %s failed: %s",
+                    "Legrand Energy scale probe %s failed: %s",
                     label,
                     type(err).__name__,
                 )
