@@ -66,6 +66,7 @@ def test_calculate_cost_prefers_api_historical_prices() -> None:
         off_peak_price=99.0,
     ) == pytest.approx(0.54)
 
+
 @pytest.mark.parametrize(
     ("energy", "interval", "expected"),
     [
