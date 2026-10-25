@@ -209,6 +209,16 @@ async def async_setup_entry(
         debug_historical_availability,
     )
 
+    async def debug_historical_months(_call: ServiceCall) -> None:
+        """Probe older months and alternate scale without Recorder writes."""
+        await coordinator.async_debug_historical_months()
+
+    hass.services.async_register(
+        DOMAIN,
+        "debug_historical_months",
+        debug_historical_months,
+    )
+
     return True
 
 
