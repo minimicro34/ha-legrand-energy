@@ -219,8 +219,15 @@ class LegrandEnergyCard extends HTMLElement {
         const sum = Number(row.sum);
         const before = Number(previous?.sum);
         return {
-          time: typeof row.start === "number" ?
-            (row.start > 1e11 ? row.start : row.start * 1000) : Date.parse(row.start),
+          // Monthly deltas belong to the preceding month: the next
+          // boundary closes that month's consumption. Preserve the
+          // existing alignment for hourly and daily Recorder statistics.
+          time: (() => {
+            const boundary = period === "month" && previous ? previous.start : row.start;
+            return typeof boundary === "number"
+              ? (boundary > 1e11 ? boundary : boundary * 1000)
+              : Date.parse(boundary);
+          })(),
           value: previous && Number.isFinite(before) && Number.isFinite(sum)
             ? Math.max(0, sum - before) : null,
         };
