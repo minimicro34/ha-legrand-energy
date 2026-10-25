@@ -199,6 +199,16 @@ async def async_setup_entry(
         debug_homestatus,
     )
 
+    async def debug_historical_availability(_call: ServiceCall) -> None:
+        """Probe historical availability without importing statistics."""
+        await coordinator.async_debug_historical_availability()
+
+    hass.services.async_register(
+        DOMAIN,
+        "debug_historical_availability",
+        debug_historical_availability,
+    )
+
     return True
 
 
