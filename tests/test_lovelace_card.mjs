@@ -537,3 +537,24 @@ test("keeps half-hour bars when five-minute Recorder samples contain a gap", asy
   assert.ok(svg.children.some((child) => child.textContent === "N/R"));
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*18/);
 });
+
+test("keeps N/R separate from the clock axis and excludes it from the remaining gap", () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  card._dateRange = () => ({ start: today, end: new Date() });
+  card._hass = { states: { "sensor.energy": { state: "1.5" } } };
+  card._history = [{ time: today.getTime(), value: 1 }];
+  card._dayGranularity = 1800000;
+  card._unallocatedEnergy = 0.5;
+  card._unallocatedGaps = 1;
+  const chart = card._chart();
+  const svg = chart.children.find((child) => child.role === "img");
+  const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
+  assert.equal(bars.length, 2);
+  assert.ok(bars[1].x - (bars[0].x + bars[0].width) >= 10);
+  assert.match(bars[1]["aria-label"], /Non répartie/);
+  assert.match(chart.children.at(-1).textContent, /Hors créneaux.*0,5 kWh/);
+  assert.match(chart.children.at(-1).textContent, /Écart : 0 kWh/);
+});
