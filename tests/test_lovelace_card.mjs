@@ -305,6 +305,39 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
   assert.equal(card._splitHistory.offPeak.get(starts[3]), 8);
 });
 
+test("recovers the first recorded month from daily statistics without shifting later months", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy", peak_energy_entity: "sensor.hp",
+    offpeak_energy_entity: "sensor.hc" });
+  card._period = "year";
+  card._dateRange = () => ({ start: new Date(2026, 0, 1),
+    end: new Date(2026, 9, 25, 12) });
+  const months = [6, 7, 8, 9].map((month) => new Date(2026, month, 1).getTime());
+  const monthly = { "sensor.energy": [100, 115, 135, 150],
+    "sensor.hp": [60, 70, 82, 90], "sensor.hc": [40, 45, 53, 60] };
+  const dailyStarts = [new Date(2026, 5, 30), new Date(2026, 6, 1),
+    new Date(2026, 6, 2), new Date(2026, 6, 3)].map((date) => date.getTime());
+  const daily = { "sensor.energy": [90, 93, 97, 100],
+    "sensor.hp": [54, 56, 58, 60], "sensor.hc": [36, 37, 39, 40] };
+  card._hass = { states: {}, callWS: async (payload) => {
+    if (payload.type === "config/entity_registry/list") return [];
+    const isDaily = payload.period === "day";
+    const starts = isDaily ? dailyStarts : months;
+    const sums = isDaily ? daily : monthly;
+    return Object.fromEntries(payload.statistic_ids.map((id) => [
+      id, starts.map((start, index) => ({ start, sum: sums[id][index] })),
+    ]));
+  } };
+  await card._loadHistory();
+  const values = new Map(card._history.map((point) => [new Date(point.time).getMonth(), point.value]));
+  assert.equal(values.get(6), 10);
+  assert.equal(values.get(7), 15);
+  assert.equal(values.get(8), 20);
+  assert.equal(values.get(9), 15);
+  assert.equal(card._splitHistory.peak.get(months[0]), 6);
+  assert.equal(card._splitHistory.offPeak.get(months[0]), 4);
+});
+
 test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
   const previousTZ = process.env.TZ;
   try {
