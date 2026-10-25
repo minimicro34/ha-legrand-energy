@@ -491,4 +491,13 @@ test("keeps half-hour bars when five-minute Recorder samples contain a gap", asy
   const second = Date.parse("2026-10-24T00:30:00Z");
   assert.equal(card._splitHistory.peak.get(second), 2);
   assert.equal(card._splitHistory.offPeak.get(second), 2);
+  assert.equal(card._unallocatedEnergy, 18);
+  assert.equal(card._unallocatedGaps, 1);
+  const chart = card._chart();
+  const svg = chart.children.find((child) => child.role === "img");
+  const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
+  assert.equal(bars.length, 3);
+  assert.match(bars[2].children[0].textContent, /Non répartie.*18.*kWh/);
+  assert.ok(svg.children.some((child) => child.textContent === "Non répartie"));
+  assert.match(chart.children.at(-1).textContent, /Hors créneaux.*18/);
 });
