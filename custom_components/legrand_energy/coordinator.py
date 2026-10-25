@@ -213,11 +213,9 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 (10, "1day"),
             ):
                 start = int(datetime(year, month, 1, tzinfo=UTC).timestamp())
-                end_year = year + (month == 12)
-                end_month = month % 12 + 1
-                stop = (
-                    int(datetime(end_year, end_month, 1, tzinfo=UTC).timestamp()) - 1
-                )
+                stop = int(
+                    datetime(year, month + 1, 1, tzinfo=UTC).timestamp()
+                ) - 1
                 try:
                     payload = await self.private_api.get_fluid_measures(
                         home_id=home_id,
