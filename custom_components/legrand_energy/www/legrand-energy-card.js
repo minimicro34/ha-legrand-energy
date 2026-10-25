@@ -711,7 +711,7 @@ class LegrandEnergyCard extends HTMLElement {
         gapInfo +
         (isToday && Number.isFinite(total) && total >= 0
           ? " · Total Legrand : " + format.format(total) + " kWh" +
-            " · Écart : " + format.format(total - measured) + " kWh"
+            " · Écart : " + format.format(total - measured - missing) + " kWh"
           : "") + " · " + displayRecorded.length + " périodes";
       box.appendChild(this._element("div", message,
         "font-size:12px;color:var(--secondary-text-color);text-align:right;margin-top:6px"));
