@@ -262,8 +262,9 @@ cost_entity: sensor.your_cost_today
 tariff_entity: sensor.your_current_tariff
 ```
 
-The `entity` field is required; the other fields are optional. This initial
-beta card displays a summary only. It does not create or modify energy entities.
+The `entity` field is required; the other fields are optional. The card provides a summary, period charts (day, week, month, year),
+HP/HC breakdown when historical Recorder statistics are available, and
+collapsible circuit and diagnostic sections. It does not create or modify energy entities.
 Use your actual entity IDs, which depend on the discovered installation.
 
 ---
@@ -391,7 +392,33 @@ If your Home + Control account credentials change, use the integration's **Recon
 
 ## Screenshots
 
-Screenshots will be added once the integration reaches feature completeness.
+The following screenshots are reserved for the bundled Lovelace card.
+Images will be added after the final visual review of the 1.3.0 beta.
+
+### Day view
+
+<!-- TODO: Add screenshot: screenshots/card-day.png -->
+*Screenshot pending — 30-minute energy bars, HP/HC breakdown, daylight-saving transition and separate “N/R” unallocated-energy bar.*
+
+### Month view
+
+<!-- TODO: Add screenshot: screenshots/card-month.png -->
+*Screenshot pending — daily energy bars for the current month.*
+
+### Year view
+
+<!-- TODO: Add screenshot: screenshots/card-year.png -->
+*Screenshot pending — monthly totals and HP/HC breakdown, including the first available month and current partial month.*
+
+### Circuits
+
+<!-- TODO: Add screenshot: screenshots/card-circuits.png -->
+*Screenshot pending — expanded Circuits section with the discovered EcoMeter circuits.*
+
+### Diagnostics
+
+<!-- TODO: Add screenshot: screenshots/card-diagnostics.png -->
+*Screenshot pending — expanded diagnostic section with non-sensitive status information. Redact identifiers and tokens before sharing.*
 
 ---
 
