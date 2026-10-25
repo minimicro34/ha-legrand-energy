@@ -280,6 +280,65 @@ class LegrandEnergyCard extends HTMLElement {
         }
       }
     }
+    // Monthly Recorder buckets are closed at the next month's boundary.
+    // The ongoing month has no closing bucket yet: derive its partial
+    // consumption from daily cumulative Recorder statistics instead.
+    if (period === "month" && !this._historyError) {
+      const monthStart = new Date(end.getFullYear(), end.getMonth(), 1);
+      const monthTime = monthStart.getTime();
+      const dailyStart = new Date(monthStart);
+      dailyStart.setDate(dailyStart.getDate() - 1);
+      const peakId = this._splitHistory?.peakId;
+      const offPeakId = this._splitHistory?.offPeakId;
+      try {
+        const ids = [entity, ...(peakId && offPeakId ? [peakId, offPeakId] : [])];
+        const daily = await this._hass.callWS({
+          type: "recorder/statistics_during_period",
+          start_time: dailyStart.toISOString(),
+          end_time: end.toISOString(),
+          statistic_ids: ids,
+          period: "day",
+          types: ["sum"],
+        });
+        if (this._historyKey !== key) return;
+        const partial = (id) => {
+          const rows = daily?.[id] || [];
+          let total = 0;
+          let count = 0;
+          for (let i = 1; i < rows.length; i++) {
+            const previous = rows[i - 1];
+            const current = rows[i];
+            if (previous.sum == null || current.sum == null) continue;
+            const time = typeof current.start === "number"
+              ? (current.start > 1e11 ? current.start : current.start * 1000)
+              : Date.parse(current.start);
+            const delta = Number(current.sum) - Number(previous.sum);
+            if (time >= monthTime && time <= end.getTime() &&
+                Number.isFinite(delta) && delta >= 0) {
+              total += delta;
+              count++;
+            }
+          }
+          return count ? total : null;
+        };
+        const total = partial(entity);
+        if (total !== null) {
+          this._history = this._history.filter((point) => point.time !== monthTime);
+          this._history.push({ time: monthTime, value: total });
+          this._history.sort((a, b) => a.time - b.time);
+          if (peakId && offPeakId && this._splitHistory) {
+            const peak = partial(peakId);
+            const offPeak = partial(offPeakId);
+            if (peak !== null && offPeak !== null) {
+              this._splitHistory.peak.set(monthTime, peak);
+              this._splitHistory.offPeak.set(monthTime, offPeak);
+            }
+          }
+        }
+      } catch (_error) {
+        // Never fabricate a partial month if daily Recorder data is missing.
+      }
+    }
     // Historical tariff states are needed: today's current HP/HC state cannot
     // reliably classify earlier hourly consumption.
     if (this._period === "day" && !this._historyError) {
