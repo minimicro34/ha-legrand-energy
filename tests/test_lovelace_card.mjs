@@ -339,6 +339,28 @@ test("recovers the first recorded month from daily statistics without shifting l
   assert.equal(card._splitHistory.offPeak.get(months[0]), 4);
 });
 
+test("does not report a partial first month as complete without a daily baseline", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._period = "year";
+  card._dateRange = () => ({ start: new Date(2026, 0, 1),
+    end: new Date(2026, 9, 25, 12) });
+  const july = new Date(2026, 6, 1).getTime();
+  const august = new Date(2026, 7, 1).getTime();
+  card._hass = { states: {}, callWS: async (payload) => {
+    if (payload.type === "config/entity_registry/list") return [];
+    const isDaily = payload.period === "day";
+    return { "sensor.energy": isDaily
+      ? [{ start: july, sum: 93 },
+        { start: new Date(2026, 6, 31).getTime(), sum: 100 }]
+      : [{ start: july, sum: 100 }, { start: august, sum: 115 }] };
+  } };
+  await card._loadHistory();
+  const values = new Map(card._history.map((point) => [point.time, point.value]));
+  assert.equal(values.get(july), undefined);
+  assert.equal(values.get(august), 15);
+});
+
 test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
   const previousTZ = process.env.TZ;
   try {
