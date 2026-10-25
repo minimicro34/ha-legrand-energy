@@ -414,7 +414,7 @@ class LegrandEnergyCard extends HTMLElement {
             const firstRow = entries[0];
             const endRow = entries.find((row) => stamp(row.start) >= next.getTime());
             if (firstRow && endRow &&
-                stamp(firstRow.start) >= monthTime &&
+                stamp(firstRow.start) > monthTime &&
                 stamp(firstRow.start) < next.getTime()) {
               const delta = Number(endRow.sum) - Number(firstRow.sum);
               if (Number.isFinite(delta) && delta >= 0) {
