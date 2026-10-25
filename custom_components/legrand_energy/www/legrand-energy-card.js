@@ -349,6 +349,63 @@ class LegrandEnergyCard extends HTMLElement {
         }
       }
     }
+    // The first monthly cumulative sample has no earlier monthly baseline.
+    // Reconstruct only that month from daily cumulative statistics.
+    if (period === "month" && !this._historyError && rows.length) {
+      const stamp = (v) => typeof v === "number" ? (v > 1e11 ? v : v * 1000) : Date.parse(v);
+      const first = new Date(stamp(rows[0].start));
+      const monthStart = new Date(first.getFullYear(), first.getMonth(), 1);
+      const monthTime = monthStart.getTime();
+      if (monthTime >= start.getTime() && monthTime <= end.getTime() &&
+          !this._history.some((point) => point.time === monthTime)) {
+        const next = new Date(first.getFullYear(), first.getMonth() + 1, 1);
+        const from = new Date(monthStart);
+        from.setDate(from.getDate() - 1);
+        const peakId = this._splitHistory?.peakId;
+        const offPeakId = this._splitHistory?.offPeakId;
+        try {
+          const daily = await this._hass.callWS({
+            type: "recorder/statistics_during_period",
+            start_time: from.toISOString(),
+            end_time: new Date(Math.min(next.getTime(), end.getTime())).toISOString(),
+            statistic_ids: [entity, ...(peakId && offPeakId ? [peakId, offPeakId] : [])],
+            period: "day",
+            types: ["sum"],
+          });
+          if (this._historyKey !== key) return;
+          const sum = (id) => {
+            const entries = (daily?.[id] || []).filter((row) =>
+              row.sum != null && Number.isFinite(Number(row.sum)) &&
+              Number.isFinite(stamp(row.start)));
+            let value = 0, count = 0;
+            for (let i = 1; i < entries.length; i++) {
+              const time = stamp(entries[i].start);
+              const delta = Number(entries[i].sum) - Number(entries[i - 1].sum);
+              if (time >= monthTime && time < next.getTime() &&
+                  Number.isFinite(delta) && delta >= 0) {
+                value += delta;
+                count++;
+              }
+            }
+            return count ? value : null;
+          };
+          const total = sum(entity);
+          if (total !== null) {
+            this._history.push({ time: monthTime, value: total });
+            this._history.sort((a, b) => a.time - b.time);
+            if (peakId && offPeakId && this._splitHistory) {
+              const hp = sum(peakId), hc = sum(offPeakId);
+              if (hp !== null && hc !== null) {
+                this._splitHistory.peak.set(monthTime, hp);
+                this._splitHistory.offPeak.set(monthTime, hc);
+              }
+            }
+          }
+        } catch (_error) {
+          // Do not fabricate a month without daily Recorder evidence.
+        }
+      }
+    }
     // Monthly Recorder buckets are closed at the next month's boundary.
     // The ongoing month has no closing bucket yet: derive its partial
     // consumption from daily cumulative Recorder statistics instead.
