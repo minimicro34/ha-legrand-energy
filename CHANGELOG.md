@@ -54,17 +54,18 @@ Cumulative changes since 1.2.0, including the full beta development and final st
 - Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable and a complete daily baseline exists, without shifting later months or inventing missing readings. Leave the month blank when the first-day baseline or completed-month evidence is missing. Recover HP/HC values when their daily statistics are available.
 - Subtract separately displayed, unallocated N/R energy from the Day chart's **remaining difference**, avoiding a misleading discrepancy when Recorder has missing five-minute samples.
 - Visually separate the non-temporal **N/R** bar and its axis label from the final time-of-day bar.
+- Display a first month with mid-month Recorder history as an explicitly marked **partial** gray bar, showing its first recorded date in the tooltip instead of claiming a full-month total.
 
 ### Final validation and documentation
 
 - Add regression tests for first-month reconstruction, preservation of subsequent monthly HP/HC values, N/R spacing, and day-total reconciliation.
 - Clarify automatic Lovelace resource registration, optional manual setup, Recorder history limitations, and N/R behavior.
-- Reserve five README screenshot slots: **Day, Month, Year, Circuits, Diagnostics**. Screenshots are pending final Home Assistant validation.
+- Add six README screenshots: **Day, Week, Month, Year, Circuits, Diagnostics**, stored under `docs/`.
 
 ### Notes
 
 - The Lovelace card reads Home Assistant Recorder statistics and does not import old Home + Control measurements into Recorder.
-- A blank month or an unallocated N/R amount means that the available statistics do not justify assigning that consumption to a specific period.
+- A blank month means the available statistics do not justify a consumption value; a gray partial-month bar includes only recorded consumption and does not estimate missing days. An unallocated N/R amount cannot safely be assigned to a specific time slot.
 - The 1.3.0 stable release requires final Home Assistant visual validation and screenshots.
 
 
