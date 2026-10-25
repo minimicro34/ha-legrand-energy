@@ -170,8 +170,11 @@ async def test_oauth_error_requests_reauthentication(hass) -> None:
     with pytest.raises(ConfigEntryAuthFailed, match="OAuth authentication expired"):
         await coordinator._async_update_data()
 
+
 @pytest.mark.asyncio
-async def test_historical_probe_reports_all_years_and_empty_results(hass, caplog) -> None:
+async def test_historical_probe_reports_all_years_and_empty_results(
+    hass, caplog
+) -> None:
     coordinator = _coordinator(hass)
     coordinator.api.get_first_home_id.return_value = "home-id"
     coordinator._module_service.async_get = AsyncMock(
@@ -210,6 +213,7 @@ async def test_historical_probe_reports_all_years_and_empty_results(hass, caplog
     assert "2022: modules=1 points=1" in caplog.text
     assert "2023: modules=0 points=0 first=none last=none" in caplog.text
 
+
 @pytest.mark.asyncio
 async def test_historical_probe_stops_on_rate_limit(hass, caplog) -> None:
     coordinator = _coordinator(hass)
@@ -229,6 +233,7 @@ async def test_historical_probe_stops_on_rate_limit(hass, caplog) -> None:
 
     coordinator.private_api.get_fluid_measures.assert_awaited_once()
     assert "rate limited in 2022; stopping" in caplog.text
+
 
 @pytest.mark.asyncio
 async def test_historical_probe_stops_on_authentication_failure(hass, caplog) -> None:
@@ -250,8 +255,11 @@ async def test_historical_probe_stops_on_authentication_failure(hass, caplog) ->
     coordinator.private_api.get_fluid_measures.assert_awaited_once()
     assert "LegrandPrivateApiAuthenticationError" in caplog.text
 
+
 @pytest.mark.asyncio
-async def test_historical_probe_skips_missing_private_api_and_home(hass, caplog) -> None:
+async def test_historical_probe_skips_missing_private_api_and_home(
+    hass, caplog
+) -> None:
     coordinator = _coordinator(hass, private=False)
     await coordinator.async_debug_historical_availability()
     assert "private API unavailable" in caplog.text
@@ -261,6 +269,7 @@ async def test_historical_probe_skips_missing_private_api_and_home(hass, caplog)
     await coordinator.async_debug_historical_availability()
     coordinator._module_service.async_get.assert_not_awaited()
     assert "no home found" in caplog.text
+
 
 @pytest.mark.asyncio
 async def test_historical_probe_skips_missing_electricity_modules(hass, caplog) -> None:
