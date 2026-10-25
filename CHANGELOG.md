@@ -6,25 +6,9 @@ The format is based on Keep a Changelog.
 
 ---
 
-## [Unreleased] — post-beta22 stabilization for 1.3.0
+## [1.3.0] - 2026-10-25
 
-### Fixed
-
-- Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable and a complete daily baseline exists, without shifting later months or inventing missing readings. Leave the month blank when the first-day baseline or completed-month evidence is missing. Recover HP/HC values when their daily statistics are available.
-- Subtract separately displayed, unallocated N/R energy from the Day chart's **remaining difference**, avoiding a misleading discrepancy when Recorder has missing five-minute samples.
-- Visually separate the non-temporal **N/R** bar and its axis label from the final time-of-day bar.
-
-### Documentation and tests
-
-- Add regression tests for first-month reconstruction, preservation of subsequent monthly HP/HC values, N/R spacing, and day-total reconciliation.
-- Clarify automatic Lovelace resource registration, optional manual setup, Recorder history limitations, and N/R behavior.
-- Reserve five README screenshot slots: **Day, Month, Year, Circuits, Diagnostics**. Screenshots are pending final Home Assistant validation.
-
----
-
-## [1.3.0-beta22] - 2026-10-25
-
-Cumulative changes developed during the 1.3.0 beta series through beta22, compared with 1.2.0. Post-beta22 corrections are listed separately above.
+Cumulative changes since 1.2.0, including the full beta development and final stabilization.
 
 ### Added
 
@@ -72,7 +56,21 @@ Cumulative changes developed during the 1.3.0 beta series through beta22, compar
 - This is a prerelease. The 1.3.0 merge and stable release require final Home Assistant visual validation and screenshots.
 
 [Unreleased]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.0-beta22...fix/device-info-coverage
-[1.3.0-beta22]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.2.0...v1.3.0-beta22
+### Final stabilization fixes
+
+- Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable and a complete daily baseline exists, without shifting later months or inventing missing readings. Leave the month blank when the first-day baseline or completed-month evidence is missing. Recover HP/HC values when their daily statistics are available.
+- Subtract separately displayed, unallocated N/R energy from the Day chart's **remaining difference**, avoiding a misleading discrepancy when Recorder has missing five-minute samples.
+- Visually separate the non-temporal **N/R** bar and its axis label from the final time-of-day bar.
+
+### Final validation and documentation
+
+- Add regression tests for first-month reconstruction, preservation of subsequent monthly HP/HC values, N/R spacing, and day-total reconciliation.
+- Clarify automatic Lovelace resource registration, optional manual setup, Recorder history limitations, and N/R behavior.
+- Reserve five README screenshot slots: **Day, Month, Year, Circuits, Diagnostics**. Screenshots are pending final Home Assistant validation.
+
+---
+
+[1.3.0]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.2.0...v1.3.0
 
 ---
 
