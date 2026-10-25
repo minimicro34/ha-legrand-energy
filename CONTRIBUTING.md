@@ -42,13 +42,14 @@ Run the complete local quality checks:
 make check
 ```
 
-`make check` runs the same checks as the GitHub CI workflow, including the full pytest suite with coverage. **You do not need to run `make coverage` separately after `make check`.**
+`make check` runs the same checks as the GitHub CI workflow, including the full pytest suite with coverage and the Lovelace card JavaScript tests. **You do not need to run `make coverage` separately after `make check`.**
 
 - Python bytecode compilation
 - Ruff formatting verification
 - Ruff lint
 - mypy
 - pytest with coverage (minimum 80%)
+- Node.js Lovelace card regression tests (`node --test tests/test_lovelace_card.mjs`)
 
 Individual commands are also available:
 
@@ -89,8 +90,8 @@ The CI quality gate requires at least **80% total coverage**. The project curren
 
 When adding or changing user-facing strings:
 
-- update `custom_components/legrand-energy/strings.json`;
-- update the corresponding files in `custom_components/legrand-energy/translations/`;
+- update `custom_components/legrand_energy/strings.json`;
+- update the corresponding files in `custom_components/legrand_energy/translations/`;
 - keep translation keys synchronized between languages;
 - do not remove existing translation keys without checking their usage.
 
