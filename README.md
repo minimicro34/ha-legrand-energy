@@ -249,8 +249,11 @@ The optional **Legrand Energy** card is shipped in this integration's release.
 It does not require a second HACS repository.
 
 1. Restart Home Assistant after installing or updating the integration.
-2. In **Settings → Dashboards → Resources**, add a JavaScript module resource
-   with URL `/legrand_energy/legrand-energy-card.js`.
+2. For storage-managed dashboards, the integration **automatically registers**
+   the JavaScript module resource `/legrand_energy/legrand-energy-card.js`.
+   Check **Settings → Dashboards → Resources** before adding anything manually.
+   If the resource is absent (for example with YAML-managed Lovelace
+   resources), add that URL as a **JavaScript module** once.
 3. Add a **Manual** card to a dashboard, using the entity IDs from your installation:
 
 ```yaml
@@ -262,10 +265,27 @@ cost_entity: sensor.your_cost_today
 tariff_entity: sensor.your_current_tariff
 ```
 
-The `entity` field is required; the other fields are optional. The card provides a summary, period charts (day, week, month, year),
-HP/HC breakdown when historical Recorder statistics are available, and
-collapsible circuit and diagnostic sections. It does not create or modify energy entities.
-Use your actual entity IDs, which depend on the discovered installation.
+The `entity` field is required; the other fields are optional. The card
+provides a summary, period charts (**Day**, **Week**, **Month**, **Year**),
+HP/HC breakdown from Home Assistant Recorder statistics, and collapsible
+**Circuits** and **Diagnostics** sections. It does not create or modify
+energy entities. Use your actual entity IDs, which depend on the discovered
+installation.
+
+The **Day** chart uses 30-minute bars when five-minute Recorder statistics
+are available and falls back to hourly statistics otherwise. If Recorder
+samples are missing, the corresponding energy is displayed in a separate
+gray **N/R** (not allocated to a time slot) bar rather than assigned to an
+arbitrary half-hour. The footer distinguishes allocated bars, N/R energy,
+the current-day Legrand total, and the remaining difference.
+
+The **Year** chart keeps all twelve calendar months visible. Months without
+sufficient Recorder history are left blank, not shown as zero. The first
+recorded month can be reconstructed from daily Recorder statistics when a
+usable baseline exists. The ongoing month is handled separately.
+
+The chart uses Home Assistant's existing statistics; it does not import or
+reconstruct historical measurements that Recorder never stored.
 
 ---
 
