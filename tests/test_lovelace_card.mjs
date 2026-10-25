@@ -288,21 +288,21 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
   // distinct Recorder request shapes, not their scheduling/count.
   assert.ok(requests.length >= 2);
   assert.ok(requests.some((request) => request.period === "month"));
-  assert.ok(requests.some((request) => request.period === "day"));
+  assert.ok(!requests.some((request) => request.period === "day"));
   assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.energy")));
   assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.hp") && request.statistic_ids.includes("sensor.hc")));
-  // June has a valid zero delta; July and August follow it.
+  // July has a valid zero delta; August and September follow it.
   assert.equal(card._history.length, 3);
-  assert.equal(new Date(card._history[0].time).getUTCMonth(), 5);
+  assert.equal(new Date(card._history[0].time).getUTCMonth(), 8);
   assert.equal(card._history[0].value, 0);
   assert.equal(new Date(card._history[1].time).getUTCMonth(), 6);
   assert.equal(card._history[1].value, 15);
   assert.equal(new Date(card._history[2].time).getUTCMonth(), 7);
   assert.equal(card._history[2].value, 20);
-  assert.equal(card._splitHistory.peak.get(starts[1]), 10);
-  assert.equal(card._splitHistory.offPeak.get(starts[1]), 5);
-  assert.equal(card._splitHistory.peak.get(starts[2]), 12);
-  assert.equal(card._splitHistory.offPeak.get(starts[2]), 8);
+  assert.equal(card._splitHistory.peak.get(starts[2]), 10);
+  assert.equal(card._splitHistory.offPeak.get(starts[2]), 5);
+  assert.equal(card._splitHistory.peak.get(starts[3]), 12);
+  assert.equal(card._splitHistory.offPeak.get(starts[3]), 8);
 });
 
 test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
@@ -337,7 +337,7 @@ test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
   }
 });
 
-test("keeps July through September and adds partial October from daily Recorder data", async () => {
+test("aligns completed monthly buckets and skips daily fallback when October monthly data exists", async () => {
   const { card } = createCard();
   card.setConfig({
     entity: "sensor.energy",
@@ -391,18 +391,18 @@ test("keeps July through September and adds partial October from daily Recorder 
     },
   };
   await card._loadHistory();
-  assert.ok(requests.some((request) => request.period === "day" &&
+  assert.ok(!requests.some((request) => request.period === "day" &&
     request.statistic_ids.includes("sensor.energy")));
   const byMonth = new Map(card._history.map((point) => [
     new Date(point.time).getMonth(), point.value,
   ]));
-  assert.equal(byMonth.get(6), 15);
-  assert.equal(byMonth.get(7), 20);
-  assert.equal(byMonth.get(8), 15);
-  assert.equal(byMonth.get(9), 10);
+  assert.equal(byMonth.get(7), 15);
+  assert.equal(byMonth.get(8), 20);
+  assert.equal(byMonth.get(9), 15);
+  assert.equal(byMonth.get(6), undefined);
   const october = new Date(2026, 9, 1).getTime();
-  assert.equal(card._splitHistory.peak.get(october), 5);
-  assert.equal(card._splitHistory.offPeak.get(october), 5);
+  assert.equal(card._splitHistory.peak.get(october), 8);
+  assert.equal(card._splitHistory.offPeak.get(october), 7);
 });
 
 test("groups five-minute energy and HP/HC deltas into half-hour day bars", async () => {
