@@ -359,6 +359,11 @@ class LegrandEnergyCard extends HTMLElement {
       dailyStart.setDate(dailyStart.getDate() - 1);
       const peakId = this._splitHistory?.peakId;
       const offPeakId = this._splitHistory?.offPeakId;
+      // The current month is never a completed monthly bucket. Clear any
+      // existing value before attempting a verified daily reconstruction.
+      this._history = this._history.filter((point) => point.time !== monthTime);
+      this._splitHistory?.peak.delete(monthTime);
+      this._splitHistory?.offPeak.delete(monthTime);
       try {
         const ids = [entity, ...(peakId && offPeakId ? [peakId, offPeakId] : [])];
         const daily = await this._hass.callWS({
@@ -372,6 +377,16 @@ class LegrandEnergyCard extends HTMLElement {
         if (this._historyKey !== key) return;
         const partial = (id) => {
           const rows = daily?.[id] || [];
+          const stamp = (value) => typeof value === "number"
+            ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
+          // Some Recorder responses contain a single cumulative monthly
+          // boundary or sparse rows. They cannot establish October usage.
+          const inMonth = rows.filter((row) => {
+            const time = stamp(row.start);
+            return Number.isFinite(time) && time >= monthTime &&
+              time <= end.getTime() && row.sum != null;
+          });
+          if (inMonth.length < 2) return null;
           let total = 0;
           let count = 0;
           for (let i = 1; i < rows.length; i++) {
