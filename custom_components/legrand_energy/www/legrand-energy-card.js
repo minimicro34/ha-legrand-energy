@@ -351,9 +351,9 @@ class LegrandEnergyCard extends HTMLElement {
     }
     // The first monthly cumulative sample has no earlier monthly baseline.
     // Reconstruct only that month from daily cumulative statistics.
-    if (period === "month" && !this._historyError && rows.length) {
+    if (period === "month" && !this._historyError && (result?.[entity]?.length || 0)) {
       const stamp = (v) => typeof v === "number" ? (v > 1e11 ? v : v * 1000) : Date.parse(v);
-      const first = new Date(stamp(rows[0].start));
+      const first = new Date(stamp(result[entity][0].start));
       const monthStart = new Date(first.getFullYear(), first.getMonth(), 1);
       const monthTime = monthStart.getTime();
       if (monthTime >= start.getTime() && monthTime <= end.getTime() &&
