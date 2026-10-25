@@ -487,7 +487,7 @@ test("keeps half-hour bars when five-minute Recorder samples contain a gap", asy
   assert.equal(card._historyError, false);
   assert.equal(card._dayGranularity, 1800000);
   assert.ok(requests.every((request) => request.period === "5minute"));
-  assert.deepEqual(card._history.map((point) => point.value), [2, 2]);
+  assert.deepEqual(Array.from(card._history, (point) => point.value), [2, 2]);
   const second = Date.parse("2026-10-24T00:30:00Z");
   assert.equal(card._splitHistory.peak.get(second), 2);
   assert.equal(card._splitHistory.offPeak.get(second), 2);
