@@ -177,15 +177,16 @@ class LegrandEnergyCard extends HTMLElement {
       this._period === "year" ? "month" : "day";
     // Include the preceding bucket to calculate the first visible delta.
     const queryStart = new Date(start);
-    if (period === "hour") queryStart.setHours(queryStart.getHours() - 1);
+    if (period === "hour") queryStart.setTime(queryStart.getTime() - 3600000);
     else if (period === "month") queryStart.setMonth(queryStart.getMonth() - 1);
     else queryStart.setDate(queryStart.getDate() - 1);
-    const key = [entity, this._period, start.toISOString()].join("|");
+    const key = [entity, this._period, start.toISOString(), Math.floor(end.getTime() / 300000)].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
     this._history = null;
     this._historyError = false;
     this._tariffHistory = null;
+    this._splitHistory = null;
     this._render();
     try {
       const result = await this._hass.callWS({
@@ -316,13 +317,17 @@ class LegrandEnergyCard extends HTMLElement {
       ? [{ time: today.getTime(), value: liveEnergy, live: true }]
       : recorded;
     // Keep all twelve calendar months visible; missing statistics are not zero.
+    // Absolute UTC hour boundaries preserve both 02:00 occurrences on DST
+    // fallback days (25 slots) and skip the missing hour in spring (23 slots).
+    const dayEnd = new Date(today);
+    dayEnd.setDate(dayEnd.getDate() + 1);
     const points = this._period === "day"
-      ? Array.from({ length: 24 }, (_, hour) => {
-        const time = new Date(today);
-        time.setHours(hour);
-        return displayRecorded.find((point) => point.time === time.getTime()) ||
-          { time: time.getTime(), value: null };
-      })
+      ? Array.from({ length: Math.round((dayEnd.getTime() - today.getTime()) / 3600000) },
+        (_, hour) => {
+          const time = today.getTime() + hour * 3600000;
+          return displayRecorded.find((point) => point.time === time) ||
+            { time, value: null };
+        })
       : this._period === "year" && displayRecorded.length
         ? Array.from({ length: 12 }, (_, month) => {
           const year = this._dateRange().start.getFullYear();
@@ -444,10 +449,23 @@ class LegrandEnergyCard extends HTMLElement {
     }
     box.appendChild(svg);
     box.appendChild(tooltip);
-    box.appendChild(this._element("div",
-      "Consommation par " + (this._period === "day" ? "heure" :
-        this._period === "year" ? "mois" : "jour") + " · " + displayRecorded.length + " périodes",
-      "font-size:12px;color:var(--secondary-text-color);text-align:right"));
+    if (this._period === "day") {
+      const total = Number(this._state(this._config.entity)?.state);
+      const measured = displayRecorded.reduce((sum, point) => sum + point.value, 0);
+      const isToday = today.toDateString() === new Date().toDateString();
+      const message = "Somme des barres : " + format.format(measured) + " kWh" +
+        (isToday && Number.isFinite(total) && total >= 0
+          ? " · Total Legrand : " + format.format(total) + " kWh" +
+            " · Écart : " + format.format(total - measured) + " kWh"
+          : "") + " · " + displayRecorded.length + " périodes";
+      box.appendChild(this._element("div", message,
+        "font-size:12px;color:var(--secondary-text-color);text-align:right;margin-top:6px"));
+    } else {
+      box.appendChild(this._element("div",
+        "Consommation par " + (this._period === "year" ? "mois" : "jour") +
+        " · " + displayRecorded.length + " périodes",
+        "font-size:12px;color:var(--secondary-text-color);text-align:right"));
+    }
     return box;
   }
 
