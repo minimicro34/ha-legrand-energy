@@ -450,3 +450,45 @@ test("groups five-minute energy and HP/HC deltas into half-hour day bars", async
   const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
   assert.equal(bars.length, 2);
 });
+
+test("keeps half-hour bars when five-minute Recorder samples contain a gap", async () => {
+  const { card } = createCard();
+  card.setConfig({
+    entity: "sensor.energy",
+    peak_energy_entity: "sensor.hp",
+    offpeak_energy_entity: "sensor.hc",
+  });
+  card._dateRange = () => ({
+    start: new Date("2026-10-24T00:00:00Z"),
+    end: new Date("2026-10-24T01:00:00Z"),
+  });
+  const starts = [
+    Date.parse("2026-10-23T23:55:00Z"),
+    Date.parse("2026-10-24T00:00:00Z"),
+    Date.parse("2026-10-24T00:05:00Z"),
+    Date.parse("2026-10-24T00:30:00Z"),
+    Date.parse("2026-10-24T00:35:00Z"),
+    Date.parse("2026-10-24T00:40:00Z"),
+  ];
+  const requests = [];
+  card._hass = {
+    states: {},
+    callWS: async (request) => {
+      requests.push(request);
+      return Object.fromEntries(request.statistic_ids.map((id) => [
+        id, starts.map((start, index) => ({
+          start,
+          sum: index === 3 ? 20 : index > 3 ? 20 + index - 3 : index,
+        })),
+      ]));
+    },
+  };
+  await card._loadHistory();
+  assert.equal(card._historyError, false);
+  assert.equal(card._dayGranularity, 1800000);
+  assert.ok(requests.every((request) => request.period === "5minute"));
+  assert.deepEqual(card._history.map((point) => point.value), [2, 2]);
+  const second = Date.parse("2026-10-24T00:30:00Z");
+  assert.equal(card._splitHistory.peak.get(second), 2);
+  assert.equal(card._splitHistory.offPeak.get(second), 2);
+});
