@@ -303,3 +303,34 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
   assert.equal(card._splitHistory.peak.get(starts[2]), 12);
   assert.equal(card._splitHistory.offPeak.get(starts[2]), 8);
 });
+
+test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
+  const previousTZ = process.env.TZ;
+  try {
+    process.env.TZ = "Europe/Paris";
+    const { card } = createCard();
+    card.setConfig({ entity: "sensor.energy" });
+    card.hass = { states: { "sensor.energy": { state: "2" } } };
+    card._period = "day";
+    card._dateRange = () => ({
+      start: new Date("2026-10-24T22:00:00Z"),
+      end: new Date("2026-10-25T12:00:00Z"),
+    });
+    card._history = [
+      { time: Date.parse("2026-10-25T00:00:00Z"), value: 1 },
+      { time: Date.parse("2026-10-25T01:00:00Z"), value: 1 },
+    ];
+    const chart = card._chart();
+    const svg = chart.children.find((child) => child.role === "img");
+    const labels = svg.children.filter((child) =>
+      typeof child.textContent === "string" && child.textContent.includes("02:00"));
+    assert.equal(labels.length, 2);
+    assert.notEqual(labels[0].textContent, labels[1].textContent);
+    const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
+    assert.equal(bars.length, 2);
+    assert.notEqual(bars[0].x, bars[1].x);
+  } finally {
+    if (previousTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTZ;
+  }
+});
