@@ -8,6 +8,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._period = this._period || "day";
     this._history = null;
     this._historyKey = null;
+    this._partialMonths = new Map();
     this._tariffHistory = null;
     this._splitHistory = null;
     this._unallocatedEnergy = 0;
@@ -201,6 +202,7 @@ class LegrandEnergyCard extends HTMLElement {
     if (key === this._historyKey) return;
     this._historyKey = key;
     this._history = null;
+    this._partialMonths = new Map();
     this._historyError = false;
     this._tariffHistory = null;
     this._splitHistory = null;
@@ -401,8 +403,28 @@ class LegrandEnergyCard extends HTMLElement {
             }
             return count ? value : null;
           };
-          const total = sum(entity);
+          let total = sum(entity);
+          let partialFrom = null;
+          if (total === null) {
+            // Show the recorded part of a first month without claiming a full total.
+            const entries = (daily?.[entity] || []).filter((row) =>
+              row.sum != null && Number.isFinite(Number(row.sum)) &&
+              Number.isFinite(stamp(row.start)))
+              .sort((a, b) => stamp(a.start) - stamp(b.start));
+            const firstRow = entries[0];
+            const endRow = entries.find((row) => stamp(row.start) >= next.getTime());
+            if (firstRow && endRow &&
+                stamp(firstRow.start) >= monthTime &&
+                stamp(firstRow.start) < next.getTime()) {
+              const delta = Number(endRow.sum) - Number(firstRow.sum);
+              if (Number.isFinite(delta) && delta >= 0) {
+                total = delta;
+                partialFrom = stamp(firstRow.start);
+              }
+            }
+          }
           if (total !== null) {
+            if (partialFrom !== null) this._partialMonths.set(monthTime, partialFrom);
             this._history.push({ time: monthTime, value: total });
             this._history.sort((a, b) => a.time - b.time);
             if (peakId && offPeakId && this._splitHistory) {
@@ -663,16 +685,19 @@ class LegrandEnergyCard extends HTMLElement {
           Number.isFinite(hc) && hp >= 0 && hc >= 0 &&
           Math.abs(hp + hc - point.value) <= Math.max(0.005, point.value * 0.02);
         const tariff = this._period === "day" && !point.unallocated ? this._hourTariff(point.time) : null;
+        const partialFrom = this._period === "year" ? this._partialMonths?.get(point.time) : null;
         const info = (point.unallocated ? "Non répartie (mesures manquantes)" : fullDate.format(date)) +
+          (partialFrom != null ? " · Partiel (depuis le " +
+            new Intl.DateTimeFormat(locale, { day: "2-digit", month: "long" }).format(new Date(partialFrom)) + ")" : "") +
           " : " + new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(point.value) + " kWh" +
           (splitValid ? " · HP " + format.format(hp) + " · HC " + format.format(hc)
             : tariff ? " · " + tariff : "");
         const bar = make("rect", { x: x + barInset, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - barGap), height: barHeight,
-          fill: point.unallocated ? "var(--secondary-text-color)" : splitValid ? "#28558b" :
+          fill: point.unallocated || partialFrom != null ? "var(--secondary-text-color)" : splitValid ? "#28558b" :
             tariff === "HP" ? "#4f86f7" : tariff === "HC" ? "#28558b" :
               "var(--primary-color)", rx: 2, tabindex: 0 });
-        if (splitValid && hp > 0) make("rect", {
+        if (splitValid && hp > 0 && partialFrom == null) make("rect", {
           x: x + barInset, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - barGap), height: plotHeight * hp / ceiling,
           fill: "#4f86f7", rx: 2,
