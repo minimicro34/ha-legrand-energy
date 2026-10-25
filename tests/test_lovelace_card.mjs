@@ -161,7 +161,7 @@ test("reads Recorder statistics and computes period consumption", async () => {
 test("distinguishes history request failure from missing measurements", async () => {
   const { card } = createCard();
   card.setConfig({ entity: "sensor.energy" });
-  card.hass = {
+  card._hass = {
     states: {},
     callWS: async () => { throw new Error("Recorder unavailable"); },
   };
