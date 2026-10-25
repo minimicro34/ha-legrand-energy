@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -112,6 +113,62 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             sorted(module_types),
             matches or ["<none>"],
         )
+
+    async def async_debug_historical_availability(self) -> None:
+        """Probe yearly electricity availability without changing Recorder."""
+        if self.private_api is None:
+            _LOGGER.warning("Legrand historical probe: private API unavailable")
+            return
+        home_id = self.api.get_first_home_id()
+        if home_id is None:
+            _LOGGER.warning("Legrand historical probe: no home found")
+            return
+        modules = await self._module_service.async_get()
+        from .models.fluid import FluidType
+        from .helpers.private_measure_decoder import decode_points_by_module
+
+        electricity = [
+            (module.id, module.bridge)
+            for module in modules.values()
+            if module.bridge is not None and module.fluid_type is FluidType.ELECTRICITY
+        ]
+        if not electricity:
+            _LOGGER.warning("Legrand historical probe: no electricity modules")
+            return
+        # One year per call, including 2022 and early 2026. No raw payload,
+        # module identifiers, authentication details or household data logged.
+        for year in range(2022, 2027):
+            start = int(datetime(year, 1, 1, tzinfo=timezone.utc).timestamp())
+            stop = int(datetime(year + 1, 1, 1, tzinfo=timezone.utc).timestamp()) - 1
+            try:
+                payload = await self.private_api.get_fluid_measures(
+                    home_id=home_id,
+                    modules=electricity,
+                    fluid_type=FluidType.ELECTRICITY,
+                    date_begin=start,
+                    date_end=stop,
+                    scale="1day",
+                )
+                decoded = decode_points_by_module(payload, fluid_type=FluidType.ELECTRICITY)
+                points = [point for series in decoded.values() for point in series]
+                dates = [point.timestamp for point in points]
+                _LOGGER.warning(
+                    "Legrand historical probe %s: modules=%s points=%s first=%s last=%s",
+                    year, len(decoded), len(points),
+                    min(dates).isoformat() if dates else "none",
+                    max(dates).isoformat() if dates else "none",
+                )
+            except LegrandPrivateApiRateLimitError:
+                _LOGGER.warning("Legrand historical probe: rate limited in %s; stopping", year)
+                break
+            except Exception as err:
+                _LOGGER.warning(
+                    "Legrand historical probe %s: %s: %s",
+                    year, type(err).__name__, str(err)[:180],
+                )
+                # Do not continue if authentication has failed.
+                if isinstance(err, LegrandPrivateApiAuthenticationError):
+                    break
 
     async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""
