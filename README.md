@@ -243,7 +243,7 @@ The **Netatmo OAuth Client ID and Client Secret** are managed by Home Assistant 
 
 ---
 
-## Bundled Lovelace card (beta)
+## Bundled Lovelace card
 
 The optional **Legrand Energy** card is shipped in this integration's release.
 It does not require a second HACS repository.
