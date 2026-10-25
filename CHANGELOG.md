@@ -6,36 +6,72 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [Unreleased] — post-beta22 stabilization for 1.3.0
+
+### Fixed
+
+- Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable, without shifting later months or inventing missing readings. Recover HP/HC values when their daily statistics are available.
+- Subtract separately displayed, unallocated N/R energy from the Day chart's **remaining difference**, avoiding a misleading discrepancy when Recorder has missing five-minute samples.
+- Visually separate the non-temporal **N/R** bar and its axis label from the final time-of-day bar.
+
+### Documentation and tests
+
+- Add regression tests for first-month reconstruction, preservation of subsequent monthly HP/HC values, N/R spacing, and day-total reconciliation.
+- Clarify automatic Lovelace resource registration, optional manual setup, Recorder history limitations, and N/R behavior.
+- Reserve five README screenshot slots: **Day, Month, Year, Circuits, Diagnostics**. Screenshots are pending final Home Assistant validation.
+
+---
+
 ## [1.3.0-beta22] - 2026-10-25
+
+Cumulative changes developed during the 1.3.0 beta series through beta22, compared with 1.2.0. Post-beta22 corrections are listed separately above.
 
 ### Added
 
-- Bundled Lovelace dashboard card with electricity summary, day/week/month/year consumption charts, expandable circuit information and diagnostics.
-- Automatic registration and serving of the card's JavaScript resource through Home Assistant.
-- EcoMeter entity discovery using stable entity-registry identifiers, including renamed sensors and installations with multiple EcoMeters.
-- Historical HP/HC energy breakdown using Recorder cumulative statistics, rather than assigning consumption based only on tariff transition times.
-- Half-hour daily consumption bars from five-minute Recorder statistics, with an hourly fallback when fine-grained data is unavailable.
-- Explicit, non-temporal “N/R” bar for consumption spanning missing five-minute measurements.
-- Average-power sensors for the EcoMeter and individual electrical circuits, replacing the misleading global instantaneous-power reading.
-- JavaScript card regression tests integrated into the local `make check` and GitHub CI pipelines.
+- Bundled **Legrand Energy Lovelace card**, with an energy/power/cost/tariff summary, Day/Week/Month/Year charts, contract information, and expandable Circuits and Diagnostics panels.
+- Automatic JavaScript resource serving and registration for storage-managed Home Assistant dashboards, without a separate HACS card repository.
+- Automatic EcoMeter and circuit entity discovery through Home Assistant's entity registry, including renamed sensors and multiple EcoMeters.
+- Real Recorder-based **HP/HC** consumption breakdown and stacked chart bars, rather than estimating energy from tariff change times alone.
+- Five-minute Recorder aggregation into **30-minute Day bars**, with hourly fallback when fine-grained statistics are unavailable.
+- Explicit gray **N/R** bar and missing-interval information for energy that cannot safely be attributed to a half-hour.
+- Average-power entities for the main EcoMeter and individual electrical circuits, calculated from measured energy and interval duration rather than presented as instantaneous power.
+- Sanitized Home + Control status diagnostic service for troubleshooting without logging private credentials.
+- JavaScript Lovelace regression tests and broader Python tests integrated into `make check` and GitHub Actions CI.
 
 ### Changed
 
-- Improved chart layout, tooltip readability, bar spacing, and handling of the repeated 02:00 hour during the autumn daylight-saving transition.
-- Corrected monthly Recorder cumulative-delta alignment for year charts, including HP/HC totals and the ongoing partial month.
-- Reconstructed the first available recorded month from daily statistics when no earlier monthly baseline exists.
-- Distinguished measured half-hour consumption from unallocated energy; the displayed remaining difference now subtracts both.
-- Improved private authentication isolation by using dedicated HTTP sessions for private Netatmo requests and sign-in flows.
-- Improved diagnostics privacy and logging redaction for sensitive credentials, tokens, and location fields.
-- Avoided displaying stale average-power readings after failed private measurement updates.
-- Expanded automated coverage of chart aggregation, missing samples, month boundaries, DST, entity discovery, privacy, and power-data freshness.
+- Improved chart layout, time and kWh axes, interactive tooltips, responsive card grid sizing, and preservation of expanded sections across state updates.
+- Improved Day charts for 24/25-hour daylight-saving days, including distinct labels for both occurrences of 02:00 during the autumn clock change.
+- Displayed the current tariff and next change more clearly, with contract energy prices shown to four decimal places.
+- Added first-hour live energy fallback when Recorder has not yet populated the first chart bucket.
+- Kept all twelve months visible in Year view, leaving months with unavailable statistics blank rather than displaying false zero consumption.
+- Aligned Recorder monthly cumulative deltas and HP/HC splits with their calendar months, and calculated the ongoing partial month separately from daily statistics.
+- Refined circuit labels and circuit energy/cost breakdown, without mixing devices belonging to different EcoMeters.
+- Preserved historical energy totals while avoiding stale average-power readings after failed private measurement updates.
+- Preserved measurement interval metadata and improved midnight/current-day consumption handling.
+
+### Fixed
+
+- Corrected Recorder timestamps reported in seconds or milliseconds, and included the preceding statistics bucket so the first visible delta is not lost.
+- Prevented consumption spanning missing five-minute samples from being assigned to a fictitious time slot or counted twice across overlapping history loads.
+- Improved fallback handling when Recorder has no fine-grained data, and synchronized HP/HC aggregation with the selected statistics period.
+- Corrected monthly HP/HC alignment, missing-current-month behavior, and duplicated or shifted values in Year view.
+- Improved private authentication cookie isolation by using dedicated HTTP sessions for private sign-in and API requests.
+- Redacted credentials, tokens, cookie values, and location coordinates from diagnostics and removed sensitive token fragments from logs.
+
+### Internal
+
+- Added automated coverage for Home Assistant setup, OAuth/private authentication, entity discovery, power conversion, Recorder charts, missing samples, DST, monthly boundaries, and diagnostics privacy.
+- Enforced at least 80% Python test coverage and expanded CI, Hassfest, and HACS validation checks.
+- Removed temporary private-measurement and historical-availability debug probes used during beta investigation; they are **not** part of the shipped integration.
 
 ### Notes
 
-- The Lovelace card is bundled with the integration; it does not require a separate HACS repository.
-- The first-month reconstruction depends on the daily Recorder statistics available for that month; missing history is not fabricated.
-- This is a prerelease. Screenshot placeholders for day, month, year, circuits, and diagnostics are reserved in the README.
+- The Lovelace card reads Home Assistant Recorder statistics and does not import old Home + Control measurements into Recorder.
+- A blank month or an unallocated N/R amount means that the available statistics do not justify assigning that consumption to a specific period.
+- This is a prerelease. The 1.3.0 merge and stable release require final Home Assistant visual validation and screenshots.
 
+[Unreleased]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.0-beta22...fix/device-info-coverage
 [1.3.0-beta22]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.2.0...v1.3.0-beta22
 
 ---
