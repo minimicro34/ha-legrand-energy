@@ -29,9 +29,19 @@ class LegrandEnergyCard extends HTMLElement {
         this._registry = Object.fromEntries(entries.map((entry) => [entry.entity_id, entry]));
         // The initial statistics request may have run before registry discovery,
         // leaving the HP/HC entity IDs unresolved. Retry with the real IDs.
-        this._historyKey = null;
+        // Only reload when tariff sensors can now be resolved. Avoid
+        // invalidating an in-flight Recorder request unnecessarily.
+        const peak = this._autoEntity(this._config?.peak_energy_entity,
+          ["consommation_hp_aujourdhui", "consommation_heures_pleines_aujourd_hui"],
+          "energy_peak_today");
+        const offPeak = this._autoEntity(this._config?.offpeak_energy_entity,
+          ["consommation_hc_aujourdhui", "consommation_heures_creuses_aujourd_hui"],
+          "energy_off_peak_today");
+        if (peak && offPeak) {
+          this._historyKey = null;
+          this._loadHistory();
+        }
         this._render();
-        this._loadHistory();
       }
     } catch (_error) {
       // Manual circuit configuration remains available if registry access fails.
