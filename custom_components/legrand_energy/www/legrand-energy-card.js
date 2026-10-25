@@ -188,11 +188,11 @@ class LegrandEnergyCard extends HTMLElement {
     if (!this._hass?.callWS || !this._config) return;
     const entity = this._config.entity;
     const { start, end } = this._dateRange();
-    const period = this._period === "day" ? "hour" :
+    const period = this._period === "day" ? "5minute" :
       this._period === "year" ? "month" : "day";
     // Include the preceding bucket to calculate the first visible delta.
     const queryStart = new Date(start);
-    if (period === "hour") queryStart.setTime(queryStart.getTime() - 3600000);
+    if (period === "5minute") queryStart.setTime(queryStart.getTime() - 300000);
     else if (period === "month") queryStart.setMonth(queryStart.getMonth() - 1);
     else queryStart.setDate(queryStart.getDate() - 1);
     const key = [entity, this._period, start.toISOString(), Math.floor(end.getTime() / 300000)].join("|");
@@ -204,15 +204,36 @@ class LegrandEnergyCard extends HTMLElement {
     this._splitHistory = null;
     this._render();
     try {
-      const result = await this._hass.callWS({
-        type: "recorder/statistics_during_period",
-        start_time: queryStart.toISOString(),
-        end_time: end.toISOString(),
-        statistic_ids: [entity],
-        period,
-        types: ["sum"],
-      });
+      // Five-minute cumulative samples are grouped into real half-hour
+      // buckets. Fall back to hourly Recorder data if fine stats are absent.
+      let historyPeriod = period;
+      let result;
+      try {
+        result = await this._hass.callWS({
+          type: "recorder/statistics_during_period",
+          start_time: queryStart.toISOString(),
+          end_time: end.toISOString(),
+          statistic_ids: [entity],
+          period,
+          types: ["sum"],
+        });
+        if (period === "5minute" && !(result?.[entity]?.length > 1))
+          throw new Error("No five-minute statistics");
+      } catch (error) {
+        if (period !== "5minute") throw error;
+        historyPeriod = "hour";
+        const hourlyStart = new Date(start.getTime() - 3600000);
+        result = await this._hass.callWS({
+          type: "recorder/statistics_during_period",
+          start_time: hourlyStart.toISOString(),
+          end_time: end.toISOString(),
+          statistic_ids: [entity],
+          period: "hour",
+          types: ["sum"],
+        });
+      }
       if (this._historyKey !== key) return;
+      this._dayGranularity = historyPeriod === "5minute" ? 1800000 : 3600000;
       const rows = result?.[entity] || [];
       this._history = rows.map((row, index) => {
         const previous = index ? rows[index - 1] : null;
@@ -234,6 +255,15 @@ class LegrandEnergyCard extends HTMLElement {
       }).filter((point) => Number.isFinite(point.time) &&
         point.time >= start.getTime() && point.time <= end.getTime() &&
         point.value !== null && Number.isFinite(point.value));
+      if (historyPeriod === "5minute") {
+        const buckets = new Map();
+        for (const point of this._history) {
+          const bucket = Math.floor(point.time / 1800000) * 1800000;
+          buckets.set(bucket, (buckets.get(bucket) || 0) + point.value);
+        }
+        this._history = [...buckets].map(([time, value]) => ({ time, value }))
+          .sort((a, b) => a.time - b.time);
+      }
     } catch (_error) {
       if (this._historyKey !== key) return;
       this._history = [];
@@ -250,10 +280,11 @@ class LegrandEnergyCard extends HTMLElement {
         try {
           const splitResult = await this._hass.callWS({
             type: "recorder/statistics_during_period",
-            start_time: queryStart.toISOString(),
+            start_time: (historyPeriod === "hour" && period === "5minute"
+              ? new Date(start.getTime() - 3600000) : queryStart).toISOString(),
             end_time: end.toISOString(),
             statistic_ids: [peakId, offPeakId],
-            period,
+            period: historyPeriod,
             types: ["sum"],
           });
           if (this._historyKey === key) {
@@ -404,9 +435,9 @@ class LegrandEnergyCard extends HTMLElement {
     const dayEnd = new Date(today);
     dayEnd.setDate(dayEnd.getDate() + 1);
     const points = this._period === "day"
-      ? Array.from({ length: Math.round((dayEnd.getTime() - today.getTime()) / 3600000) },
-        (_, hour) => {
-          const time = today.getTime() + hour * 3600000;
+      ? Array.from({ length: Math.round((dayEnd.getTime() - today.getTime()) / (this._dayGranularity || 3600000)) },
+        (_, index) => {
+          const time = today.getTime() + index * (this._dayGranularity || 3600000);
           return displayRecorded.find((point) => point.time === time) ||
             { time, value: null };
         })
