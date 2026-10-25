@@ -265,6 +265,7 @@ async def test_historical_probe_skips_missing_private_api_and_home(
 
     coordinator = _coordinator(hass)
     coordinator.api.get_first_home_id.return_value = None
+    coordinator._module_service.async_get = AsyncMock()
     await coordinator.async_debug_historical_availability()
     coordinator._module_service.async_get.assert_not_awaited()
     assert "no home found" in caplog.text
