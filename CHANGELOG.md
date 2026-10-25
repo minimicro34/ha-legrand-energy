@@ -66,7 +66,7 @@ Cumulative changes since 1.2.0, including the full beta development and final st
 
 - The Lovelace card reads Home Assistant Recorder statistics and does not import old Home + Control measurements into Recorder.
 - A blank month means the available statistics do not justify a consumption value; a gray partial-month bar includes only recorded consumption and does not estimate missing days. An unallocated N/R amount cannot safely be assigned to a specific time slot.
-- The 1.3.0 stable release requires final Home Assistant visual validation and screenshots.
+- Final Home Assistant validation confirmed: Day, Week, Month, and Year energy totals match the Legrand website. The Year chart begins in July because earlier Home Assistant Recorder history is unavailable, while the annual total remains consistent with Legrand.
 
 
 ---
