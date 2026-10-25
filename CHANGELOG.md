@@ -6,6 +6,40 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.3.0-beta22] - 2026-10-25
+
+### Added
+
+- Bundled Lovelace dashboard card with electricity summary, day/week/month/year consumption charts, expandable circuit information and diagnostics.
+- Automatic registration and serving of the card's JavaScript resource through Home Assistant.
+- EcoMeter entity discovery using stable entity-registry identifiers, including renamed sensors and installations with multiple EcoMeters.
+- Historical HP/HC energy breakdown using Recorder cumulative statistics, rather than assigning consumption based only on tariff transition times.
+- Half-hour daily consumption bars from five-minute Recorder statistics, with an hourly fallback when fine-grained data is unavailable.
+- Explicit, non-temporal “N/R” bar for consumption spanning missing five-minute measurements.
+- Average-power sensors for the EcoMeter and individual electrical circuits, replacing the misleading global instantaneous-power reading.
+- JavaScript card regression tests integrated into the local `make check` and GitHub CI pipelines.
+
+### Changed
+
+- Improved chart layout, tooltip readability, bar spacing, and handling of the repeated 02:00 hour during the autumn daylight-saving transition.
+- Corrected monthly Recorder cumulative-delta alignment for year charts, including HP/HC totals and the ongoing partial month.
+- Reconstructed the first available recorded month from daily statistics when no earlier monthly baseline exists.
+- Distinguished measured half-hour consumption from unallocated energy; the displayed remaining difference now subtracts both.
+- Improved private authentication isolation by using dedicated HTTP sessions for private Netatmo requests and sign-in flows.
+- Improved diagnostics privacy and logging redaction for sensitive credentials, tokens, and location fields.
+- Avoided displaying stale average-power readings after failed private measurement updates.
+- Expanded automated coverage of chart aggregation, missing samples, month boundaries, DST, entity discovery, privacy, and power-data freshness.
+
+### Notes
+
+- The Lovelace card is bundled with the integration; it does not require a separate HACS repository.
+- The first-month reconstruction depends on the daily Recorder statistics available for that month; missing history is not fabricated.
+- This is a prerelease. Screenshot placeholders for day, month, year, circuits, and diagnostics are reserved in the README.
+
+[1.3.0-beta22]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.2.0...v1.3.0-beta22
+
+---
+
 ## [1.2.0] - 2026-08-29
 
 ### Added
