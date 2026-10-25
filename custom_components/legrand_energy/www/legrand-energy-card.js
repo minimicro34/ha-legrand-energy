@@ -240,14 +240,19 @@ class LegrandEnergyCard extends HTMLElement {
       if (historyPeriod === "5minute") {
         const stamp = (value) => typeof value === "number"
           ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
+        let unallocatedEnergy = 0;
+        let unallocatedGaps = 0;
         for (let i = 1; i < rows.length; i++) {
           const gap = stamp(rows[i].start) - stamp(rows[i - 1].start);
           const delta = Number(rows[i].sum) - Number(rows[i - 1].sum);
           if (gap > 300000 && Number.isFinite(delta) && delta >= 0) {
-            this._unallocatedEnergy += delta;
-            this._unallocatedGaps++;
+            unallocatedEnergy += delta;
+            unallocatedGaps++;
           }
         }
+        // Publish a complete result, never accumulate across overlapping loads.
+        this._unallocatedEnergy = unallocatedEnergy;
+        this._unallocatedGaps = unallocatedGaps;
       }
       this._history = rows.map((row, index) => {
         const previous = index ? rows[index - 1] : null;
