@@ -1,6 +1,6 @@
 # Legrand Energy
 
-> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water, gas and cost monitoring.
+> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water, gas and cost monitoring, including interval-average electrical power (not instantaneous readings).
 
 <p align="center">
 
@@ -266,7 +266,7 @@ tariff_entity: sensor.your_current_tariff
 ```
 
 The `entity` field is required; the other fields are optional. The card
-provides a summary, period charts (**Day**, **Week**, **Month**, **Year**),
+provides a summary (including interval-average power, not instantaneous power), period charts (**Day**, **Week**, **Month**, **Year**),
 HP/HC breakdown from Home Assistant Recorder statistics, and collapsible
 **Circuits** and **Diagnostics** sections. It does not create or modify
 energy entities. Use your actual entity IDs, which depend on the discovered
