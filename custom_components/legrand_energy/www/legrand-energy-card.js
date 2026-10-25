@@ -10,6 +10,8 @@ class LegrandEnergyCard extends HTMLElement {
     this._historyKey = null;
     this._tariffHistory = null;
     this._splitHistory = null;
+    this._unallocatedEnergy = 0;
+    this._unallocatedGaps = 0;
     this._render();
   }
 
@@ -235,6 +237,18 @@ class LegrandEnergyCard extends HTMLElement {
       if (this._historyKey !== key) return;
       this._dayGranularity = historyPeriod === "5minute" ? 1800000 : 3600000;
       const rows = result?.[entity] || [];
+      if (historyPeriod === "5minute") {
+        const stamp = (value) => typeof value === "number"
+          ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
+        for (let i = 1; i < rows.length; i++) {
+          const gap = stamp(rows[i].start) - stamp(rows[i - 1].start);
+          const delta = Number(rows[i].sum) - Number(rows[i - 1].sum);
+          if (gap > 300000 && Number.isFinite(delta) && delta >= 0) {
+            this._unallocatedEnergy += delta;
+            this._unallocatedGaps++;
+          }
+        }
+      }
       this._history = rows.map((row, index) => {
         const previous = index ? rows[index - 1] : null;
         const timestamp = (value) => typeof value === "number"
@@ -599,7 +613,14 @@ class LegrandEnergyCard extends HTMLElement {
       const total = Number(this._state(this._config.entity)?.state);
       const measured = displayRecorded.reduce((sum, point) => sum + point.value, 0);
       const isToday = today.toDateString() === new Date().toDateString();
+      const missing = this._unallocatedEnergy || 0;
+      const gapInfo = this._dayGranularity === 1800000 && this._unallocatedGaps > 0
+        ? " · Hors créneaux (mesures manquantes) : " + format.format(missing) +
+          " kWh (" + this._unallocatedGaps + " interruption" +
+          (this._unallocatedGaps > 1 ? "s" : "") + ")"
+        : "";
       const message = "Somme des barres : " + format.format(measured) + " kWh" +
+        gapInfo +
         (isToday && Number.isFinite(total) && total >= 0
           ? " · Total Legrand : " + format.format(total) + " kWh" +
             " · Écart : " + format.format(total - measured) + " kWh"
