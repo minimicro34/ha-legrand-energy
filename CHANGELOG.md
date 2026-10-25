@@ -49,13 +49,6 @@ Cumulative changes since 1.2.0, including the full beta development and final st
 - Enforced at least 80% Python test coverage and expanded CI, Hassfest, and HACS validation checks.
 - Removed temporary private-measurement and historical-availability debug probes used during beta investigation; they are **not** part of the shipped integration.
 
-### Notes
-
-- The Lovelace card reads Home Assistant Recorder statistics and does not import old Home + Control measurements into Recorder.
-- A blank month or an unallocated N/R amount means that the available statistics do not justify assigning that consumption to a specific period.
-- This is a prerelease. The 1.3.0 merge and stable release require final Home Assistant visual validation and screenshots.
-
-[Unreleased]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.0-beta22...fix/device-info-coverage
 ### Final stabilization fixes
 
 - Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable and a complete daily baseline exists, without shifting later months or inventing missing readings. Leave the month blank when the first-day baseline or completed-month evidence is missing. Recover HP/HC values when their daily statistics are available.
@@ -67,6 +60,13 @@ Cumulative changes since 1.2.0, including the full beta development and final st
 - Add regression tests for first-month reconstruction, preservation of subsequent monthly HP/HC values, N/R spacing, and day-total reconciliation.
 - Clarify automatic Lovelace resource registration, optional manual setup, Recorder history limitations, and N/R behavior.
 - Reserve five README screenshot slots: **Day, Month, Year, Circuits, Diagnostics**. Screenshots are pending final Home Assistant validation.
+
+### Notes
+
+- The Lovelace card reads Home Assistant Recorder statistics and does not import old Home + Control measurements into Recorder.
+- A blank month or an unallocated N/R amount means that the available statistics do not justify assigning that consumption to a specific period.
+- The 1.3.0 stable release requires final Home Assistant visual validation and screenshots.
+
 
 ---
 
