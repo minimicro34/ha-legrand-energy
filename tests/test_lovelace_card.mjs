@@ -335,3 +335,71 @@ test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
     else process.env.TZ = previousTZ;
   }
 });
+
+test("keeps July through September and adds partial October from daily Recorder data", async () => {
+  const { card } = createCard();
+  card.setConfig({
+    entity: "sensor.energy",
+    peak_energy_entity: "sensor.hp",
+    offpeak_energy_entity: "sensor.hc",
+  });
+  card._period = "year";
+  card._dateRange = () => ({
+    start: new Date("2026-01-01T00:00:00Z"),
+    end: new Date("2026-10-25T12:00:00Z"),
+  });
+  const monthlyStarts = [
+    "2026-07-01T00:00:00Z",
+    "2026-08-01T00:00:00Z",
+    "2026-09-01T00:00:00Z",
+    "2026-10-01T00:00:00Z",
+  ].map(Date.parse);
+  const monthly = {
+    "sensor.energy": [100, 115, 135, 150],
+    "sensor.hp": [60, 70, 82, 90],
+    "sensor.hc": [40, 45, 53, 60],
+  };
+  const dailyStarts = [
+    "2026-09-30T00:00:00Z",
+    "2026-10-01T00:00:00Z",
+    "2026-10-02T00:00:00Z",
+    "2026-10-03T00:00:00Z",
+  ].map(Date.parse);
+  const daily = {
+    "sensor.energy": [150, 152, 156, 160],
+    "sensor.hp": [90, 91, 93, 95],
+    "sensor.hc": [60, 61, 63, 65],
+  };
+  const requests = [];
+  card.hass = {
+    states: {
+      "sensor.energy": { state: "160" },
+      "sensor.hp": { state: "95" },
+      "sensor.hc": { state: "65" },
+    },
+    callWS: async (payload) => {
+      if (payload.type === "config/entity_registry/list") return [];
+      requests.push(payload);
+      const isDaily = payload.period === "day";
+      const starts = isDaily ? dailyStarts : monthlyStarts;
+      const sums = isDaily ? daily : monthly;
+      return Object.fromEntries(payload.statistic_ids.map((id) => [
+        id, starts.map((start, index) => ({ start, sum: sums[id][index] })),
+      ]));
+    },
+  };
+  await card._loadEntityRegistry();
+  await card._loadHistory();
+  assert.ok(requests.some((request) => request.period === "day" &&
+    request.statistic_ids.includes("sensor.energy")));
+  const byMonth = new Map(card._history.map((point) => [
+    new Date(point.time).getUTCMonth(), point.value,
+  ]));
+  assert.equal(byMonth.get(6), 15);
+  assert.equal(byMonth.get(7), 20);
+  assert.equal(byMonth.get(8), 15);
+  assert.equal(byMonth.get(9), 10);
+  const october = Date.parse("2026-10-01T00:00:00Z");
+  assert.equal(card._splitHistory.peak.get(october), 5);
+  assert.equal(card._splitHistory.offPeak.get(october), 5);
+});
