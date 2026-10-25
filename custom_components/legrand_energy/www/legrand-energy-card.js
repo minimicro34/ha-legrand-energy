@@ -262,9 +262,10 @@ class LegrandEnergyCard extends HTMLElement {
               const values = new Map();
               rows.forEach((row, index) => {
                 if (!index || row.sum == null || rows[index - 1].sum == null) return;
-                const time = typeof row.start === "number"
-                  ? (row.start > 1e11 ? row.start : row.start * 1000)
-                  : Date.parse(row.start);
+                const boundary = period === "month" ? rows[index - 1].start : row.start;
+                const time = typeof boundary === "number"
+                  ? (boundary > 1e11 ? boundary : boundary * 1000)
+                  : Date.parse(boundary);
                 const delta = Number(row.sum) - Number(rows[index - 1].sum);
                 if (Number.isFinite(time) && Number.isFinite(delta) && delta >= 0)
                   values.set(time, delta);
