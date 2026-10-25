@@ -206,6 +206,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._splitHistory = null;
     this._render();
     let historyPeriod = period;
+    let monthlyRows = [];
     try {
       // Five-minute cumulative samples are grouped into real half-hour
       // buckets. Fall back to hourly Recorder data if fine stats are absent.
@@ -237,6 +238,7 @@ class LegrandEnergyCard extends HTMLElement {
       if (this._historyKey !== key) return;
       this._dayGranularity = historyPeriod === "5minute" ? 1800000 : 3600000;
       const rows = result?.[entity] || [];
+      if (period === "month") monthlyRows = rows;
       if (historyPeriod === "5minute") {
         const stamp = (value) => typeof value === "number"
           ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
@@ -351,9 +353,9 @@ class LegrandEnergyCard extends HTMLElement {
     }
     // The first monthly cumulative sample has no earlier monthly baseline.
     // Reconstruct only that month from daily cumulative statistics.
-    if (period === "month" && !this._historyError && (result?.[entity]?.length || 0)) {
+    if (period === "month" && !this._historyError && monthlyRows.length) {
       const stamp = (v) => typeof v === "number" ? (v > 1e11 ? v : v * 1000) : Date.parse(v);
-      const first = new Date(stamp(result[entity][0].start));
+      const first = new Date(stamp(monthlyRows[0].start));
       const monthStart = new Date(first.getFullYear(), first.getMonth(), 1);
       const monthTime = monthStart.getTime();
       if (monthTime >= start.getTime() && monthTime <= end.getTime() &&
