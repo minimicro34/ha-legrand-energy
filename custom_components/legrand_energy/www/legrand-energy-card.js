@@ -203,10 +203,10 @@ class LegrandEnergyCard extends HTMLElement {
     this._tariffHistory = null;
     this._splitHistory = null;
     this._render();
+    let historyPeriod = period;
     try {
       // Five-minute cumulative samples are grouped into real half-hour
       // buckets. Fall back to hourly Recorder data if fine stats are absent.
-      let historyPeriod = period;
       let result;
       try {
         result = await this._hass.callWS({
