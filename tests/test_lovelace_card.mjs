@@ -553,7 +553,12 @@ test("keeps N/R separate from the clock axis and excludes it from the remaining 
   const svg = chart.children.find((child) => child.role === "img");
   const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
   assert.equal(bars.length, 2);
-  assert.ok(bars[1].x - (bars[0].x + bars[0].width) >= 10);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const clockSlots = Math.round((tomorrow - today) / 1800000);
+  const slot = (800 - 56 - 12 - 10) / (clockSlots + 1);
+  const lastClockRight = 56 + clockSlots * slot - 0.5;
+  assert.ok(bars[1].x - lastClockRight >= 10);
   assert.match(bars[1]["aria-label"], /Non répartie/);
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*0,5 kWh/);
   assert.match(chart.children.at(-1).textContent, /Écart : 0 kWh/);
