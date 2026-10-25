@@ -322,13 +322,14 @@ test("renders both autumn DST 02:00 buckets with distinct UTC offsets", () => {
     ];
     const chart = card._chart();
     const svg = chart.children.find((child) => child.role === "img");
-    const labels = svg.children.filter((child) =>
-      typeof child.textContent === "string" && child.textContent.includes("02:00"));
-    assert.equal(labels.length, 2);
-    assert.notEqual(labels[0].textContent, labels[1].textContent);
+    // The x-axis intentionally skips labels on crowded 25-hour days.
+    // Verify both 02:00 slots through the actual bars and their tooltips.
     const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
     assert.equal(bars.length, 2);
     assert.notEqual(bars[0].x, bars[1].x);
+    assert.match(bars[0]["aria-label"], /02:00/);
+    assert.match(bars[1]["aria-label"], /02:00/);
+    assert.notEqual(bars[0]["aria-label"], bars[1]["aria-label"]);
   } finally {
     if (previousTZ === undefined) delete process.env.TZ;
     else process.env.TZ = previousTZ;
