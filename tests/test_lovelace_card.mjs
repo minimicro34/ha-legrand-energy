@@ -242,3 +242,56 @@ test("loads the entity registry and discovers circuits without hass.entities", a
   assert.equal(card._circuits().length, 1);
   assert.equal(card._circuits()[0].entity, "sensor.circuit");
 });
+
+test("aligns July and August monthly totals and HP/HC splits", async () => {
+  const { card } = createCard();
+  card.setConfig({
+    entity: "sensor.energy",
+    peak_energy_entity: "sensor.hp",
+    offpeak_energy_entity: "sensor.hc",
+  });
+  card._period = "year";
+  card._dateRange = () => ({
+    start: new Date("2026-01-01T00:00:00Z"),
+    end: new Date("2026-10-25T12:00:00Z"),
+  });
+  const month = (value) => Date.parse(value);
+  const starts = [
+    "2026-06-01T00:00:00Z",
+    "2026-07-01T00:00:00Z",
+    "2026-08-01T00:00:00Z",
+    "2026-09-01T00:00:00Z",
+  ].map(month);
+  const sums = {
+    "sensor.energy": [100, 100, 115, 135],
+    "sensor.hp": [60, 60, 70, 82],
+    "sensor.hc": [40, 40, 45, 53],
+  };
+  const requests = [];
+  card.hass = {
+    states: {
+      "sensor.energy": { state: "35" },
+      "sensor.hp": { state: "20" },
+      "sensor.hc": { state: "15" },
+    },
+    callWS: async (payload) => {
+      if (payload.type === "config/entity_registry/list") return [];
+      requests.push(payload);
+      return Object.fromEntries(payload.statistic_ids.map((id) => [
+        id, starts.map((start, index) => ({ start, sum: sums[id][index] })),
+      ]));
+    },
+  };
+  await card._loadHistory();
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every((request) => request.period === "month"));
+  assert.equal(card._history.length, 2);
+  assert.equal(new Date(card._history[0].time).getUTCMonth(), 6);
+  assert.equal(card._history[0].value, 15);
+  assert.equal(new Date(card._history[1].time).getUTCMonth(), 7);
+  assert.equal(card._history[1].value, 20);
+  assert.equal(card._splitHistory.peak.get(starts[1]), 10);
+  assert.equal(card._splitHistory.offPeak.get(starts[1]), 5);
+  assert.equal(card._splitHistory.peak.get(starts[2]), 12);
+  assert.equal(card._splitHistory.offPeak.get(starts[2]), 8);
+});
