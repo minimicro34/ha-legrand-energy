@@ -282,6 +282,7 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
       ]));
     },
   };
+  await card._loadEntityRegistry();
   await card._loadHistory();
   // Registry discovery can trigger a second history load; only assert the
   // distinct Recorder request shapes, not their scheduling/count.
