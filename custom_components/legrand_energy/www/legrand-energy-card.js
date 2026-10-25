@@ -489,6 +489,13 @@ class LegrandEnergyCard extends HTMLElement {
           return matching || { time: new Date(year, month, 1).getTime(), value: null };
         })
         : displayRecorded;
+    // A separate, non-temporal bar preserves the exact measured total
+    // without assigning an interrupted interval to an invented half-hour.
+    const unallocated = this._period === "day" && this._dayGranularity === 1800000
+      ? this._unallocatedEnergy || 0 : 0;
+    if (unallocated > 0 && points.length) {
+      points.push({ time: null, value: unallocated, unallocated: true });
+    }
     if (!displayRecorded.length) {
       box.appendChild(this._element("div",
         this._history === null ? "Chargement des statistiques…" :
@@ -500,7 +507,7 @@ class LegrandEnergyCard extends HTMLElement {
     const locale = this._hass?.locale?.language || "fr-FR";
     const width = 800, height = 230, left = 56, right = 12, top = 18, bottom = 46;
     const plotHeight = height - top - bottom;
-    const max = Math.max(0.001, ...displayRecorded.map((point) => point.value));
+    const max = Math.max(0.001, ...points.map((point) => point.value || 0));
     const scale = Math.pow(10, Math.floor(Math.log10(max)));
     const step = Math.max(0.001, Math.ceil(max / scale / 4) * scale);
     const ceiling = Math.ceil(max / step) * step;
@@ -539,6 +546,7 @@ class LegrandEnergyCard extends HTMLElement {
     const hourCounts = new Map();
     if (this._period === "day") {
       for (const point of points) {
+        if (point.unallocated) continue;
         const label = formatter.format(new Date(point.time));
         hourCounts.set(label, (hourCounts.get(label) || 0) + 1);
       }
@@ -550,10 +558,10 @@ class LegrandEnergyCard extends HTMLElement {
       "display:none;position:absolute;z-index:2;pointer-events:none;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px 12px;box-shadow:0 2px 12px #0005;font-size:13px;max-width:240px");
     points.forEach((point, index) => {
       const x = left + index * slot;
-      const date = new Date(point.time);
+      const date = point.unallocated ? null : new Date(point.time);
       if (point.value !== null) {
         const barHeight = plotHeight * point.value / ceiling;
-        const split = this._splitHistory;
+        const split = point.unallocated ? null : this._splitHistory;
         let hp = split?.peak.get(point.time);
         let hc = split?.offPeak.get(point.time);
         if (point.live && split) {
@@ -565,13 +573,14 @@ class LegrandEnergyCard extends HTMLElement {
         const splitValid = Number.isFinite(hp) &&
           Number.isFinite(hc) && hp >= 0 && hc >= 0 &&
           Math.abs(hp + hc - point.value) <= Math.max(0.005, point.value * 0.02);
-        const tariff = this._period === "day" ? this._hourTariff(point.time) : null;
-        const info = fullDate.format(date) + " : " + format.format(point.value) + " kWh" +
+        const tariff = this._period === "day" && !point.unallocated ? this._hourTariff(point.time) : null;
+        const info = (point.unallocated ? "Non répartie (mesures manquantes)" : fullDate.format(date)) +
+          " : " + new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(point.value) + " kWh" +
           (splitValid ? " · HP " + format.format(hp) + " · HC " + format.format(hc)
             : tariff ? " · " + tariff : "");
         const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - 4), height: barHeight,
-          fill: splitValid ? "#28558b" :
+          fill: point.unallocated ? "var(--secondary-text-color)" : splitValid ? "#28558b" :
             tariff === "HP" ? "#4f86f7" : tariff === "HC" ? "#28558b" :
               "var(--primary-color)", rx: 2, tabindex: 0 });
         if (splitValid && hp > 0) make("rect", {
@@ -599,10 +608,10 @@ class LegrandEnergyCard extends HTMLElement {
         });
       }
       const labelEvery = this._period === "year" ? 1 : Math.max(1, Math.ceil(points.length / 10));
-      if (index % labelEvery === 0 || index === points.length - 1) {
+      if (point.unallocated || index % labelEvery === 0 || index === points.length - 1) {
         make("text", { x: x + slot / 2, y: height - 23,
           "text-anchor": "middle", fill: "var(--secondary-text-color)",
-          "font-size": 11 }, this._period === "day" &&
+          "font-size": 11 }, point.unallocated ? "Non répartie" : this._period === "day" &&
             hourCounts.get(formatter.format(date)) > 1
             ? hourWithOffset.format(date) : formatter.format(date));
       }
