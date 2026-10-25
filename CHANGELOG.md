@@ -10,7 +10,7 @@ The format is based on Keep a Changelog.
 
 ### Fixed
 
-- Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable, without shifting later months or inventing missing readings. Recover HP/HC values when their daily statistics are available.
+- Recover the first recorded month of the year chart from daily Recorder cumulative statistics when its monthly predecessor is unavailable and a complete daily baseline exists, without shifting later months or inventing missing readings. Leave the month blank when the first-day baseline or completed-month evidence is missing. Recover HP/HC values when their daily statistics are available.
 - Subtract separately displayed, unallocated N/R energy from the Day chart's **remaining difference**, avoiding a misleading discrepancy when Recorder has missing five-minute samples.
 - Visually separate the non-temporal **N/R** bar and its axis label from the final time-of-day bar.
 
