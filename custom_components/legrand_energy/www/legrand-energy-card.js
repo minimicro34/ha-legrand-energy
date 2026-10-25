@@ -217,10 +217,7 @@ class LegrandEnergyCard extends HTMLElement {
           period,
           types: ["sum"],
         });
-        if (period === "5minute" && (!(result?.[entity]?.length > 1) ||
-          (result[entity].length > 2 && result[entity].some((row, i, rows) =>
-            i > 0 && Math.abs(new Date(row.start).getTime() -
-              new Date(rows[i - 1].start).getTime()) > 600000))))
+        if (period === "5minute" && !(result?.[entity]?.length > 1))
           throw new Error("No five-minute statistics");
       } catch (error) {
         if (period !== "5minute") throw error;
@@ -240,6 +237,12 @@ class LegrandEnergyCard extends HTMLElement {
       const rows = result?.[entity] || [];
       this._history = rows.map((row, index) => {
         const previous = index ? rows[index - 1] : null;
+        const timestamp = (value) => typeof value === "number"
+          ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
+        // A delta spanning missing five-minute samples cannot be assigned
+        // reliably to a single half-hour bucket.
+        const contiguous = historyPeriod !== "5minute" || !previous ||
+          timestamp(row.start) - timestamp(previous.start) <= 300000;
         const sum = Number(row.sum);
         const before = Number(previous?.sum);
         return {
@@ -252,7 +255,7 @@ class LegrandEnergyCard extends HTMLElement {
               ? (boundary > 1e11 ? boundary : boundary * 1000)
               : Date.parse(boundary);
           })(),
-          value: previous && Number.isFinite(before) && Number.isFinite(sum)
+          value: previous && contiguous && Number.isFinite(before) && Number.isFinite(sum)
             ? Math.max(0, sum - before) : null,
         };
       }).filter((point) => Number.isFinite(point.time) &&
@@ -296,6 +299,10 @@ class LegrandEnergyCard extends HTMLElement {
               const values = new Map();
               rows.forEach((row, index) => {
                 if (!index || row.sum == null || rows[index - 1].sum == null) return;
+                const stamp = (value) => typeof value === "number"
+                  ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
+                if (historyPeriod === "5minute" &&
+                    stamp(row.start) - stamp(rows[index - 1].start) > 300000) return;
                 const boundary = period === "month" ? rows[index - 1].start : row.start;
                 const time = typeof boundary === "number"
                   ? (boundary > 1e11 ? boundary : boundary * 1000)
