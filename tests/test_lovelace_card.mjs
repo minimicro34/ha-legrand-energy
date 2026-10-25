@@ -134,10 +134,11 @@ test("reads Recorder statistics and computes period consumption", async () => {
     end: new Date("2026-10-24T04:00:00Z"),
   });
   let request;
-  card.hass = {
+  card._hass = {
     states: { "sensor.energy": { state: "3.4" } },
     callWS: async (payload) => {
       if (payload.type === "config/entity_registry/list") return [];
+      if (payload.period === "5minute") return { "sensor.energy": [] };
       request = payload;
       const beginning = new Date(payload.start_time).getTime();
       return { "sensor.energy": [
@@ -268,7 +269,7 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
     "sensor.hc": [40, 40, 45, 53],
   };
   const requests = [];
-  card.hass = {
+  card._hass = {
     states: {
       "sensor.energy": { state: "35" },
       "sensor.hp": { state: "20" },
@@ -282,7 +283,6 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
       ]));
     },
   };
-  await card._loadEntityRegistry();
   await card._loadHistory();
   // Registry discovery can trigger a second history load; only assert the
   // distinct Recorder request shapes, not their scheduling/count.
