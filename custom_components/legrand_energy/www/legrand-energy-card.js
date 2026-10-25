@@ -269,7 +269,7 @@ class LegrandEnergyCard extends HTMLElement {
           // boundary closes that month's consumption. Preserve the
           // existing alignment for hourly and daily Recorder statistics.
           time: (() => {
-            const boundary = period === "month" && previous ? previous.start : row.start;
+            const boundary = row.start;
             return typeof boundary === "number"
               ? (boundary > 1e11 ? boundary : boundary * 1000)
               : Date.parse(boundary);
@@ -322,7 +322,7 @@ class LegrandEnergyCard extends HTMLElement {
                   ? (value > 1e11 ? value : value * 1000) : Date.parse(value);
                 if (historyPeriod === "5minute" &&
                     stamp(row.start) - stamp(rows[index - 1].start) > 300000) return;
-                const boundary = period === "month" ? rows[index - 1].start : row.start;
+                const boundary = row.start;
                 const time = typeof boundary === "number"
                   ? (boundary > 1e11 ? boundary : boundary * 1000)
                   : Date.parse(boundary);
@@ -359,11 +359,10 @@ class LegrandEnergyCard extends HTMLElement {
       dailyStart.setDate(dailyStart.getDate() - 1);
       const peakId = this._splitHistory?.peakId;
       const offPeakId = this._splitHistory?.offPeakId;
-      // The current month is never a completed monthly bucket. Clear any
-      // existing value before attempting a verified daily reconstruction.
-      this._history = this._history.filter((point) => point.time !== monthTime);
-      this._splitHistory?.peak.delete(monthTime);
-      this._splitHistory?.offPeak.delete(monthTime);
+      // Prefer the Recorder monthly delta when already available for the
+      // current month; daily reconstruction is only a fallback.
+      const hasMonthlyCurrent = this._history.some((point) => point.time === monthTime);
+      if (hasMonthlyCurrent) return this._render();
       try {
         const ids = [entity, ...(peakId && offPeakId ? [peakId, offPeakId] : [])];
         const daily = await this._hass.callWS({
