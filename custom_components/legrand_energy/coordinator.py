@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -124,8 +124,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             _LOGGER.warning("Legrand historical probe: no home found")
             return
         modules = await self._module_service.async_get()
-        from .models.fluid import FluidType
         from .helpers.private_measure_decoder import decode_points_by_module
+        from .models.fluid import FluidType
 
         electricity = [
             (module.id, module.bridge)
@@ -138,8 +138,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         # One year per call, including 2022 and early 2026. No raw payload,
         # module identifiers, authentication details or household data logged.
         for year in range(2022, 2027):
-            start = int(datetime(year, 1, 1, tzinfo=timezone.utc).timestamp())
-            stop = int(datetime(year + 1, 1, 1, tzinfo=timezone.utc).timestamp()) - 1
+            start = int(datetime(year, 1, 1, tzinfo=UTC).timestamp())
+            stop = int(datetime(year + 1, 1, 1, tzinfo=UTC).timestamp()) - 1
             try:
                 payload = await self.private_api.get_fluid_measures(
                     home_id=home_id,
@@ -155,7 +155,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 points = [point for series in decoded.values() for point in series]
                 dates = [point.timestamp for point in points]
                 _LOGGER.warning(
-                    "Legrand historical probe %s: modules=%s points=%s first=%s last=%s",
+                    "Legrand historical probe %s: modules=%s points=%s "
+                    "first=%s last=%s",
                     year,
                     len(decoded),
                     len(points),
