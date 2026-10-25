@@ -316,9 +316,10 @@ test("recovers the first recorded month from daily statistics without shifting l
   const monthly = { "sensor.energy": [100, 115, 135, 150],
     "sensor.hp": [60, 70, 82, 90], "sensor.hc": [40, 45, 53, 60] };
   const dailyStarts = [new Date(2026, 5, 30), new Date(2026, 6, 1),
-    new Date(2026, 6, 2), new Date(2026, 6, 3)].map((date) => date.getTime());
-  const daily = { "sensor.energy": [90, 93, 97, 100],
-    "sensor.hp": [54, 56, 58, 60], "sensor.hc": [36, 37, 39, 40] };
+    new Date(2026, 6, 2), new Date(2026, 6, 3),
+    new Date(2026, 6, 31)].map((date) => date.getTime());
+  const daily = { "sensor.energy": [90, 93, 97, 100, 100],
+    "sensor.hp": [54, 56, 58, 60, 60], "sensor.hc": [36, 37, 39, 40, 40] };
   card._hass = { states: {}, callWS: async (payload) => {
     if (payload.type === "config/entity_registry/list") return [];
     const isDaily = payload.period === "day";
