@@ -378,7 +378,17 @@ class LegrandEnergyCard extends HTMLElement {
           const sum = (id) => {
             const entries = (daily?.[id] || []).filter((row) =>
               row.sum != null && Number.isFinite(Number(row.sum)) &&
-              Number.isFinite(stamp(row.start)));
+              Number.isFinite(stamp(row.start)))
+              .sort((a, b) => stamp(a.start) - stamp(b.start));
+            // Without a pre-month baseline, the first day's consumption
+            // cannot be recovered. Do not present an incomplete sum as a
+            // full month. Completed months also need an end-of-month sample.
+            if (!entries.length || stamp(entries[0].start) >= monthTime) return null;
+            const lastDay = new Date(next);
+            lastDay.setDate(lastDay.getDate() - 1);
+            if (next.getTime() <= end.getTime() &&
+                !entries.some((row) => stamp(row.start) >= lastDay.getTime() &&
+                  stamp(row.start) < next.getTime())) return null;
             let value = 0, count = 0;
             for (let i = 1; i < entries.length; i++) {
               const time = stamp(entries[i].start);
