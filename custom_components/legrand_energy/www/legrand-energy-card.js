@@ -27,7 +27,11 @@ class LegrandEnergyCard extends HTMLElement {
       const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
       if (Array.isArray(entries)) {
         this._registry = Object.fromEntries(entries.map((entry) => [entry.entity_id, entry]));
+        // The initial statistics request may have run before registry discovery,
+        // leaving the HP/HC entity IDs unresolved. Retry with the real IDs.
+        this._historyKey = null;
         this._render();
+        this._loadHistory();
       }
     } catch (_error) {
       // Manual circuit configuration remains available if registry access fails.
@@ -101,8 +105,9 @@ class LegrandEnergyCard extends HTMLElement {
         this._hass?.states?.[entry.entity_id]
       );
       if (matches.length === 1) return matches[0].entity_id;
-      // Never guess by translated entity names when registry metadata exists.
-      return null;
+      // If the registry does not expose the expected unique ID, fall back to
+      // the configured module prefix only, never a global entity search.
+      // This also supports legacy translated HP/HC entity IDs.
     }
     // Compatibility fallback for older HA frontends without registry metadata.
     const prefix = base.replace(/consommation_aujourd_hui$/, "");
@@ -221,9 +226,9 @@ class LegrandEnergyCard extends HTMLElement {
     // time alone cannot tell how much energy was used on either side.
     if (this._period === "day" && !this._historyError) {
       const peakId = this._autoEntity(this._config.peak_energy_entity,
-        ["consommation_heures_pleines_aujourd_hui"], "energy_peak_today");
+        ["consommation_hp_aujourdhui", "consommation_heures_pleines_aujourd_hui"], "energy_peak_today");
       const offPeakId = this._autoEntity(this._config.offpeak_energy_entity,
-        ["consommation_heures_creuses_aujourd_hui"], "energy_off_peak_today");
+        ["consommation_hc_aujourdhui", "consommation_heures_creuses_aujourd_hui"], "energy_off_peak_today");
       if (peakId && offPeakId) {
         try {
           const splitResult = await this._hass.callWS({
