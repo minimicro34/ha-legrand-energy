@@ -498,6 +498,6 @@ test("keeps half-hour bars when five-minute Recorder samples contain a gap", asy
   const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
   assert.equal(bars.length, 3);
   assert.match(bars[2].children[0].textContent, /Non répartie.*18.*kWh/);
-  assert.ok(svg.children.some((child) => child.textContent === "Non répartie"));
+  assert.ok(svg.children.some((child) => child.textContent === "N/R"));
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*18/);
 });
