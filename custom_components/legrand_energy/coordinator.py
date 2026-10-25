@@ -149,22 +149,30 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     date_end=stop,
                     scale="1day",
                 )
-                decoded = decode_points_by_module(payload, fluid_type=FluidType.ELECTRICITY)
+                decoded = decode_points_by_module(
+                    payload, fluid_type=FluidType.ELECTRICITY
+                )
                 points = [point for series in decoded.values() for point in series]
                 dates = [point.timestamp for point in points]
                 _LOGGER.warning(
                     "Legrand historical probe %s: modules=%s points=%s first=%s last=%s",
-                    year, len(decoded), len(points),
+                    year,
+                    len(decoded),
+                    len(points),
                     min(dates).isoformat() if dates else "none",
                     max(dates).isoformat() if dates else "none",
                 )
             except LegrandPrivateApiRateLimitError:
-                _LOGGER.warning("Legrand historical probe: rate limited in %s; stopping", year)
+                _LOGGER.warning(
+                    "Legrand historical probe: rate limited in %s; stopping", year
+                )
                 break
             except Exception as err:
                 _LOGGER.warning(
                     "Legrand historical probe %s: %s: %s",
-                    year, type(err).__name__, str(err)[:180],
+                    year,
+                    type(err).__name__,
+                    str(err)[:180],
                 )
                 # Do not continue if authentication has failed.
                 if isinstance(err, LegrandPrivateApiAuthenticationError):
