@@ -283,8 +283,12 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
     },
   };
   await card._loadHistory();
-  assert.equal(requests.length, 2);
+  // Registry discovery can trigger a second history load; only assert the
+  // distinct Recorder request shapes, not their scheduling/count.
+  assert.ok(requests.length >= 2);
   assert.ok(requests.every((request) => request.period === "month"));
+  assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.energy")));
+  assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.hp") && request.statistic_ids.includes("sensor.hc")));
   assert.equal(card._history.length, 2);
   assert.equal(new Date(card._history[0].time).getUTCMonth(), 6);
   assert.equal(card._history[0].value, 15);
