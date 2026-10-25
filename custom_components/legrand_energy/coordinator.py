@@ -213,9 +213,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 (10, "1day"),
             ):
                 start = int(datetime(year, month, 1, tzinfo=UTC).timestamp())
-                stop = int(
-                    datetime(year, month + 1, 1, tzinfo=UTC).timestamp()
-                ) - 1
+                stop = int(datetime(year, month + 1, 1, tzinfo=UTC).timestamp()) - 1
                 try:
                     payload = await self.private_api.get_fluid_measures(
                         home_id=home_id,
@@ -244,9 +242,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                         max(dates).isoformat() if dates else "none",
                     )
                 except LegrandPrivateApiRateLimitError:
-                    _LOGGER.warning(
-                        "Legrand monthly probe: rate limited; stopping"
-                    )
+                    _LOGGER.warning("Legrand monthly probe: rate limited; stopping")
                     return
                 except LegrandPrivateApiAuthenticationError:
                     _LOGGER.warning(
