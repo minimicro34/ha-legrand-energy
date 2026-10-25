@@ -362,7 +362,7 @@ class LegrandEnergyCard extends HTMLElement {
       // Prefer the Recorder monthly delta when already available for the
       // current month; daily reconstruction is only a fallback.
       const hasMonthlyCurrent = this._history.some((point) => point.time === monthTime);
-      if (hasMonthlyCurrent) return this._render();
+      if (hasMonthlyCurrent) { this._render(); return; }
       try {
         const ids = [entity, ...(peakId && offPeakId ? [peakId, offPeakId] : [])];
         const daily = await this._hass.callWS({
@@ -548,6 +548,9 @@ class LegrandEnergyCard extends HTMLElement {
     }
     make("text", { x: 4, y: 12, fill: "var(--secondary-text-color)", "font-size": 11 }, "kWh");
     const slot = (width - left - right) / points.length;
+    // Compact day bars while retaining the complete 24/25-hour timeline.
+    const barGap = this._period === "day" ? 1 : 4;
+    const barInset = barGap / 2;
     const formatter = new Intl.DateTimeFormat(locale,
       this._period === "day" ? { hour: "2-digit", minute: "2-digit" } :
         this._period === "year" ? { month: "short" } : { day: "2-digit", month: "2-digit" });
@@ -592,14 +595,14 @@ class LegrandEnergyCard extends HTMLElement {
           " : " + new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(point.value) + " kWh" +
           (splitValid ? " · HP " + format.format(hp) + " · HC " + format.format(hc)
             : tariff ? " · " + tariff : "");
-        const bar = make("rect", { x: x + 2, y: top + plotHeight - barHeight,
-          width: Math.max(1, slot - 4), height: barHeight,
+        const bar = make("rect", { x: x + barInset, y: top + plotHeight - barHeight,
+          width: Math.max(1, slot - barGap), height: barHeight,
           fill: point.unallocated ? "var(--secondary-text-color)" : splitValid ? "#28558b" :
             tariff === "HP" ? "#4f86f7" : tariff === "HC" ? "#28558b" :
               "var(--primary-color)", rx: 2, tabindex: 0 });
         if (splitValid && hp > 0) make("rect", {
-          x: x + 2, y: top + plotHeight - barHeight,
-          width: Math.max(1, slot - 4), height: plotHeight * hp / ceiling,
+          x: x + barInset, y: top + plotHeight - barHeight,
+          width: Math.max(1, slot - barGap), height: plotHeight * hp / ceiling,
           fill: "#4f86f7", rx: 2,
         });
         bar.setAttribute("aria-label", info);
@@ -625,7 +628,7 @@ class LegrandEnergyCard extends HTMLElement {
       if (point.unallocated || index % labelEvery === 0 || index === points.length - 1) {
         make("text", { x: x + slot / 2, y: height - 23,
           "text-anchor": "middle", fill: "var(--secondary-text-color)",
-          "font-size": 11 }, point.unallocated ? "Non répartie" : this._period === "day" &&
+          "font-size": 11 }, point.unallocated ? "N/R" : this._period === "day" &&
             hourCounts.get(formatter.format(date)) > 1
             ? hourWithOffset.format(date) : formatter.format(date));
       }
