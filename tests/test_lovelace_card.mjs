@@ -424,8 +424,11 @@ test("aligns completed monthly buckets and skips daily fallback when October mon
     },
   };
   await card._loadHistory();
+  assert.ok(requests.some((request) => request.period === "day" &&
+    request.statistic_ids.includes("sensor.energy") &&
+    new Date(request.start_time).getMonth() === 5));
   assert.ok(!requests.some((request) => request.period === "day" &&
-    request.statistic_ids.includes("sensor.energy")));
+    new Date(request.start_time).getMonth() === 8));
   const byMonth = new Map(card._history.map((point) => [
     new Date(point.time).getMonth(), point.value,
   ]));
