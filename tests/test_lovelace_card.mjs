@@ -371,7 +371,8 @@ test("keeps July through September and adds partial October from daily Recorder 
     "sensor.hc": [60, 61, 63, 65],
   };
   const requests = [];
-  card.hass = {
+  // Assign the mock directly: the hass setter starts an unawaited load.
+  card._hass = {
     states: {
       "sensor.energy": { state: "160" },
       "sensor.hp": { state: "95" },
@@ -388,7 +389,6 @@ test("keeps July through September and adds partial October from daily Recorder 
       ]));
     },
   };
-  await card._loadEntityRegistry();
   await card._loadHistory();
   assert.ok(requests.some((request) => request.period === "day" &&
     request.statistic_ids.includes("sensor.energy")));
