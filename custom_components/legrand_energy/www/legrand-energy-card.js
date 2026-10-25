@@ -606,7 +606,10 @@ class LegrandEnergyCard extends HTMLElement {
         fill: "var(--secondary-text-color)", "font-size": 11 }, format.format(value));
     }
     make("text", { x: 4, y: 12, fill: "var(--secondary-text-color)", "font-size": 11 }, "kWh");
-    const slot = (width - left - right) / points.length;
+    // Give the non-temporal N/R bar its own visual separation from the
+    // last clock slot; it is not another half-hour of the day.
+    const unallocatedGap = unallocated > 0 ? 10 : 0;
+    const slot = (width - left - right - unallocatedGap) / points.length;
     // Compact day bars while retaining the complete 24/25-hour timeline.
     const barGap = this._period === "day" ? 1 : 4;
     const barInset = barGap / 2;
@@ -633,7 +636,7 @@ class LegrandEnergyCard extends HTMLElement {
     const tooltip = this._element("div", undefined,
       "display:none;position:absolute;z-index:2;pointer-events:none;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px 12px;box-shadow:0 2px 12px #0005;font-size:13px;max-width:240px");
     points.forEach((point, index) => {
-      const x = left + index * slot;
+      const x = left + index * slot + (point.unallocated ? unallocatedGap : 0);
       const date = point.unallocated ? null : new Date(point.time);
       if (point.value !== null) {
         const barHeight = plotHeight * point.value / ceiling;
