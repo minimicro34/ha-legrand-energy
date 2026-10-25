@@ -404,3 +404,49 @@ test("keeps July through September and adds partial October from daily Recorder 
   assert.equal(card._splitHistory.peak.get(october), 5);
   assert.equal(card._splitHistory.offPeak.get(october), 5);
 });
+
+test("groups five-minute energy and HP/HC deltas into half-hour day bars", async () => {
+  const { card } = createCard();
+  card.setConfig({
+    entity: "sensor.energy",
+    peak_energy_entity: "sensor.hp",
+    offpeak_energy_entity: "sensor.hc",
+  });
+  card._dateRange = () => ({
+    start: new Date("2026-10-24T00:00:00Z"),
+    end: new Date("2026-10-24T01:00:00Z"),
+  });
+  const starts = Array.from({ length: 13 }, (_, i) =>
+    Date.parse("2026-10-23T23:55:00Z") + i * 300000);
+  const cumulative = {
+    "sensor.energy": starts.map((_, i) => 100 + i),
+    "sensor.hp": starts.map((_, i) => 60 + i * 0.6),
+    "sensor.hc": starts.map((_, i) => 40 + i * 0.4),
+  };
+  const requests = [];
+  card._hass = {
+    states: {
+      "sensor.energy": { state: "12" },
+      "sensor.hp": { state: "7.2" },
+      "sensor.hc": { state: "4.8" },
+    },
+    callWS: async (payload) => {
+      requests.push(payload);
+      return Object.fromEntries(payload.statistic_ids.map((id) => [
+        id, starts.map((start, i) => ({ start, sum: cumulative[id][i] })),
+      ]));
+    },
+  };
+  await card._loadHistory();
+  assert.equal(card._dayGranularity, 1800000);
+  assert.ok(requests.every((request) => request.period === "5minute"));
+  assert.equal(card._history.length, 2);
+  assert.equal(card._history[0].value, 6);
+  assert.equal(card._history[1].value, 6);
+  const first = Date.parse("2026-10-24T00:00:00Z");
+  assert.ok(Math.abs(card._splitHistory.peak.get(first) - 3.6) < 1e-9);
+  assert.ok(Math.abs(card._splitHistory.offPeak.get(first) - 2.4) < 1e-9);
+  const svg = card._chart().children.find((child) => child.role === "img");
+  const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
+  assert.equal(bars.length, 2);
+});
