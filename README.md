@@ -282,7 +282,9 @@ the current-day Legrand total, and the remaining difference.
 The **Year** chart keeps all twelve calendar months visible. Months without
 sufficient Recorder history are left blank, not shown as zero. The first
 recorded month can be reconstructed from daily Recorder statistics when a
-usable baseline exists. The ongoing month is handled separately.
+pre-month baseline and sufficient end-of-month evidence exist. Otherwise,
+it remains blank rather than displaying an incomplete total. The ongoing
+month is handled separately.
 
 The chart uses Home Assistant's existing statistics; it does not import or
 reconstruct historical measurements that Recorder never stored.
