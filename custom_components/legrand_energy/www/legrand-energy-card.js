@@ -217,7 +217,10 @@ class LegrandEnergyCard extends HTMLElement {
           period,
           types: ["sum"],
         });
-        if (period === "5minute" && !(result?.[entity]?.length > 1))
+        if (period === "5minute" && (!(result?.[entity]?.length > 1) ||
+          (result[entity].length > 2 && result[entity].some((row, i, rows) =>
+            i > 0 && Math.abs(new Date(row.start).getTime() -
+              new Date(rows[i - 1].start).getTime()) > 600000))))
           throw new Error("No five-minute statistics");
       } catch (error) {
         if (period !== "5minute") throw error;
@@ -303,8 +306,17 @@ class LegrandEnergyCard extends HTMLElement {
               });
               return values;
             };
-            this._splitHistory = { peak: deltas(peakId), offPeak: deltas(offPeakId),
-              peakId, offPeakId };
+            const group = (values) => {
+              if (historyPeriod !== "5minute") return values;
+              const buckets = new Map();
+              for (const [time, value] of values) {
+                const bucket = Math.floor(time / 1800000) * 1800000;
+                buckets.set(bucket, (buckets.get(bucket) || 0) + value);
+              }
+              return buckets;
+            };
+            this._splitHistory = { peak: group(deltas(peakId)),
+              offPeak: group(deltas(offPeakId)), peakId, offPeakId };
           }
         } catch (_error) {
           // No invented HP/HC split when Recorder has insufficient data.
