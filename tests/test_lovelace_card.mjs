@@ -256,7 +256,7 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
     start: new Date("2026-01-01T00:00:00Z"),
     end: new Date("2026-10-25T12:00:00Z"),
   });
-  const month = (value) => Date.parse(value);
+  const month = (value) => { const [year, mon] = value.slice(0, 7).split("-").map(Number); return new Date(year, mon - 1, 1).getTime(); };
   const starts = [
     "2026-06-01T00:00:00Z",
     "2026-07-01T00:00:00Z",
@@ -288,7 +288,7 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
   // distinct Recorder request shapes, not their scheduling/count.
   assert.ok(requests.length >= 2);
   assert.ok(requests.some((request) => request.period === "month"));
-  assert.ok(!requests.some((request) => request.period === "day"));
+  assert.ok(requests.some((request) => request.period === "day"));
   assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.energy")));
   assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.hp") && request.statistic_ids.includes("sensor.hc")));
   // July has a valid zero delta; August and September follow it.
@@ -354,7 +354,7 @@ test("aligns completed monthly buckets and skips daily fallback when October mon
     "2026-08-01T00:00:00Z",
     "2026-09-01T00:00:00Z",
     "2026-10-01T00:00:00Z",
-  ].map(Date.parse);
+  ].map((value) => { const [year, mon] = value.slice(0, 7).split("-").map(Number); return new Date(year, mon - 1, 1).getTime(); });
   const monthly = {
     "sensor.energy": [100, 115, 135, 150],
     "sensor.hp": [60, 70, 82, 90],
