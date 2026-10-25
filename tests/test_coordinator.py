@@ -279,3 +279,53 @@ async def test_historical_probe_skips_missing_electricity_modules(hass, caplog) 
     await coordinator.async_debug_historical_availability()
     coordinator.private_api.get_fluid_measures.assert_not_called()
     assert "no electricity modules" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_monthly_probe_queries_bounded_months(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    coordinator.api.get_first_home_id.return_value = "home-id"
+    coordinator._module_service.async_get = AsyncMock(
+        return_value={
+            "main": LegrandModule(
+                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
+            )
+        }
+    )
+    coordinator.private_api.get_fluid_measures = AsyncMock(return_value={})
+    with patch(
+        "custom_components.legrand_energy.helpers.private_measure_decoder."
+        "decode_points_by_module",
+        return_value={},
+    ):
+        await coordinator.async_debug_historical_months()
+
+    calls = coordinator.private_api.get_fluid_measures.await_args_list
+    assert len(calls) == 20
+    assert calls[0].kwargs["scale"] == "max"
+    assert calls[1].kwargs["scale"] == "1day"
+    assert calls[-1].kwargs["date_begin"] == int(
+        datetime(2025, 10, 1, tzinfo=UTC).timestamp()
+    )
+    assert "2022-01 scale=max: points=0" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_monthly_probe_stops_on_rate_limit(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    coordinator.api.get_first_home_id.return_value = "home-id"
+    coordinator._module_service.async_get = AsyncMock(
+        return_value={
+            "main": LegrandModule(
+                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
+            )
+        }
+    )
+    coordinator.private_api.get_fluid_measures = AsyncMock(
+        side_effect=LegrandPrivateApiRateLimitError("limited")
+    )
+
+    await coordinator.async_debug_historical_months()
+
+    coordinator.private_api.get_fluid_measures.assert_awaited_once()
+    assert "rate limited; stopping" in caplog.text
