@@ -290,11 +290,14 @@ test("aligns July and August monthly totals and HP/HC splits", async () => {
   assert.ok(requests.every((request) => request.period === "month"));
   assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.energy")));
   assert.ok(requests.some((request) => request.statistic_ids.includes("sensor.hp") && request.statistic_ids.includes("sensor.hc")));
-  assert.equal(card._history.length, 2);
-  assert.equal(new Date(card._history[0].time).getUTCMonth(), 6);
-  assert.equal(card._history[0].value, 15);
-  assert.equal(new Date(card._history[1].time).getUTCMonth(), 7);
-  assert.equal(card._history[1].value, 20);
+  // June has a valid zero delta; July and August follow it.
+  assert.equal(card._history.length, 3);
+  assert.equal(new Date(card._history[0].time).getUTCMonth(), 5);
+  assert.equal(card._history[0].value, 0);
+  assert.equal(new Date(card._history[1].time).getUTCMonth(), 6);
+  assert.equal(card._history[1].value, 15);
+  assert.equal(new Date(card._history[2].time).getUTCMonth(), 7);
+  assert.equal(card._history[2].value, 20);
   assert.equal(card._splitHistory.peak.get(starts[1]), 10);
   assert.equal(card._splitHistory.offPeak.get(starts[1]), 5);
   assert.equal(card._splitHistory.peak.get(starts[2]), 12);
