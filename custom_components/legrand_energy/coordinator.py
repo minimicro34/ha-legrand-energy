@@ -113,7 +113,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             matches or ["<none>"],
         )
 
-    async def async_debug_historica    async def _async_update_data(self) -> LegrandEnergyData:
+    async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""
         try:
             modules = await self._module_service.async_get()
