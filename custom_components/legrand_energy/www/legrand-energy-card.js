@@ -405,6 +405,18 @@ class LegrandEnergyCard extends HTMLElement {
     const fullDate = new Intl.DateTimeFormat(locale, {
       weekday: "short", day: "2-digit", month: "short", year: "numeric",
       hour: "2-digit", minute: "2-digit",
+      ...(this._period === "day" ? { timeZoneName: "shortOffset" } : {}),
+    });
+    // The repeated 02:00 on autumn DST fallback must have distinct labels.
+    const hourCounts = new Map();
+    if (this._period === "day") {
+      for (const point of points) {
+        const label = formatter.format(new Date(point.time));
+        hourCounts.set(label, (hourCounts.get(label) || 0) + 1);
+      }
+    }
+    const hourWithOffset = new Intl.DateTimeFormat(locale, {
+      hour: "2-digit", minute: "2-digit", timeZoneName: "shortOffset",
     });
     const tooltip = this._element("div", undefined,
       "display:none;position:absolute;z-index:2;pointer-events:none;background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px 12px;box-shadow:0 2px 12px #0005;font-size:13px;max-width:240px");
@@ -462,7 +474,9 @@ class LegrandEnergyCard extends HTMLElement {
       if (index % labelEvery === 0 || index === points.length - 1) {
         make("text", { x: x + slot / 2, y: height - 23,
           "text-anchor": "middle", fill: "var(--secondary-text-color)",
-          "font-size": 11 }, formatter.format(date));
+          "font-size": 11 }, this._period === "day" &&
+            hourCounts.get(formatter.format(date)) > 1
+            ? hourWithOffset.format(date) : formatter.format(date));
       }
     });
     if (this._splitHistory || (this._period === "day" && this._tariffHistory?.length)) {
