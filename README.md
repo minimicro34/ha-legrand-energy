@@ -1,6 +1,6 @@
 # Legrand Energy
 
-> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water, gas and cost monitoring.
+> Bring your Legrand with Netatmo EcoMeter into Home Assistant with native electricity, water, gas and cost monitoring, including interval-average electrical power (not instantaneous readings).
 
 <p align="center">
 
@@ -243,6 +243,54 @@ The **Netatmo OAuth Client ID and Client Secret** are managed by Home Assistant 
 
 ---
 
+## Bundled Lovelace card
+
+The optional **Legrand Energy** card is shipped in this integration's release.
+It does not require a second HACS repository.
+
+1. Restart Home Assistant after installing or updating the integration.
+2. For storage-managed dashboards, the integration **automatically registers**
+   the JavaScript module resource `/legrand_energy/legrand-energy-card.js`.
+   Check **Settings → Dashboards → Resources** before adding anything manually.
+   If the resource is absent (for example with YAML-managed Lovelace
+   resources), add that URL as a **JavaScript module** once.
+3. Add a **Manual** card to a dashboard, using the entity IDs from your installation:
+
+```yaml
+type: custom:legrand-energy-card
+title: Legrand Energy
+entity: sensor.your_energy_today
+power_entity: sensor.your_average_power
+cost_entity: sensor.your_cost_today
+tariff_entity: sensor.your_current_tariff
+```
+
+The `entity` field is required; the other fields are optional. The card
+provides a summary (including interval-average power, not instantaneous power), period charts (**Day**, **Week**, **Month**, **Year**),
+HP/HC breakdown from Home Assistant Recorder statistics, and collapsible
+**Circuits** and **Diagnostics** sections. It does not create or modify
+energy entities. Use your actual entity IDs, which depend on the discovered
+installation.
+
+The **Day** chart uses 30-minute bars when five-minute Recorder statistics
+are available and falls back to hourly statistics otherwise. If Recorder
+samples are missing, the corresponding energy is displayed in a separate
+gray **N/R** (not allocated to a time slot) bar rather than assigned to an
+arbitrary half-hour. The footer distinguishes allocated bars, N/R energy,
+the current-day Legrand total, and the remaining difference.
+
+The **Year** chart keeps all twelve calendar months visible. Months without
+sufficient Recorder history are left blank, not shown as zero. The first
+recorded month can be reconstructed from daily Recorder statistics when a
+pre-month baseline and sufficient end-of-month evidence exist. Otherwise,
+it remains blank rather than displaying an incomplete total. The ongoing
+month is handled separately.
+
+The chart uses Home Assistant's existing statistics; it does not import or
+reconstruct historical measurements that Recorder never stored.
+
+---
+
 ## Available entities
 
 ### Main EcoMeter
@@ -366,7 +414,43 @@ If your Home + Control account credentials change, use the integration's **Recon
 
 ## Screenshots
 
-Screenshots will be added once the integration reaches feature completeness.
+The bundled Lovelace card provides Day, Week, Month and Year consumption charts, plus expandable Circuits and Diagnostics panels. Chart values are based on the available Home Assistant Recorder statistics; missing history is not treated as zero consumption.
+
+### Day view
+
+![Legrand Energy Lovelace card — Day consumption chart](docs/card-day.png)
+
+*Day consumption in 30-minute intervals, including HP/HC distribution and a separate N/R bar for energy that cannot be reliably allocated to a time slot.*
+
+### Week view
+
+![Legrand Energy Lovelace card — Week consumption chart](docs/card-week.png)
+
+*Daily consumption across the week, with HP/HC breakdown when Recorder statistics are available.*
+
+### Month view
+
+![Legrand Energy Lovelace card — Month consumption chart](docs/card-month.png)
+
+*Daily consumption across the month, based on available Recorder history.*
+
+### Year view
+
+![Legrand Energy Lovelace card — Year consumption chart](docs/card-year.png)
+
+*Monthly consumption with HP/HC breakdown where available. A gray bar marks a partially recorded month, with its starting date shown in the tooltip; missing days are not estimated.*
+
+### Circuits
+
+![Legrand Energy Lovelace card — Circuits panel](docs/card-circuits.png)
+
+*Expanded Circuits panel showing the EcoMeter's discovered electrical circuits.*
+
+### Diagnostics
+
+![Legrand Energy Lovelace card — Diagnostics panel](docs/card-diagnostics.png)
+
+*Expanded Diagnostics panel for troubleshooting. Review and redact any identifying information before sharing your own screenshots.*
 
 ---
 

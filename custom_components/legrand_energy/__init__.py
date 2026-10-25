@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import aiohttp
+from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-defined]
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import (
+    async_create_clientsession,
+    async_get_clientsession,
+)
 
 from .api import LegrandEnergyApi
 from .authentication import AuthenticationManager
@@ -16,11 +23,41 @@ from .authentication_store import (
     PRIVATE_COOKIE_NAMES,
     ConfigEntryAuthenticationStore,
 )
+from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
 from .models.auth import PrivateSession
 from .oauth2 import async_get_session
 from .private_api import LegrandPrivateApi
 from .services.private import PrivateAuthService
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+CARD_URL = "/legrand_energy/legrand-energy-card.js"
+
+
+async def async_setup(hass: HomeAssistant, _config: dict[str, object]) -> bool:
+    """Expose the bundled Lovelace card as a static frontend resource."""
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                CARD_URL,
+                str(Path(__file__).parent / "www" / "legrand-energy-card.js"),
+                False,
+            )
+        ]
+    )
+    # Register the card in storage-managed Lovelace resources when available.
+    lovelace = hass.data.get("lovelace")
+    resources = getattr(lovelace, "resources", None)
+    if resources is not None and hasattr(resources, "async_load"):
+        await resources.async_load()
+        if not any(
+            item.get("url", "").split("?")[0] == CARD_URL
+            for item in resources.async_items()
+        ):
+            await resources.async_create_item({"res_type": "module", "url": CARD_URL})
+    return True
+
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -35,6 +72,7 @@ async def async_setup_entry(
 ) -> bool:
     """Set up Legrand Energy from a config entry."""
     session = async_get_clientsession(hass)
+    private_http_session = async_create_clientsession(hass)
 
     def private_value(key: str) -> str | None:
         """Return a private authentication value."""
@@ -55,7 +93,7 @@ async def async_setup_entry(
             hass,
             entry,
         )
-    except config_entry_oauth2_flow.ImplementationUnavailableError as err:  # type: ignore[attr-defined]
+    except config_entry_oauth2_flow.ImplementationUnavailableError as err:
         raise ConfigEntryNotReady(
             "OAuth2 implementation temporarily unavailable"
         ) from err
@@ -75,7 +113,7 @@ async def async_setup_entry(
         ) from err
 
     private_service = PrivateAuthService(
-        session=session,
+        session=private_http_session,
     )
 
     web_token = private_value("web_token")
@@ -129,7 +167,7 @@ async def async_setup_entry(
 
     private_api = (
         LegrandPrivateApi(
-            session=session,
+            session=private_http_session,
             authentication=authentication,
         )
         if private_session is not None
@@ -149,6 +187,16 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
+    )
+
+    async def debug_homestatus(_call: ServiceCall) -> None:
+        """Run a sanitized private Home + Control status probe."""
+        await coordinator.async_debug_homestatus()
+
+    hass.services.async_register(
+        DOMAIN,
+        "debug_homestatus",
+        debug_homestatus,
     )
 
     return True

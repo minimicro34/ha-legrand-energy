@@ -65,3 +65,104 @@ def test_calculate_cost_prefers_api_historical_prices() -> None:
         peak_price=99.0,
         off_peak_price=99.0,
     ) == pytest.approx(0.54)
+
+
+@pytest.mark.parametrize(
+    ("energy", "interval", "expected"),
+    [
+        (4.0, 1800, 8.0),
+        (100.0, 1800, 200.0),
+        (0.0, 300, 0.0),
+        (1.0, 0, None),
+        (1.0, -60, None),
+        (1.0, None, None),
+        (-1.0, 300, None),
+        (float("nan"), 300, None),
+        (float("inf"), 300, None),
+    ],
+)
+def test_average_power_for_point(
+    energy: float, interval: int | None, expected: float | None
+) -> None:
+    """Use actual API interval duration and reject invalid readings."""
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    point = EnergyPoint(
+        timestamp=datetime(2026, 10, 24, tzinfo=UTC),
+        energy=energy,
+        interval_seconds=interval,
+    )
+
+    result = MeasurementProcessor.average_power_for_point(point)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("age_seconds", "interval", "expected"),
+    [
+        (1800, 1800, 8.0),
+        (3600, 1800, 8.0),
+        (3601, 1800, None),
+        (-1, 1800, None),
+        (300, 0, None),
+    ],
+)
+def test_latest_average_power_freshness(
+    age_seconds: int, interval: int, expected: float | None
+) -> None:
+    """Never expose stale or future interval readings as current power."""
+    from datetime import timedelta
+
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    now = datetime(2026, 10, 24, 12, tzinfo=UTC)
+    point = EnergyPoint(
+        timestamp=now - timedelta(seconds=age_seconds),
+        energy=4.0,
+        interval_seconds=interval,
+    )
+    result = MeasurementProcessor.latest_average_power([point], now=now)
+    if expected is None:
+        assert result is None
+    else:
+        assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("now", "energy", "cost"),
+    [
+        (datetime(2026, 1, 1, tzinfo=UTC), None, None),
+        (datetime(2026, 10, 1, 12, tzinfo=UTC), 31.0, 6.2),
+    ],
+)
+def test_project_month_boundaries(
+    now: datetime, energy: float | None, cost: float | None
+) -> None:
+    """Handle the month boundary and partial-day extrapolation."""
+    projected_energy, projected_cost = MeasurementProcessor.project_month(
+        now=now,
+        energy_month=0.5 if energy is not None else None,
+        cost_month=0.1 if cost is not None else None,
+    )
+    if energy is None:
+        assert projected_energy is None
+        assert projected_cost is None
+    else:
+        assert projected_energy == pytest.approx(energy)
+        assert projected_cost == pytest.approx(cost)
+
+
+def test_latest_average_power_without_now() -> None:
+    """A missing reference time must never imply a fresh power reading."""
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    point = EnergyPoint(
+        timestamp=datetime(2026, 10, 24, tzinfo=UTC),
+        energy=4.0,
+        interval_seconds=1800,
+    )
+    assert MeasurementProcessor.latest_average_power([point], now=None) is None
+    assert MeasurementProcessor.latest_average_power([], now=None) is None

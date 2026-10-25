@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -61,7 +62,11 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
         )
 
         if not is_main_module and module.bridge is not None:
-            device_info["via_device"] = (DOMAIN, module.bridge)
+            device_info["via_device_id"] = dr.async_get_device_id_by_identifier(
+                coordinator.hass,
+                (DOMAIN, module.bridge),
+                config_entry_id=coordinator.config_entry.entry_id,
+            )
 
         self._attr_device_info = device_info
 

@@ -7,10 +7,10 @@ from collections.abc import Mapping
 from typing import Any
 
 import aiohttp
-import voluptuous as vol
+import probatio as vol
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlowResult
 from homeassistant.helpers import config_entry_oauth2_flow, selector
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .authentication_store import PRIVATE_COOKIE_NAMES
 from .const import DOMAIN, OAUTH_SCOPES
@@ -94,14 +94,12 @@ class LegrandEnergyConfigFlow(
             password = user_input["password"]
 
             try:
-                private_service = PrivateAuthService(
-                    session=async_get_clientsession(self.hass),
-                )
-
-                private_session = await private_service.login(
-                    username=username,
-                    password=password,
-                )
+                async with async_create_clientsession(self.hass) as session:
+                    private_service = PrivateAuthService(session=session)
+                    private_session = await private_service.login(
+                        username=username,
+                        password=password,
+                    )
 
             except PrivateAuthServiceAuthenticationError:
                 errors["base"] = "invalid_auth"
@@ -166,15 +164,13 @@ class LegrandEnergyConfigFlow(
             username = user_input["username"]
             password = user_input["password"]
 
-            private_service = PrivateAuthService(
-                session=async_get_clientsession(self.hass),
-            )
-
             try:
-                private_session = await private_service.login(
-                    username=username,
-                    password=password,
-                )
+                async with async_create_clientsession(self.hass) as session:
+                    private_service = PrivateAuthService(session=session)
+                    private_session = await private_service.login(
+                        username=username,
+                        password=password,
+                    )
 
             except PrivateAuthServiceAuthenticationError:
                 errors["base"] = "invalid_auth"

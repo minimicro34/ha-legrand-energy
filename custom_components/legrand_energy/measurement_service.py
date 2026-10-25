@@ -317,15 +317,40 @@ class MeasurementService:
                         )
                         self._waiting_today_points.add(module_id)
 
-                    if previous_measurements is not None:
+                    if year_points:
+                        # Historical daily points remain valid even when the
+                        # private API has not published today's first interval.
+                        measurements_by_module[module_id] = (
+                            MeasurementProcessor.build_measurements(
+                                today_points=[],
+                                week_points=week_points,
+                                month_points=month_points,
+                                year_points=year_points,
+                                peak_price=peak_price,
+                                off_peak_price=off_peak_price,
+                                now=now,
+                            )
+                        )
+                    elif previous_measurements is not None:
+                        # No historical points are available either. Avoid
+                        # presenting yesterday's totals as today's totals.
+                        # Preserve only totals when their calendar period has
+                        # not rolled over since the previous update.
                         measurements_by_module[module_id] = replace(
                             previous_measurements,
+                            average_power=None,
                             energy_today=0.0,
                             energy_peak_today=0.0,
                             energy_off_peak_today=0.0,
                             cost_today=0.0,
                             cost_peak_today=0.0,
                             cost_off_peak_today=0.0,
+                            energy_week=None,
+                            energy_month=None,
+                            energy_year=None,
+                            cost_week=None,
+                            cost_month=None,
+                            cost_year=None,
                         )
 
                     continue
@@ -345,6 +370,7 @@ class MeasurementService:
                         year_points=year_points,
                         peak_price=peak_price,
                         off_peak_price=off_peak_price,
+                        now=now,
                     )
                 )
 
@@ -416,9 +442,21 @@ class MeasurementService:
         if previous_data is None:
             return None, {}, {}, {}, None
 
+        # Cached energy totals remain useful, but a failed poll cannot
+        # establish that an interval-average power reading is still fresh.
+        measurements = (
+            replace(previous_data.measurements, average_power=None)
+            if previous_data.measurements is not None
+            else None
+        )
+        measurements_by_module = {
+            module_id: replace(value, average_power=None)
+            for module_id, value in previous_data.measurements_by_module.items()
+        }
+
         return (
-            previous_data.measurements,
-            previous_data.measurements_by_module,
+            measurements,
+            measurements_by_module,
             previous_data.water_measurements_by_module,
             previous_data.gas_measurements_by_module,
             previous_data.projections,

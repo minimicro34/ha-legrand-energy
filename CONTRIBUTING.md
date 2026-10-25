@@ -42,13 +42,14 @@ Run the complete local quality checks:
 make check
 ```
 
-`make check` runs the same checks as the GitHub CI workflow:
+`make check` runs the same checks as the GitHub CI workflow, including the full pytest suite with coverage and the Lovelace card JavaScript tests. **You do not need to run `make coverage` separately after `make check`.**
 
 - Python bytecode compilation
 - Ruff formatting verification
 - Ruff lint
 - mypy
-- pytest
+- pytest with coverage (minimum 80%)
+- Node.js Lovelace card regression tests (`node --test tests/test_lovelace_card.mjs`)
 
 Individual commands are also available:
 
@@ -59,6 +60,7 @@ make format-check
 make lint
 make typecheck
 make test
+make coverage
 make clean
 ```
 
@@ -74,14 +76,51 @@ Run the complete test suite:
 make test
 ```
 
+Run the test suite with coverage reporting (without rerunning compilation, Ruff, or mypy):
+
+```bash
+make coverage
+```
+
+The CI quality gate requires at least **80% total coverage**. The project currently targets roughly **90% coverage** while prioritizing meaningful behavioral tests over tests written only to increase the percentage.
+
+---
+
+## Lovelace card development
+
+The bundled Legrand Energy Lovelace card lives in
+`custom_components/legrand_energy/www/legrand-energy-card.js`.
+It is part of this integration, not a separate HACS frontend repository.
+The card documentation and screenshots are maintained in `README.md`
+and `docs/`.
+
+When changing the card:
+
+- Keep entity discovery scoped to the selected EcoMeter; do not mix circuits from different devices.
+- Use Home Assistant Recorder statistics for historical charts. Do not invent missing measurements or present interval-average power as instantaneous power.
+- Preserve the HP/HC breakdown, daylight-saving transitions and N/R (unallocated energy) handling.
+- Mark incomplete Recorder months as partial rather than presenting them as full-month totals.
+- Avoid exposing credentials, tokens, location information or other private details in card diagnostics or screenshots.
+- Add or update regression tests in `tests/test_lovelace_card.mjs` for changed behavior.
+
+Run the card tests directly with Node.js:
+
+```bash
+node --test tests/test_lovelace_card.mjs
+```
+
+Run `make check` before opening a pull request to validate both the Python
+integration and the JavaScript card. If a visible change is made, update
+the relevant README documentation or screenshots as appropriate.
+
 ---
 
 ## Translations
 
 When adding or changing user-facing strings:
 
-- update `custom_components/legrand-energy/strings.json`;
-- update the corresponding files in `custom_components/legrand-energy/translations/`;
+- update `custom_components/legrand_energy/strings.json`;
+- update the corresponding files in `custom_components/legrand_energy/translations/`;
 - keep translation keys synchronized between languages;
 - do not remove existing translation keys without checking their usage.
 

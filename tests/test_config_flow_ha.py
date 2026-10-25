@@ -275,7 +275,14 @@ async def test_oauth_reauth_can_switch_application_credential(
         },
     }
 
-    result = await flow.async_oauth_create_entry(oauth_data)
+    # Switching OAuth implementations makes Home Assistant persist the new
+    # implementation through its storage helper. Patch that persistence here:
+    # this test validates the config-entry update, not HA storage scheduling.
+    with patch(
+        "homeassistant.helpers.config_entry_oauth2_flow.async_get_implementations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_oauth_create_entry(oauth_data)
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"

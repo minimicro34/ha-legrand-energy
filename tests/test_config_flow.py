@@ -6,7 +6,7 @@ import importlib
 import sys
 import types
 from collections.abc import Generator
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -60,7 +60,7 @@ def config_flow_module(
     selector.TextSelector = TextSelector
 
     aiohttp_client = types.ModuleType("homeassistant.helpers.aiohttp_client")
-    aiohttp_client.async_get_clientsession = Mock()
+    aiohttp_client.async_create_clientsession = Mock()
 
     helpers.config_entry_oauth2_flow = oauth2_flow
     helpers.selector = selector
@@ -315,3 +315,41 @@ async def test_initial_oauth_continues_to_private_auth(
     assert flow._oauth_data == oauth_data
 
     flow.async_step_private.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_private_login_uses_dedicated_session(
+    config_flow_module: types.ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Private sign-in must not use Home Assistant's shared cookie jar."""
+    from homeassistant.helpers import aiohttp_client
+
+    flow = config_flow_module.LegrandEnergyConfigFlow()
+    flow.hass = Mock()
+    flow._oauth_data = {"auth_implementation": "netatmo"}
+    flow.async_create_entry = Mock(return_value={"type": "create_entry"})
+
+    session = MagicMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
+    aiohttp_client.async_create_clientsession.return_value = session
+
+    private_session = Mock(
+        web_token="private-token",
+        cookies={},
+    )
+    private_service = Mock()
+    private_service.login = AsyncMock(return_value=private_session)
+    factory = Mock(return_value=private_service)
+    monkeypatch.setattr(config_flow_module, "PrivateAuthService", factory)
+
+    result = await flow.async_step_private(
+        {"username": "example@example.com", "password": "secret"}
+    )
+
+    assert result == {"type": "create_entry"}
+    aiohttp_client.async_create_clientsession.assert_called_once_with(flow.hass)
+    factory.assert_called_once_with(session=session)
+    private_service.login.assert_awaited_once()
+    session.__aexit__.assert_awaited_once()

@@ -1,5 +1,5 @@
 PYTHON ?= python3.14
-.PHONY: help compile format format-check lint typecheck test check clean
+.PHONY: help compile format format-check lint typecheck test coverage card-test check clean
 
 help:
 	@echo "Available targets:"
@@ -9,6 +9,8 @@ help:
 	@echo "  lint          Run Ruff lint"
 	@echo "  typecheck     Run mypy"
 	@echo "  test          Run pytest"
+	@echo "  coverage      Run pytest with an 80% coverage floor"
+	@echo "  card-test     Run Node.js Lovelace card tests"
 	@echo "  check         Run the complete CI locally"
 	@echo "  clean         Remove Python cache files"
 
@@ -16,21 +18,27 @@ compile:
 	$(PYTHON) -m compileall custom_components
 
 format:
-	ruff format .
+	$(PYTHON) -m ruff format .
 
 format-check:
-	ruff format --check .
+	$(PYTHON) -m ruff format --check .
 
 lint:
-	ruff check .
+	$(PYTHON) -m ruff check .
 
 typecheck:
-	mypy custom_components/legrand_energy
+	$(PYTHON) -m mypy custom_components/legrand_energy
 
 test:
 	$(PYTHON) -m pytest -q
 
-check: compile format-check lint typecheck test
+coverage:
+	$(PYTHON) -m pytest -q --cov=custom_components/legrand_energy --cov-report=term-missing --cov-fail-under=80
+
+card-test:
+	node --test tests/test_lovelace_card.mjs
+
+check: compile format-check lint typecheck coverage card-test
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
