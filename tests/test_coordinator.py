@@ -166,7 +166,3 @@ async def test_oauth_error_requests_reauthentication(hass) -> None:
 
     with pytest.raises(ConfigEntryAuthFailed, match="OAuth authentication expired"):
         await coordinator._async_update_data()
-
-
-@pytest.mark.asyncio
-async def test_historical_pro
