@@ -267,9 +267,9 @@ class LegrandEnergyCard extends HTMLElement {
         const sum = Number(row.sum);
         const before = Number(previous?.sum);
         return {
-          // Monthly deltas belong to the preceding month: the next
-          // boundary closes that month's consumption. Preserve the
-          // existing alignment for hourly and daily Recorder statistics.
+          // Recorder's monthly cumulative delta is assigned to the
+          // month named by the current row's start timestamp. Preserve
+          // the existing alignment for hourly and daily statistics.
           time: (() => {
             const boundary = row.start;
             return typeof boundary === "number"
