@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,7 +14,6 @@ from custom_components.legrand_energy.api import (
 )
 from custom_components.legrand_energy.coordinator import LegrandEnergyCoordinator
 from custom_components.legrand_energy.models import (
-    FluidType,
     LegrandEnergyData,
     LegrandMeasurements,
     LegrandModule,
@@ -171,161 +169,4 @@ async def test_oauth_error_requests_reauthentication(hass) -> None:
 
 
 @pytest.mark.asyncio
-async def test_historical_probe_reports_all_years_and_empty_results(
-    hass, caplog
-) -> None:
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = "home-id"
-    coordinator._module_service.async_get = AsyncMock(
-        return_value={
-            "main": LegrandModule(
-                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
-            ),
-            "water": LegrandModule(
-                id="water",
-                name="Water",
-                type="WATER",
-                bridge="bridge-id",
-                fluid_type=FluidType.WATER,
-            ),
-        }
-    )
-    coordinator.private_api.get_fluid_measures = AsyncMock(return_value={})
-    sample = MagicMock(timestamp=datetime(2022, 6, 1, tzinfo=UTC))
-    with patch(
-        "custom_components.legrand_energy.helpers.private_measure_decoder."
-        "decode_points_by_module",
-        side_effect=[{"main": [sample]}, {}, {}, {}, {}],
-    ):
-        await coordinator.async_debug_historical_availability()
-
-    calls = coordinator.private_api.get_fluid_measures.await_args_list
-    assert len(calls) == 5
-    assert all(call.kwargs["modules"] == [("main", "bridge-id")] for call in calls)
-    assert calls[0].kwargs["date_begin"] == int(
-        datetime(2022, 1, 1, tzinfo=UTC).timestamp()
-    )
-    assert calls[-1].kwargs["date_begin"] == int(
-        datetime(2026, 1, 1, tzinfo=UTC).timestamp()
-    )
-    assert all(call.kwargs["scale"] == "1day" for call in calls)
-    assert "2022: modules=1 points=1" in caplog.text
-    assert "2023: modules=0 points=0 first=none last=none" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_historical_probe_stops_on_rate_limit(hass, caplog) -> None:
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = "home-id"
-    coordinator._module_service.async_get = AsyncMock(
-        return_value={
-            "main": LegrandModule(
-                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
-            )
-        }
-    )
-    coordinator.private_api.get_fluid_measures = AsyncMock(
-        side_effect=LegrandPrivateApiRateLimitError("limited")
-    )
-
-    await coordinator.async_debug_historical_availability()
-
-    coordinator.private_api.get_fluid_measures.assert_awaited_once()
-    assert "rate limited in 2022; stopping" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_historical_probe_stops_on_authentication_failure(hass, caplog) -> None:
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = "home-id"
-    coordinator._module_service.async_get = AsyncMock(
-        return_value={
-            "main": LegrandModule(
-                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
-            )
-        }
-    )
-    coordinator.private_api.get_fluid_measures = AsyncMock(
-        side_effect=LegrandPrivateApiAuthenticationError("expired")
-    )
-
-    await coordinator.async_debug_historical_availability()
-
-    coordinator.private_api.get_fluid_measures.assert_awaited_once()
-    assert "LegrandPrivateApiAuthenticationError" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_historical_probe_skips_missing_private_api_and_home(
-    hass, caplog
-) -> None:
-    coordinator = _coordinator(hass, private=False)
-    await coordinator.async_debug_historical_availability()
-    assert "private API unavailable" in caplog.text
-
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = None
-    coordinator._module_service.async_get = AsyncMock()
-    await coordinator.async_debug_historical_availability()
-    coordinator._module_service.async_get.assert_not_awaited()
-    assert "no home found" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_historical_probe_skips_missing_electricity_modules(hass, caplog) -> None:
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = "home-id"
-    coordinator._module_service.async_get = AsyncMock(return_value={})
-    await coordinator.async_debug_historical_availability()
-    coordinator.private_api.get_fluid_measures.assert_not_called()
-    assert "no electricity modules" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_monthly_probe_queries_bounded_months(hass, caplog) -> None:
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = "home-id"
-    coordinator._module_service.async_get = AsyncMock(
-        return_value={
-            "main": LegrandModule(
-                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
-            )
-        }
-    )
-    coordinator.private_api.get_fluid_measures = AsyncMock(return_value={})
-    with patch(
-        "custom_components.legrand_energy.helpers.private_measure_decoder."
-        "decode_points_by_module",
-        return_value={},
-    ):
-        await coordinator.async_debug_historical_months()
-
-    calls = coordinator.private_api.get_fluid_measures.await_args_list
-    assert len(calls) == 20
-    assert calls[0].kwargs["scale"] == "max"
-    assert calls[1].kwargs["scale"] == "1day"
-    assert calls[-1].kwargs["date_begin"] == int(
-        datetime(2025, 10, 1, tzinfo=UTC).timestamp()
-    )
-    assert "2022-01 scale=max: points=0" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_monthly_probe_stops_on_rate_limit(hass, caplog) -> None:
-    coordinator = _coordinator(hass)
-    coordinator.api.get_first_home_id.return_value = "home-id"
-    coordinator._module_service.async_get = AsyncMock(
-        return_value={
-            "main": LegrandModule(
-                id="main", name="EcoMeter", type="NLE", bridge="bridge-id"
-            )
-        }
-    )
-    coordinator.private_api.get_fluid_measures = AsyncMock(
-        side_effect=LegrandPrivateApiRateLimitError("limited")
-    )
-
-    await coordinator.async_debug_historical_months()
-
-    coordinator.private_api.get_fluid_measures.assert_awaited_once()
-    assert "rate limited; stopping" in caplog.text
+async def test_historical_pro
