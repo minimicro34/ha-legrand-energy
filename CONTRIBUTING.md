@@ -86,6 +86,35 @@ The CI quality gate requires at least **80% total coverage**. The project curren
 
 ---
 
+## Lovelace card development
+
+The bundled Legrand Energy Lovelace card lives in
+`custom_components/legrand_energy/www/legrand-energy-card.js`.
+It is part of this integration, not a separate HACS frontend repository.
+The card documentation and screenshots are maintained in `README.md`
+and `docs/`.
+
+When changing the card:
+
+- Keep entity discovery scoped to the selected EcoMeter; do not mix circuits from different devices.
+- Use Home Assistant Recorder statistics for historical charts. Do not invent missing measurements or present interval-average power as instantaneous power.
+- Preserve the HP/HC breakdown, daylight-saving transitions and N/R (unallocated energy) handling.
+- Mark incomplete Recorder months as partial rather than presenting them as full-month totals.
+- Avoid exposing credentials, tokens, location information or other private details in card diagnostics or screenshots.
+- Add or update regression tests in `tests/test_lovelace_card.mjs` for changed behavior.
+
+Run the card tests directly with Node.js:
+
+```bash
+node --test tests/test_lovelace_card.mjs
+```
+
+Run `make check` before opening a pull request to validate both the Python
+integration and the JavaScript card. If a visible change is made, update
+the relevant README documentation or screenshots as appropriate.
+
+---
+
 ## Translations
 
 When adding or changing user-facing strings:
