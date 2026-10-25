@@ -393,13 +393,13 @@ test("keeps July through September and adds partial October from daily Recorder 
   assert.ok(requests.some((request) => request.period === "day" &&
     request.statistic_ids.includes("sensor.energy")));
   const byMonth = new Map(card._history.map((point) => [
-    new Date(point.time).getUTCMonth(), point.value,
+    new Date(point.time).getMonth(), point.value,
   ]));
   assert.equal(byMonth.get(6), 15);
   assert.equal(byMonth.get(7), 20);
   assert.equal(byMonth.get(8), 15);
   assert.equal(byMonth.get(9), 10);
-  const october = Date.parse("2026-10-01T00:00:00Z");
+  const october = new Date(2026, 9, 1).getTime();
   assert.equal(card._splitHistory.peak.get(october), 5);
   assert.equal(card._splitHistory.offPeak.get(october), 5);
 });
