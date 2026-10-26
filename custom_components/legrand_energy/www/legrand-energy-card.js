@@ -584,6 +584,18 @@ class LegrandEnergyCard extends HTMLElement {
           return displayRecorded.find((point) => point.time === time) ||
             { time, value: null };
         })
+      : this._period === "week"
+        ? Array.from({ length: 7 }, (_, day) => {
+          const date = new Date(today);
+          date.setDate(date.getDate() + day);
+          const time = date.getTime();
+          return displayRecorded.find((point) => {
+            const sample = new Date(point.time);
+            return sample.getFullYear() === date.getFullYear() &&
+              sample.getMonth() === date.getMonth() &&
+              sample.getDate() === date.getDate();
+          }) || { time, value: null };
+        })
       : this._period === "year" && displayRecorded.length
         ? Array.from({ length: 12 }, (_, month) => {
           const year = this._dateRange().start.getFullYear();
@@ -721,8 +733,17 @@ class LegrandEnergyCard extends HTMLElement {
           if (tooltip.style.display === "block") hide(); else show();
         });
       }
-      const labelEvery = this._period === "year" ? 1 : Math.max(1, Math.ceil(points.length / 10));
-      if (point.unallocated || index % labelEvery === 0 || index === points.length - 1) {
+      const labelEvery = this._period === "year" || this._period === "week" ? 1 :
+        Math.max(1, Math.ceil(points.length / 10));
+      // Monthly labels use evenly spaced calendar ticks and the actual final
+      // day (28/29/30/31), without forcing adjacent last-day labels.
+      const monthlyLast = this._period === "month" && points.length > 0
+        ? points.length - 1 : -1;
+      const monthlyTick = this._period === "month" &&
+        (index === monthlyLast || (index % labelEvery === 0 &&
+          index <= monthlyLast - labelEvery));
+      if (point.unallocated || (this._period === "month" ? monthlyTick :
+        index % labelEvery === 0 || index === points.length - 1)) {
         make("text", { x: x + slot / 2, y: height - 23,
           "text-anchor": "middle", fill: "var(--secondary-text-color)",
           "font-size": 11 }, point.unallocated ? "N/R" : this._period === "day" &&
