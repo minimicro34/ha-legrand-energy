@@ -611,3 +611,34 @@ test("keeps N/R separate from the clock axis and excludes it from the remaining 
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*0,5 kWh/);
   assert.match(chart.children.at(-1).textContent, /Écart : 0 kWh/);
 });
+
+
+test("week chart shows seven calendar labels even with one recorded day", () => {
+  const { card } = createCard();
+  card._period = "week";
+  card._dateRange = () => ({ start: new Date(2026, 9, 26), end: new Date(2026, 9, 26) });
+  card._history = [{ time: new Date(2026, 9, 26).getTime(), value: 7.786 }];
+  card._config = { entity: "sensor.energy" };
+  card._hass = { states: { "sensor.energy": { state: "7.786" } } };
+  const svg = card._chart().children.find((child) => child.role === "img");
+  const labels = svg.children.filter((child) => child["text-anchor"] === "middle");
+  assert.equal(labels.length, 7);
+  assert.match(labels[0].textContent, /26\/10/);
+  assert.match(labels[6].textContent, /01\/11/);
+});
+
+test("month chart shows the actual final day without adjacent overlapping labels", () => {
+  for (const [year, month, last] of [[2027, 1, 28], [2028, 1, 29], [2026, 3, 30], [2026, 9, 31]]) {
+    const { card } = createCard();
+    card._period = "month";
+    card._dateRange = () => ({ start: new Date(year, month, 1), end: new Date(year, month, 10) });
+    card._history = [{ time: new Date(year, month, 1).getTime(), value: 1 }];
+    card._config = { entity: "sensor.energy" };
+    card._hass = { states: { "sensor.energy": { state: "1" } } };
+    const svg = card._chart().children.find((child) => child.role === "img");
+    const labels = svg.children.filter((child) => child["text-anchor"] === "middle");
+    assert.match(labels.at(-1).textContent, new RegExp(String(last)));
+    const prev = String(last - 1).padStart(2, "0") + "/" + String(month + 1).padStart(2, "0");
+    assert.ok(!labels.some((label) => label.textContent === prev));
+  }
+});
