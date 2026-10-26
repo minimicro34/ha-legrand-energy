@@ -6,6 +6,19 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.3.1] - Unreleased
+
+### Fixed
+
+- Keep all seven calendar days visible in the Lovelace Week chart, including days without Recorder statistics; missing measurements remain blank rather than being shown as zero consumption.
+- Keep the full calendar month visible in the Month chart, including days without statistics, for months of 28, 29, 30, or 31 days.
+- Space Month chart date labels to avoid crowded adjacent labels near the end of the month, while retaining the final calendar day's label.
+
+### Tests
+
+- Add Lovelace regression tests for a week with only one recorded day and for month-end labels across 28-, 29-, 30-, and 31-day months.
+- Validate with `make check` and `make coverage`: 144 Python tests, 22 JavaScript tests, and 90.43% Python coverage.
+
 ## [1.3.0] - 2026-10-25
 
 Cumulative changes since 1.2.0, including the full beta development and final stabilization.
