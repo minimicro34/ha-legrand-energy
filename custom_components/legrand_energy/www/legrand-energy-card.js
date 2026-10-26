@@ -596,6 +596,18 @@ class LegrandEnergyCard extends HTMLElement {
               sample.getDate() === date.getDate();
           }) || { time, value: null };
         })
+      : this._period === "month"
+        ? Array.from({ length: new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() },
+          (_, day) => {
+            const date = new Date(today.getFullYear(), today.getMonth(), day + 1);
+            const time = date.getTime();
+            return displayRecorded.find((point) => {
+              const sample = new Date(point.time);
+              return sample.getFullYear() === date.getFullYear() &&
+                sample.getMonth() === date.getMonth() &&
+                sample.getDate() === date.getDate();
+            }) || { time, value: null };
+          })
       : this._period === "year" && displayRecorded.length
         ? Array.from({ length: 12 }, (_, month) => {
           const year = this._dateRange().start.getFullYear();
