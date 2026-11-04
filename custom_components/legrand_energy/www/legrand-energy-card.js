@@ -803,7 +803,7 @@ class LegrandEnergyCard extends HTMLElement {
         if (splitValid && hp > 0 && partialFrom == null) make("rect", {
           x: x + barInset, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - barGap), height: plotHeight * hp / ceiling,
-          fill: "#4f86f7", rx: 2,
+          fill: "#4f86f7", rx: 2, "pointer-events": "none",
         });
         bar.setAttribute("aria-label", info);
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
