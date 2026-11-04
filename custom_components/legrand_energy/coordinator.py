@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -127,6 +127,72 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             sorted(module_types),
             matches or ["<none>"],
         )
+
+    async def async_debug_tariff_fields(self) -> None:
+        """Probe raw electricity columns for one completed local day."""
+        if self.private_api is None or self.data is None:
+            _LOGGER.warning("Legrand Energy tariff probe: private API unavailable")
+            return
+
+        home_id = self.api.get_first_home_id()
+        module = MeasurementProcessor.find_total_module(self.data.modules)
+        if home_id is None or module is None or module.bridge is None:
+            _LOGGER.warning("Legrand Energy tariff probe: total module unavailable")
+            return
+
+        day_start = (dt_util.now() - timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        day_end = day_start + timedelta(days=1)
+        fields = ("total", "$0", "$1", "$2")
+        for scale in ("1day", "5min"):
+            payload = await self.private_api.get_electricity_measures(
+                home_id=home_id,
+                modules=[(module.id, module.bridge)],
+                date_begin=int(day_start.timestamp()),
+                date_end=int(day_end.timestamp()) - 1,
+                scale=scale,
+            )
+            body = payload.get("body")
+            home = body.get("home") if isinstance(body, dict) else None
+            modules = home.get("modules") if isinstance(home, dict) else None
+            measures = (
+                modules[0].get("measures")
+                if isinstance(modules, list) and modules
+                and isinstance(modules[0], dict)
+                else None
+            )
+            sums = [0.0] * 4
+            counts = [0] * 4
+            steps: set[int] = set()
+            rows = 0
+            if isinstance(measures, list):
+                for measure in measures:
+                    if not isinstance(measure, dict):
+                        continue
+                    step = measure.get("step_time")
+                    if isinstance(step, int):
+                        steps.add(step)
+                    values = measure.get("value")
+                    if not isinstance(values, list):
+                        continue
+                    for row in values:
+                        if not isinstance(row, list):
+                            continue
+                        rows += 1
+                        for index in range(4):
+                            if index < len(row) and isinstance(row[index], (int, float)) and not isinstance(row[index], bool):
+                                sums[index] += float(row[index])
+                                counts[index] += 1
+            summary = {
+                name: {"sum_wh": round(sums[i], 3), "count": counts[i]}
+                for i, name in enumerate(fields)
+            }
+            _LOGGER.warning(
+                "Legrand Energy tariff probe: day=%s scale=%s rows=%s "
+                "steps_seconds=%s energy_columns=%s",
+                day_start.date(), scale, rows, sorted(steps), summary,
+            )
 
     async def _async_update_data(self) -> LegrandEnergyData:
         """Fetch and assemble the latest Legrand Energy data."""
