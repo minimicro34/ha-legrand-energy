@@ -94,18 +94,13 @@ def test_entity_device_info_and_availability(hass) -> None:
     }
     coordinator = _coordinator(hass, modules)
 
-    with patch(
-        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
-        create=True,
-        return_value="parent-device-id",
-    ):
-        main = LegrandEntity(coordinator, "main")
-        child = LegrandEntity(coordinator, "main#0")
+    main = LegrandEntity(coordinator, "main")
+    child = LegrandEntity(coordinator, "main#0")
 
     assert main.device_info["model"] == "EcoMeter"
-    assert "via_device_id" not in main.device_info
+    assert "via_device" not in main.device_info
     assert child.device_info["model"] == "EcoMeter Circuit"
-    assert child.device_info["via_device_id"] == "parent-device-id"
+    assert child.device_info["via_device"] == ("legrand_energy", "main")
     assert child.module == modules["main#0"]
     assert child.available is True
 
@@ -212,7 +207,7 @@ async def test_sensor_setup_and_values(hass) -> None:
         create=True,
         return_value="parent-device-id",
     ):
-        await async_setup_sensors(hass, entry, added.extend)
+    await async_setup_sensors(hass, entry, added.extend)
 
     assert len(added) == len(GLOBAL_SENSOR_DESCRIPTIONS) + len(
         MODULE_SENSOR_DESCRIPTIONS
@@ -230,6 +225,7 @@ async def test_sensor_setup_and_values(hass) -> None:
     assert global_sensor.available is True
     assert module_sensor.native_value == 1.1
     assert module_sensor.available is True
+    assert module_sensor.device_info["via_device"] == ("legrand_energy", "main")
 
     coordinator.data = LegrandEnergyData(
         modules={"main": main, "main#0": circuit},
