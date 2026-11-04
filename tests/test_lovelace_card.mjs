@@ -67,6 +67,37 @@ test("shows the loaded card version in its diagnostics panel", () => {
   assert.equal(diagnostics.children.at(-1).textContent, "Version de la carte : 1.0.0");
 });
 
+test("groups Netatmo intervals without inventing samples across gaps", () => {
+  const { card } = createCard();
+  const start = new Date("2026-11-04T00:00:00Z");
+  const end = new Date("2026-11-04T02:00:00Z");
+  const buckets = card._netatmoBuckets([
+    { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 0.2, interval_seconds: 1500, tariff: "peak" },
+    { timestamp: "2026-11-04T00:25:00Z", energy_kwh: 0.3, interval_seconds: 1500, tariff: "off_peak" },
+    { timestamp: "2026-11-04T01:30:00Z", energy_kwh: 0.4, interval_seconds: 1500, tariff: null },
+    { timestamp: "2026-11-04T02:00:00Z", energy_kwh: 1, interval_seconds: 1500 },
+    { timestamp: "invalid", energy_kwh: 2, interval_seconds: 1500 },
+  ], start, end, 1800000);
+  assert.equal(buckets.length, 2);
+  assert.equal(buckets[0].energy_kwh, 0.5);
+  assert.equal(buckets[0].peak_kwh, 0.2);
+  assert.equal(buckets[0].offpeak_kwh, 0.3);
+  assert.equal(buckets[1].start, Date.parse("2026-11-04T01:30:00Z"));
+  assert.equal(buckets[1].energy_kwh, 0.4);
+});
+
+test("keeps repeated autumn DST hour as two distinct Netatmo buckets", () => {
+  const { card } = createCard();
+  const start = new Date("2026-10-25T00:00:00Z");
+  const end = new Date("2026-10-25T03:00:00Z");
+  const buckets = card._netatmoBuckets([
+    { timestamp: "2026-10-25T02:30:00+02:00", energy_kwh: 0.1, interval_seconds: 1500 },
+    { timestamp: "2026-10-25T02:30:00+01:00", energy_kwh: 0.2, interval_seconds: 1500 },
+  ], start, end, 1800000);
+  assert.equal(buckets.length, 2);
+  assert.equal(buckets[1].start - buckets[0].start, 3600000);
+});
+
 test("requires a configured energy entity", () => {
   const { card } = createCard();
   assert.throws(() => card.setConfig({}), /energy entity is required/);
