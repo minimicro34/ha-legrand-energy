@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -20,6 +21,7 @@ from .api import (
 )
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .contract_service import ContractService
+from .helpers.measurement_processor import MeasurementProcessor
 from .measurement_service import MeasurementService
 from .models import (
     FluidMeasurements,
@@ -69,6 +71,19 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
         )
         self._measurement_service = (
             MeasurementService(private_api) if private_api is not None else None
+        )
+
+    def cached_energy_history(
+        self, *, start: datetime, end: datetime
+    ) -> list[dict[str, object]]:
+        """Return the total electricity series from the private API cache."""
+        if self._measurement_service is None or self.data is None:
+            return []
+        total_module = MeasurementProcessor.find_total_module(self.data.modules)
+        if total_module is None:
+            return []
+        return self._measurement_service.cached_energy_history(
+            total_module.id, start=start, end=end
         )
 
     async def async_debug_homestatus(self) -> None:
