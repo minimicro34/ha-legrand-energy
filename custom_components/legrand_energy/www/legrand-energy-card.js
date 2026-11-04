@@ -285,6 +285,7 @@ class LegrandEnergyCard extends HTMLElement {
     const key = [entity, this._period, start.toISOString(), Math.floor(end.getTime() / 300000)].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
+    const startedAvailable = Boolean(this._state(entity));
     this._historySource = null;
     this._history = null;
     this._partialMonths = new Map();
@@ -630,7 +631,7 @@ class LegrandEnergyCard extends HTMLElement {
     if (this._historyKey !== key) return;
     this._historySource = "recorder";
     // If startup completed during the Recorder request, retry native data.
-    if (!this._lastEnergyAvailable && this._state(entity)) {
+    if (!startedAvailable && this._lastEnergyAvailable) {
       this._lastEnergyAvailable = true;
       this._historyKey = null;
       void this._loadHistory();
