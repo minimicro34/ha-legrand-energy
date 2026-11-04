@@ -107,7 +107,7 @@ test("builds Netatmo day chart series with exact HP/HC energy", () => {
     { timestamp: "2026-11-04T00:25:00Z", energy_kwh: 0.3, interval_seconds: 1500, tariff: "off_peak" },
     { timestamp: "2026-11-04T01:30:00Z", energy_kwh: 0.4, interval_seconds: 1500, tariff: null },
   ], start, end, "day");
-  assert.deepEqual(result.history.map((row) => row.value), [0.5, 0.4]);
+  assert.equal(Array.from(result.history, (row) => row.value).join(","), "0.5,0.4");
   assert.equal(result.split.peak.get(start.getTime()), 0.2);
   assert.equal(result.split.offPeak.get(start.getTime()), 0.3);
   assert.equal(result.history.length, 2, "missing half-hours are not filled");
@@ -122,7 +122,7 @@ test("aggregates Netatmo year chart by calendar month", () => {
     { timestamp: "2026-07-02T12:00:00Z", energy_kwh: 5, interval_seconds: 86400 },
     { timestamp: "2026-08-01T12:00:00Z", energy_kwh: 7, interval_seconds: 86400 },
   ], start, end, "year");
-  assert.deepEqual(result.history.map((row) => row.value), [15, 7]);
+  assert.equal(Array.from(result.history, (row) => row.value).join(","), "15,7");
   assert.equal(result.history[0].time, new Date(2026, 6, 1).getTime());
   assert.equal(result.history[1].time, new Date(2026, 7, 1).getTime());
 });
