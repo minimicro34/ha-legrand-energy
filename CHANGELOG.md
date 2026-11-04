@@ -14,6 +14,7 @@ The format is based on Keep a Changelog.
 - Kept Home Assistant Recorder as fallback when the integration cache is unavailable or empty, and retried native history after startup.
 - Restored authenticated cached-history WebSocket access, interval serialization, and native HP/HC measurements with regression tests.
 - Bumped integration to `1.3.3-beta6` and Lovelace card to `1.0.2`; beta5 remains unchanged.
+- Rebased the native-history changes on the merged average-power fixes.
 
 
 ### Added
