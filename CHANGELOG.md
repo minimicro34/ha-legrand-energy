@@ -6,6 +6,28 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.3.1] - 2026-11-04
+
+Maintenance release following the initial installation through the official Home Assistant Marketplace / HACS catalog.
+
+### Fixed
+
+- Register the physical EcoMeter in Home Assistant's device registry before setting up sensor platforms, preventing missing-parent-device errors on first installation.
+- Resolve circuit parent devices safely when a parent has not yet been registered, without changing existing device identifiers, entity unique IDs, or Recorder history.
+- Keep Home Assistant-managed aiohttp sessions open during private authentication and reconfiguration instead of closing them explicitly.
+
+### Validation
+
+- 147 Python tests passed with 90.47% coverage; 20 Lovelace JavaScript tests passed.
+- Local checks and GitHub Actions CI validated after merging the fixes into `main`.
+- Added regression tests for initial device registration, missing parent lookup, private login session ownership, and reconfiguration.
+
+---
+
+[1.3.1]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.0...v1.3.1
+
+---
+
 ## [1.3.0] - 2026-10-25
 
 Cumulative changes since 1.2.0, including the full beta development and final stabilization.
