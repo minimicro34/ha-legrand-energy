@@ -209,8 +209,8 @@ class LegrandEnergyCard extends HTMLElement {
       const bucketStart = startMs + Math.floor((timestamp - startMs) / bucketMs) * bucketMs;
       const previous = buckets.get(bucketStart) || { start: bucketStart, energy_kwh: 0, peak_kwh: 0, offpeak_kwh: 0 };
       previous.energy_kwh += energy;
-      if (point.tariff === "peak") previous.peak_kwh += energy;
-      if (point.tariff === "off_peak") previous.offpeak_kwh += energy;
+      if (point.tariff === "HP" || point.tariff === "peak") previous.peak_kwh += energy;
+      if (point.tariff === "HC" || point.tariff === "off_peak") previous.offpeak_kwh += energy;
       buckets.set(bucketStart, previous);
     }
     return [...buckets.values()].sort((a, b) => a.start - b.start);
@@ -237,8 +237,8 @@ class LegrandEnergyCard extends HTMLElement {
           : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
       const row = buckets.get(bucket) || { time: bucket, value: 0, peak: 0, offPeak: 0 };
       row.value += energy;
-      if (point.tariff === "peak") row.peak += energy;
-      if (point.tariff === "off_peak") row.offPeak += energy;
+      if (point.tariff === "HP" || point.tariff === "peak") row.peak += energy;
+      if (point.tariff === "HC" || point.tariff === "off_peak") row.offPeak += energy;
       buckets.set(bucket, row);
     }
     const rows = [...buckets.values()].sort((a, b) => a.time - b.time);
