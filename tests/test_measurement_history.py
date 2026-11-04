@@ -122,3 +122,12 @@ def test_daily_totals_do_not_claim_a_single_hp_hc_tariff() -> None:
     )
     assert [row["energy_kwh"] for row in result] == [18, 0.5]
     assert [row["tariff"] for row in result] == [None, "HC"]
+
+
+def test_23_hour_dst_day_is_not_assigned_to_one_tariff() -> None:
+    daily = point(0, 10000, 23 * 3600)
+    daily.tariff = "HC"
+    result = serialize_energy_history(
+        [daily], start=START, end=START + timedelta(days=1)
+    )
+    assert result[0]["tariff"] is None
