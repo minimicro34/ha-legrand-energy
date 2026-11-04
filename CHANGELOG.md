@@ -8,9 +8,7 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
-## [1.3.3-beta6] - 2026-11-05
-
-### Native history restoration
+### Beta 6 — Native history restoration
 
 - Restored Netatmo / Home + Control cached interval history as the preferred source for Day, Week, Month, and Year charts.
 - Kept Home Assistant Recorder as fallback when the integration cache is unavailable or empty, and retried native history after startup.
