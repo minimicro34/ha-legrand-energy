@@ -42,6 +42,11 @@ function values(card) {
     .map((tile) => tile.children[1].textContent);
 }
 
+test("reports its own version independently of the integration", () => {
+  const { card } = createCard();
+  assert.equal(card.constructor.version, "1.0.0");
+});
+
 test("requires a configured energy entity", () => {
   const { card } = createCard();
   assert.throws(() => card.setConfig({}), /energy entity is required/);
