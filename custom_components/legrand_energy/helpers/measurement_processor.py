@@ -95,7 +95,9 @@ class MeasurementProcessor:
 
         return LegrandMeasurements(
             average_power=cls.latest_average_power(today_points, now=now),
-            average_power_timestamp=cls.latest_average_power_timestamp(today_points, now=now),
+            average_power_timestamp=cls.latest_average_power_timestamp(
+                today_points, now=now
+            ),
             energy_today=(energy_today_wh / 1000),
             energy_peak_today=(energy_peak_today_wh / 1000),
             energy_off_peak_today=(energy_off_peak_today_wh / 1000),
