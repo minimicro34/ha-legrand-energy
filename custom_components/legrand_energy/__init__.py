@@ -8,7 +8,7 @@ import aiohttp
 from homeassistant.components.http import StaticPathConfig  # type: ignore[attr-defined]
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers import config_validation as cv
@@ -204,16 +204,6 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
-    )
-
-    async def debug_homestatus(_call: ServiceCall) -> None:
-        """Run a sanitized private Home + Control status probe."""
-        await coordinator.async_debug_homestatus()
-
-    hass.services.async_register(
-        DOMAIN,
-        "debug_homestatus",
-        debug_homestatus,
     )
 
     return True
