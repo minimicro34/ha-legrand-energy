@@ -1,5 +1,9 @@
 /* Legrand Energy Lovelace card — bundled with the integration. */
+// Keep in sync with CARD_VERSION in diagnostics.py.
+const LEGRAND_CARD_VERSION = "1.0.0";
 class LegrandEnergyCard extends HTMLElement {
+  static get version() { return LEGRAND_CARD_VERSION; }
+
   setConfig(config) {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
       throw new Error("Legrand Energy: an energy entity is required");
