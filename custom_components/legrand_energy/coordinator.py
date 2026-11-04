@@ -181,7 +181,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                             continue
                         rows += 1
                         for index in range(4):
-                            if index < len(row) and isinstance(row[index], (int, float)) and not isinstance(row[index], bool):
+                            if (
+                                index < len(row)
+                                and isinstance(row[index], (int, float))
+                                and not isinstance(row[index], bool)
+                            ):
                                 sums[index] += float(row[index])
                                 counts[index] += 1
             summary = {
