@@ -8,14 +8,15 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
-### Beta 6 — Native history restoration
+## [1.3.3-beta6] - 2026-11-05
+
+### Native history restoration
 
 - Restored Netatmo / Home + Control cached interval history as the preferred source for Day, Week, Month, and Year charts.
 - Kept Home Assistant Recorder as fallback when the integration cache is unavailable or empty, and retried native history after startup.
 - Restored authenticated cached-history WebSocket access, interval serialization, and native HP/HC measurements with regression tests.
 - Bumped integration to `1.3.3-beta6` and Lovelace card to `1.0.2`; beta5 remains unchanged.
-- Rebased the native-history changes on the merged average-power fixes.
-
+- Integrated native-history changes on top of the merged average-power fixes.
 
 ### Added
 
@@ -39,9 +40,8 @@ The format is based on Keep a Changelog.
 
 ### Validation
 
-- 90.14% Python test coverage (80% required).
-- All 21 JavaScript tests passed.
-- Ruff, Mypy, CI, HACS Validation, and Hassfest passed before the card-version and changelog updates; the latest changes require revalidation.
+- Python and JavaScript regression tests cover average-power freshness and native history.
+- CI, HACS Validation, and Hassfest passed on the beta6 pull request; release validation on `main` is tracked by GitHub Actions.
 
 ---
 
