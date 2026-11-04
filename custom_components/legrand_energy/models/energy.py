@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from ..tariff_engine import TariffState
 from .contract import Contract
@@ -28,6 +29,7 @@ class LegrandMeasurements:
     """Represent calculated energy measurements."""
 
     average_power: float | None = None
+    average_power_timestamp: datetime | None = None
 
     energy_today: float | None = None
     energy_peak_today: float | None = None
