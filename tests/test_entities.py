@@ -202,11 +202,6 @@ async def test_sensor_setup_and_values(hass) -> None:
     entry = SimpleNamespace(runtime_data=coordinator)
     added = []
 
-    with patch(
-        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
-        create=True,
-        return_value="parent-device-id",
-    ):
     await async_setup_sensors(hass, entry, added.extend)
 
     assert len(added) == len(GLOBAL_SENSOR_DESCRIPTIONS) + len(
