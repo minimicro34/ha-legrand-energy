@@ -1,5 +1,5 @@
 /* Legrand Energy Lovelace card — bundled with the integration. */
-const LEGRAND_ENERGY_CARD_VERSION = "1.0.1";
+const LEGRAND_ENERGY_CARD_VERSION = "1.0.2";
 class LegrandEnergyCard extends HTMLElement {
   setConfig(config) {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
@@ -9,6 +9,9 @@ class LegrandEnergyCard extends HTMLElement {
     this._period = this._period || "day";
     this._history = null;
     this._historyKey = null;
+    this._historySource = null;
+    this._lastEnergyAvailable = false;
+    this._lastNativeRetry = 0;
     this._partialMonths = new Map();
     this._tariffHistory = null;
     this._splitHistory = null;
@@ -18,7 +21,17 @@ class LegrandEnergyCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const wasAvailable = this._lastEnergyAvailable;
     this._hass = hass;
+    const isAvailable = Boolean(this._state(this._config?.entity));
+    this._lastEnergyAvailable = isAvailable;
+    const entryId = (this._registry || hass.entities)?.[this._config?.entity]?.config_entry_id;
+    const now = Date.now();
+    if (this._historySource === "recorder" && entryId && isAvailable &&
+        ((!wasAvailable && isAvailable) || now - this._lastNativeRetry >= 30000)) {
+      this._lastNativeRetry = now;
+      this._historyKey = null;
+    }
     this._render();
     this._loadHistory();
     this._loadEntityRegistry();
@@ -215,6 +228,77 @@ class LegrandEnergyCard extends HTMLElement {
     return { start, end: now };
   }
 
+  // Netatmo reports interval energy (Wh decoded to kWh), not cumulative Recorder sums.
+  // Keep every timestamp in UTC milliseconds to distinguish repeated DST hours.
+  _netatmoBuckets(points, start, end, bucketMs) {
+    const buckets = new Map();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    if (!(bucketMs > 0) || !(endMs > startMs)) return [];
+    for (const point of points) {
+      const timestamp = Date.parse(point.timestamp);
+      const energy = Number(point.energy_kwh);
+      const interval = Number(point.interval_seconds);
+      if (!Number.isFinite(timestamp) || timestamp < startMs || timestamp >= endMs ||
+          !Number.isFinite(energy) || energy < 0 || !Number.isFinite(interval) || interval <= 0)
+        continue;
+      // Do not spread a measurement over unreported intervals.
+      const bucketStart = startMs + Math.floor((timestamp - startMs) / bucketMs) * bucketMs;
+      const previous = buckets.get(bucketStart) || { start: bucketStart, energy_kwh: 0, peak_kwh: 0, offpeak_kwh: 0 };
+      previous.energy_kwh += energy;
+      if (point.tariff === "HP" || point.tariff === "peak") previous.peak_kwh += energy;
+      if (point.tariff === "HC" || point.tariff === "off_peak") previous.offpeak_kwh += energy;
+      buckets.set(bucketStart, previous);
+    }
+    return [...buckets.values()].sort((a, b) => a.start - b.start);
+  }
+
+  _netatmoChartData(points, start, end, period = this._period) {
+    // Calendar buckets use the browser's local timezone, like the period tabs.
+    // Day buckets use elapsed UTC milliseconds to preserve both autumn 02:00 hours.
+    const buckets = new Map();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    for (const point of points) {
+      const timestamp = Date.parse(point.timestamp);
+      const energy = Number(point.energy_kwh);
+      if (!Number.isFinite(timestamp) || timestamp < startMs || timestamp >= endMs ||
+          !Number.isFinite(energy) || energy < 0 ||
+          !Number.isFinite(Number(point.interval_seconds)) ||
+          Number(point.interval_seconds) <= 0) continue;
+      const date = new Date(timestamp);
+      const bucket = period === "day"
+        ? startMs + Math.floor((timestamp - startMs) / 1800000) * 1800000
+        : period === "year"
+          ? new Date(date.getFullYear(), date.getMonth(), 1).getTime()
+          : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      const row = buckets.get(bucket) || { time: bucket, value: 0, peak: 0, offPeak: 0 };
+      row.value += energy;
+      const nativePeak = point.peak_kwh == null ? 0 : Number(point.peak_kwh);
+      const nativeOffPeak = point.off_peak_kwh == null ? 0 : Number(point.off_peak_kwh);
+      const nativeValid = Number.isFinite(nativePeak) && Number.isFinite(nativeOffPeak) &&
+        nativePeak >= 0 && nativeOffPeak >= 0 &&
+        (point.peak_kwh != null || point.off_peak_kwh != null) &&
+        Math.abs(nativePeak + nativeOffPeak - energy) < 0.00001;
+      if (nativeValid) {
+        row.peak += nativePeak;
+        row.offPeak += nativeOffPeak;
+      } else {
+        if (point.tariff === "HP" || point.tariff === "peak") row.peak += energy;
+        if (point.tariff === "HC" || point.tariff === "off_peak") row.offPeak += energy;
+      }
+      buckets.set(bucket, row);
+    }
+    const rows = [...buckets.values()].sort((a, b) => a.time - b.time);
+    return {
+      history: rows.map(({ time, value }) => ({ time, value })),
+      split: {
+        peak: new Map(rows.map((row) => [row.time, row.peak])),
+        offPeak: new Map(rows.map((row) => [row.time, row.offPeak])),
+      },
+    };
+  }
+
   async _loadHistory() {
     if (!this._hass?.callWS || !this._config) return;
     const entity = this._config.entity;
@@ -229,12 +313,43 @@ class LegrandEnergyCard extends HTMLElement {
     const key = [entity, this._period, start.toISOString(), Math.floor(end.getTime() / 300000)].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
+    const startedAvailable = Boolean(this._state(entity));
+    this._historySource = null;
     this._history = null;
     this._partialMonths = new Map();
     this._historyError = false;
     this._tariffHistory = null;
     this._splitHistory = null;
     this._render();
+    // Prefer the integration's cached Netatmo intervals. Never fetch private API
+    // measurements from the card; Recorder remains the compatibility fallback.
+    const entryId = (this._registry || this._hass.entities)?.[entity]?.config_entry_id;
+    if (entryId) {
+      try {
+        const result = await this._hass.callWS({
+          type: "legrand_energy/cached_history",
+          entry_id: entryId,
+          start: start.toISOString(),
+          end: end.toISOString(),
+        });
+        if (this._historyKey !== key) return;
+        if (Array.isArray(result?.points) && result.points.length) {
+          const chart = this._netatmoChartData(result.points, start, end);
+          if (chart.history.length) {
+            this._history = chart.history;
+            this._historySource = "netatmo";
+            this._splitHistory = chart.split;
+            this._dayGranularity = 1800000;
+            this._unallocatedEnergy = 0;
+            this._unallocatedGaps = 0;
+            this._render();
+            return;
+          }
+        }
+      } catch (_error) {
+        // Older integration versions or unavailable private history use Recorder.
+      }
+    }
     let historyPeriod = period;
     let monthlyRows = [];
     try {
@@ -540,6 +655,14 @@ class LegrandEnergyCard extends HTMLElement {
       } catch (_error) {
         // Never fabricate a partial month if daily Recorder data is missing.
       }
+    }
+    this._historySource = "recorder";
+    // If startup completed during the Recorder request, retry native data.
+    if (!startedAvailable && this._lastEnergyAvailable) {
+      this._lastEnergyAvailable = true;
+      this._historyKey = null;
+      void this._loadHistory();
+      return;
     }
     // Historical tariff states are needed: today's current HP/HC state cannot
     // reliably classify earlier hourly consumption.

@@ -31,6 +31,7 @@ from .models.auth import PrivateSession
 from .oauth2 import async_get_session
 from .private_api import LegrandPrivateApi
 from .services.private import PrivateAuthService
+from .websocket import async_register as async_register_websocket
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -48,6 +49,7 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, object]) -> bool:
             )
         ]
     )
+    async_register_websocket(hass)
     # Register the card in storage-managed Lovelace resources when available.
     lovelace = hass.data.get("lovelace")
     resources = getattr(lovelace, "resources", None)

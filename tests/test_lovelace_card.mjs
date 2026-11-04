@@ -118,7 +118,7 @@ test("auto-discovers period and contract sensors for the selected EcoMeter", () 
   }};
   assert.equal(card._autoEntity(null, ["puissance_souscrite"]), prefix + "puissance_souscrite");
   assert.equal(card.children[0].children[0].children.at(-2).children[0].textContent, "Contrat et diagnostics");
-  assert.equal(card.children[0].children[0].children.at(-1).textContent, "Version de la carte : 1.0.1");
+  assert.equal(card.children[0].children[0].children.at(-1).textContent, "Version de la carte : 1.0.2");
   for (const [period, suffix] of [["week", "energie"], ["month", "energie_2"], ["year", "energie_3"]]) {
     card._period = period;
     assert.equal(card._periodEntity(), prefix + suffix);
@@ -627,4 +627,120 @@ test("keeps N/R separate from the clock axis and excludes it from the remaining 
   assert.match(bars[1]["aria-label"], /Non répartie/);
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*0,5 kWh/);
   assert.match(chart.children.at(-1).textContent, /Écart : 0 kWh/);
+});
+
+test("prefers cached Netatmo history over Recorder when registry identifies entry", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  card._registry = {
+    "sensor.energy": { entity_id: "sensor.energy", config_entry_id: "entry-1" },
+  };
+  const calls = [];
+  card._hass = {
+    states: { "sensor.energy": { state: "0.5" } },
+    callWS: async (payload) => {
+      calls.push(payload);
+      if (payload.type !== "legrand_energy/cached_history")
+        throw new Error("Recorder should not be requested");
+      return { points: [
+        { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 0.2, interval_seconds: 1500, tariff: "peak" },
+        { timestamp: "2026-11-04T00:25:00Z", energy_kwh: 0.3, interval_seconds: 1500, tariff: "off_peak" },
+      ] };
+    },
+  };
+  await card._loadHistory();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].entry_id, "entry-1");
+  assert.equal(calls[0].start, "2026-11-04T00:00:00.000Z");
+  assert.equal(card._history.length, 1);
+  assert.equal(card._history[0].value, 0.5);
+  assert.equal(card._splitHistory.peak.get(Date.parse("2026-11-04T00:00:00Z")), 0.2);
+  assert.equal(card._unallocatedGaps, 0);
+});
+
+test("falls back to Recorder when Netatmo cache is empty", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  card._registry = {
+    "sensor.energy": { entity_id: "sensor.energy", config_entry_id: "entry-1" },
+  };
+  const calls = [];
+  card._hass = {
+    states: { "sensor.energy": { state: "1" } },
+    callWS: async (payload) => {
+      calls.push(payload.type);
+      if (payload.type === "legrand_energy/cached_history") return { points: [] };
+      if (payload.type === "recorder/statistics_during_period") {
+        const begin = Date.parse(payload.start_time);
+        return { "sensor.energy": [
+          { start: begin, sum: 10 },
+          { start: begin + 300000, sum: 10.5 },
+          { start: begin + 600000, sum: 11 },
+        ] };
+      }
+      return {};
+    },
+  };
+  await card._loadHistory();
+  assert.equal(calls[0], "legrand_energy/cached_history");
+  assert.ok(calls.includes("recorder/statistics_during_period"));
+  assert.ok(card._history.length > 0);
+});
+
+test("does not request Netatmo history for an entity without a config entry", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  const calls = [];
+  card._hass = {
+    states: {},
+    callWS: async (payload) => {
+      calls.push(payload.type);
+      return { "sensor.energy": [] };
+    },
+  };
+  await card._loadHistory();
+  assert.ok(!calls.includes("legrand_energy/cached_history"));
+  assert.ok(calls.includes("recorder/statistics_during_period"));
+});
+
+
+test("uses native Netatmo daily HP HC totals for week and year", () => {
+  const { card } = createCard();
+  const points = [
+    { timestamp: "2026-11-03T00:00:00Z", energy_kwh: 20.623,
+      interval_seconds: 86400, tariff: null, peak_kwh: 14.955, off_peak_kwh: 5.668 },
+    { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 18.053,
+      interval_seconds: 86400, tariff: null, peak_kwh: 10.975, off_peak_kwh: 7.078 },
+  ];
+  const week = card._netatmoChartData(points,
+    new Date("2026-11-02T00:00:00Z"), new Date("2026-11-09T00:00:00Z"), "week");
+  assert.equal(Array.from(week.history, (r) => r.value).reduce((a, b) => a + b, 0).toFixed(3), "38.676");
+  assert.equal(Array.from(week.split.peak.values()).reduce((a, b) => a + b, 0).toFixed(3), "25.930");
+  assert.equal(Array.from(week.split.offPeak.values()).reduce((a, b) => a + b, 0).toFixed(3), "12.746");
+  const year = card._netatmoChartData(points,
+    new Date("2026-01-01T00:00:00Z"), new Date("2027-01-01T00:00:00Z"), "year");
+  assert.equal(year.history.length, 1);
+  assert.equal(year.split.peak.get(year.history[0].time).toFixed(3), "25.930");
+});
+
+test("does not invent native HP HC when daily split is inconsistent", () => {
+  const { card } = createCard();
+  const result = card._netatmoChartData([
+    { timestamp: "2026-11-03T00:00:00Z", energy_kwh: 20,
+      interval_seconds: 86400, tariff: null, peak_kwh: 14, off_peak_kwh: 5 },
+  ], new Date("2026-11-03T00:00:00Z"), new Date("2026-11-04T00:00:00Z"), "week");
+  assert.equal(Array.from(result.split.peak.values())[0], 0);
+  assert.equal(Array.from(result.split.offPeak.values())[0], 0);
 });

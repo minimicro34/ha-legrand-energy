@@ -54,6 +54,8 @@ class MeasurementService:
 
         self._historical_points_by_module: dict[str, list[EnergyPoint]] = {}
         self._historical_cache_date: date | None = None
+        self._today_points_by_module: dict[str, list[EnergyPoint]] = {}
+        self._today_cache_date: date | None = None
         self._historical_backoff = RetryBackoff(HISTORICAL_RETRY_DELAYS)
 
         self._current_day_backoff = RetryBackoff(CURRENT_DAY_RETRY_DELAYS)
@@ -254,6 +256,8 @@ class MeasurementService:
                 previous_failure_count,
             )
 
+        self._today_points_by_module = today_points_by_module
+        self._today_cache_date = today_start.date()
         historical_points = self._historical_points_by_module
 
         points_by_module = {
@@ -459,6 +463,21 @@ class MeasurementService:
                 measurements, average_power=None, average_power_timestamp=None
             )
         return measurements
+
+    def cached_energy_history(
+        self,
+        module_id: str,
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> list[dict[str, object]]:
+        """Return decoded intervals from cache without additional API calls."""
+        from .helpers.measurement_history import serialize_energy_history
+
+        points = list(self._historical_points_by_module.get(module_id, []))
+        if self._today_cache_date == dt_util.now().date():
+            points.extend(self._today_points_by_module.get(module_id, []))
+        return serialize_energy_history(points, start=start, end=end)
 
     @staticmethod
     def _cached_result(
