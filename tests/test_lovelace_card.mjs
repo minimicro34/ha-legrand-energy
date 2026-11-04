@@ -712,3 +712,89 @@ test("keeps N/R separate from the clock axis and excludes it from the remaining 
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*0,5 kWh/);
   assert.match(chart.children.at(-1).textContent, /Écart : 0 kWh/);
 });
+
+test("prefers cached Netatmo history over Recorder when registry identifies entry", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  card._registry = {
+    "sensor.energy": { entity_id: "sensor.energy", config_entry_id: "entry-1" },
+  };
+  const calls = [];
+  card._hass = {
+    states: { "sensor.energy": { state: "0.5" } },
+    callWS: async (payload) => {
+      calls.push(payload);
+      if (payload.type !== "legrand_energy/cached_history")
+        throw new Error("Recorder should not be requested");
+      return { points: [
+        { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 0.2, interval_seconds: 1500, tariff: "peak" },
+        { timestamp: "2026-11-04T00:25:00Z", energy_kwh: 0.3, interval_seconds: 1500, tariff: "off_peak" },
+      ] };
+    },
+  };
+  await card._loadHistory();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].entry_id, "entry-1");
+  assert.equal(calls[0].start, "2026-11-04T00:00:00.000Z");
+  assert.equal(card._history.length, 1);
+  assert.equal(card._history[0].value, 0.5);
+  assert.equal(card._splitHistory.peak.get(Date.parse("2026-11-04T00:00:00Z")), 0.2);
+  assert.equal(card._unallocatedGaps, 0);
+});
+
+test("falls back to Recorder when Netatmo cache is empty", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  card._registry = {
+    "sensor.energy": { entity_id: "sensor.energy", config_entry_id: "entry-1" },
+  };
+  const calls = [];
+  card._hass = {
+    states: { "sensor.energy": { state: "1" } },
+    callWS: async (payload) => {
+      calls.push(payload.type);
+      if (payload.type === "legrand_energy/cached_history") return { points: [] };
+      if (payload.type === "recorder/statistics_during_period") {
+        const begin = Date.parse(payload.start_time);
+        return { "sensor.energy": [
+          { start: begin, sum: 10 },
+          { start: begin + 300000, sum: 10.5 },
+          { start: begin + 600000, sum: 11 },
+        ] };
+      }
+      return {};
+    },
+  };
+  await card._loadHistory();
+  assert.equal(calls[0], "legrand_energy/cached_history");
+  assert.ok(calls.includes("recorder/statistics_during_period"));
+  assert.ok(card._history.length > 0);
+});
+
+test("does not request Netatmo history for an entity without a config entry", async () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  const calls = [];
+  card._hass = {
+    states: {},
+    callWS: async (payload) => {
+      calls.push(payload.type);
+      return { "sensor.energy": [] };
+    },
+  };
+  await card._loadHistory();
+  assert.ok(!calls.includes("legrand_energy/cached_history"));
+  assert.ok(calls.includes("recorder/statistics_during_period"));
+});
