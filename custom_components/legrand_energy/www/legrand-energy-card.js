@@ -237,8 +237,19 @@ class LegrandEnergyCard extends HTMLElement {
           : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
       const row = buckets.get(bucket) || { time: bucket, value: 0, peak: 0, offPeak: 0 };
       row.value += energy;
-      if (point.tariff === "HP" || point.tariff === "peak") row.peak += energy;
-      if (point.tariff === "HC" || point.tariff === "off_peak") row.offPeak += energy;
+      const nativePeak = point.peak_kwh == null ? 0 : Number(point.peak_kwh);
+      const nativeOffPeak = point.off_peak_kwh == null ? 0 : Number(point.off_peak_kwh);
+      const nativeValid = Number.isFinite(nativePeak) && Number.isFinite(nativeOffPeak) &&
+        nativePeak >= 0 && nativeOffPeak >= 0 &&
+        (point.peak_kwh != null || point.off_peak_kwh != null) &&
+        Math.abs(nativePeak + nativeOffPeak - energy) < 0.00001;
+      if (nativeValid) {
+        row.peak += nativePeak;
+        row.offPeak += nativeOffPeak;
+      } else {
+        if (point.tariff === "HP" || point.tariff === "peak") row.peak += energy;
+        if (point.tariff === "HC" || point.tariff === "off_peak") row.offPeak += energy;
+      }
       buckets.set(bucket, row);
     }
     const rows = [...buckets.values()].sort((a, b) => a.time - b.time);
