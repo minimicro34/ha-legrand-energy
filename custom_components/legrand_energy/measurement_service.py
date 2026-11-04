@@ -477,7 +477,9 @@ class MeasurementService:
         # Cached energy totals remain useful, but a failed poll cannot
         # establish that an interval-average power reading is still fresh.
         measurements = (
-            MeasurementService._retain_recent_average(previous_data.measurements, dt_util.now())
+            MeasurementService._retain_recent_average(
+                previous_data.measurements, dt_util.now()
+            )
             if previous_data.measurements is not None
             else None
         )
