@@ -921,6 +921,8 @@ class LegrandEnergyCard extends HTMLElement {
         grid.appendChild(tile);
       }
       details.appendChild(grid);
+      details.appendChild(this._element("div", `Version de la carte : ${LEGRAND_CARD_VERSION}`,
+        "margin-top:12px;font-size:12px;color:var(--secondary-text-color)"));
       wrapper.appendChild(details);
     }
     this._card.appendChild(wrapper);
