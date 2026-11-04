@@ -14,6 +14,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._historyKey = null;
     this._historySource = null;
     this._lastEnergyAvailable = false;
+    this._lastNativeRetry = 0;
     this._partialMonths = new Map();
     this._tariffHistory = null;
     this._splitHistory = null;
@@ -28,7 +29,11 @@ class LegrandEnergyCard extends HTMLElement {
     const isAvailable = Boolean(this._state(this._config?.entity));
     this._lastEnergyAvailable = isAvailable;
     // Recorder can load before the integration has finished starting.
-    if (!wasAvailable && isAvailable && this._historySource === "recorder") {
+    const entryId = (this._registry || hass.entities)?.[this._config?.entity]?.config_entry_id;
+    const now = Date.now();
+    if (this._historySource === "recorder" && entryId && isAvailable &&
+        ((!wasAvailable && isAvailable) || now - this._lastNativeRetry >= 30000)) {
+      this._lastNativeRetry = now;
       this._historyKey = null;
     }
     this._render();
