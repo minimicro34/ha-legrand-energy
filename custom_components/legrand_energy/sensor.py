@@ -206,7 +206,10 @@ def _average_power_attributes(
     measurements: LegrandMeasurements | FluidMeasurements | None,
 ) -> dict[str, Any] | None:
     """Expose the timestamp and freshness of the source interval."""
-    if not isinstance(measurements, LegrandMeasurements) or measurements.average_power is None:
+    if (
+        not isinstance(measurements, LegrandMeasurements)
+        or measurements.average_power is None
+    ):
         return None
     timestamp = measurements.average_power_timestamp
     if timestamp is None:
