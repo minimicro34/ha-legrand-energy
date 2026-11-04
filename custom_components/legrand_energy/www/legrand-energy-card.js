@@ -76,6 +76,33 @@ class LegrandEnergyCard extends HTMLElement {
       ? " " + state.attributes.unit_of_measurement : "");
   }
 
+  _powerFreshness(id) {
+    const state = this._state(id);
+    const attrs = state?.attributes;
+    if (!attrs?.last_measurement) return null;
+    const timestamp = new Date(attrs.last_measurement);
+    if (!Number.isFinite(timestamp.getTime())) return null;
+    const age = Math.max(0, (Date.now() - timestamp.getTime()) / 60000);
+    const freshness = age <= 10 ? "Fraîche" : age <= 30 ? "Retardée" :
+      age <= 60 ? "Ancienne" : "Expirée";
+    return {
+      label: freshness + " · " + Math.floor(age) + " min",
+      tooltip: "Dernière mesure Legrand : " +
+        new Intl.DateTimeFormat(this._hass?.locale?.language || "fr-FR", {
+          day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        }).format(timestamp),
+    };
+  }
+
+  _freshnessElement(id) {
+    const info = this._powerFreshness(id);
+    if (!info) return null;
+    const indicator = this._element("span", " · " + info.label,
+      "font-size:11px;font-weight:400;color:var(--secondary-text-color)");
+    indicator.title = info.tooltip;
+    return indicator;
+  }
+
   _nextTariffChange() {
     const id = this._autoEntity(this._config.next_tariff_change_entity,
       ["prochain_changement_de_tarif"], "next_tariff_change");
@@ -800,6 +827,10 @@ class LegrandEnergyCard extends HTMLElement {
         "font-size:12px;color:var(--secondary-text-color)"),
         this._element("div", this._value(id, digits),
           "font-size:20px;font-weight:600;overflow-wrap:anywhere"));
+      if (id === this._config.power_entity) {
+        const freshness = this._freshnessElement(id);
+        if (freshness) tile.appendChild(freshness);
+      }
       metrics.appendChild(tile);
     }
     wrapper.appendChild(metrics);
@@ -876,9 +907,14 @@ class LegrandEnergyCard extends HTMLElement {
           track.appendChild(fill);
           tile.appendChild(track);
         }
-        if (powerEntity) tile.appendChild(this._element("div",
-          "Puissance moyenne : " + this._value(powerEntity, 0),
-          "font-size:12px;color:var(--secondary-text-color);margin-top:5px"));
+        if (powerEntity) {
+          const powerLine = this._element("div",
+            "Puissance moyenne : " + this._value(powerEntity, 0),
+            "font-size:12px;color:var(--secondary-text-color);margin-top:5px");
+          const freshness = this._freshnessElement(powerEntity);
+          if (freshness) powerLine.appendChild(freshness);
+          tile.appendChild(powerLine);
+        }
         details.appendChild(tile);
       };
       for (const circuit of values) {
