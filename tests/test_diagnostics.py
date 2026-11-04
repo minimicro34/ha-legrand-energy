@@ -58,6 +58,7 @@ async def test_diagnostics_redact_account_and_home_identity(
 
     result = await module.async_get_config_entry_diagnostics(Mock(), entry)
 
+    assert result["card_version"] == "1.0.0"
     assert "private@example.com" not in str(result)
     assert "private-user" not in str(result)
     assert "My private home" not in str(result)
