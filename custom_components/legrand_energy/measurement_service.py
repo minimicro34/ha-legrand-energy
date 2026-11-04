@@ -105,14 +105,14 @@ class MeasurementService:
             body = raw.get("body")
             home = body.get("home") if isinstance(body, dict) else None
             raw_modules = home.get("modules") if isinstance(home, dict) else None
-            raw_counts: list[tuple[int, int, int]] = []
+            raw_counts: list[tuple[int, int]] = []
             if isinstance(raw_modules, list):
                 for item in raw_modules:
                     if not isinstance(item, dict):
                         continue
                     measures = item.get("measures")
                     if not isinstance(measures, list):
-                        raw_counts.append((0, 0, 0))
+                        raw_counts.append((0, 0))
                         continue
                     rows = sum(
                         len(measure.get("value", []))
@@ -120,7 +120,7 @@ class MeasurementService:
                         if isinstance(measure, dict)
                         and isinstance(measure.get("value"), list)
                     )
-                    raw_counts.append((len(measures), rows, 0))
+                    raw_counts.append((len(measures), rows))
             decoded_counts = [len(points) for points in points_by_module.values()]
             timestamps = [
                 point.timestamp
@@ -139,8 +139,8 @@ class MeasurementService:
                 sum(decoded_counts),
                 min(timestamps).isoformat() if timestamps else "none",
                 max(timestamps).isoformat() if timestamps else "none",
-                datetime.fromtimestamp(date_begin, dt_util.UTC).isoformat(),
-                datetime.fromtimestamp(date_end, dt_util.UTC).isoformat(),
+                date_begin,
+                date_end,
             )
 
         for module_id, _bridge in modules:
