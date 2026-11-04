@@ -127,7 +127,7 @@ class MeasurementService:
                 for points in points_by_module.values()
                 for point in points
             ]
-            _LOGGER.info(
+            _LOGGER.debug(
                 "Current-day API diagnostic: requested_modules=%d "
                 "response_modules=%s raw_measures=%s raw_rows=%s "
                 "decoded_points=%s first=%s last=%s "
