@@ -145,7 +145,11 @@ def _global_measurement_description(
         value_fn=value_fn,
         available_fn=available_fn,
         last_reset_fn=last_reset_fn,
-        attributes_fn=(lambda data, _module: _average_power_attributes(data.measurements)) if field == "average_power" else None,
+        attributes_fn=(
+            lambda data, _module: _average_power_attributes(data.measurements)
+        )
+        if field == "average_power"
+        else None,
     )
 
 
@@ -187,13 +191,20 @@ def _module_measurement_description(
         available_fn=available_fn,
         last_reset_fn=last_reset_fn,
         attributes_fn=(
-            (lambda data, module: _average_power_attributes(_module_measurements(data, module)))
-            if field == "average_power" else None
+            (
+                lambda data, module: _average_power_attributes(
+                    _module_measurements(data, module)
+                )
+            )
+            if field == "average_power"
+            else None
         ),
     )
 
 
-def _average_power_attributes(measurements: LegrandMeasurements | FluidMeasurements | None) -> dict[str, Any] | None:
+def _average_power_attributes(
+    measurements: LegrandMeasurements | FluidMeasurements | None,
+) -> dict[str, Any] | None:
     """Expose the timestamp and freshness of the source interval."""
     if measurements is None or measurements.average_power is None:
         return None
