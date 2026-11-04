@@ -10,7 +10,10 @@ from homeassistant.util import dt as dt_util
 
 from .helpers.energy_series import EnergyPoint
 from .helpers.fluid_measurement_processor import FluidMeasurementProcessor
-from .helpers.measurement_processor import MeasurementProcessor
+from .helpers.measurement_processor import (
+    MAX_AVERAGE_POWER_AGE_SECONDS,
+    MeasurementProcessor,
+)
 from .helpers.private_measure_decoder import decode_points_by_module
 from .helpers.retry_backoff import RetryBackoff
 from .models import (
@@ -339,6 +342,7 @@ class MeasurementService:
                         measurements_by_module[module_id] = replace(
                             previous_measurements,
                             average_power=None,
+                            average_power_timestamp=None,
                             energy_today=0.0,
                             energy_peak_today=0.0,
                             energy_off_peak_today=0.0,
@@ -429,6 +433,20 @@ class MeasurementService:
         )
 
     @staticmethod
+    @staticmethod
+    def _retain_recent_average(
+        measurements: LegrandMeasurements,
+        now,
+    ) -> LegrandMeasurements:
+        """Keep a valid cached average until its original timestamp expires."""
+        timestamp = measurements.average_power_timestamp
+        if timestamp is None or measurements.average_power is None:
+            return replace(measurements, average_power=None, average_power_timestamp=None)
+        age = (now - timestamp).total_seconds()
+        if age < 0 or age > MAX_AVERAGE_POWER_AGE_SECONDS:
+            return replace(measurements, average_power=None, average_power_timestamp=None)
+        return measurements
+
     def _cached_result(
         previous_data: LegrandEnergyData | None,
     ) -> tuple[
@@ -445,12 +463,12 @@ class MeasurementService:
         # Cached energy totals remain useful, but a failed poll cannot
         # establish that an interval-average power reading is still fresh.
         measurements = (
-            replace(previous_data.measurements, average_power=None)
+            self._retain_recent_average(previous_data.measurements, dt_util.now())
             if previous_data.measurements is not None
             else None
         )
         measurements_by_module = {
-            module_id: replace(value, average_power=None)
+            module_id: self._retain_recent_average(value, dt_util.now())
             for module_id, value in previous_data.measurements_by_module.items()
         }
 
