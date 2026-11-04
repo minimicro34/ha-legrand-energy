@@ -47,6 +47,26 @@ test("reports its own version independently of the integration", () => {
   assert.equal(card.constructor.version, "1.0.0");
 });
 
+test("shows the loaded card version in its diagnostics panel", () => {
+  const { card } = createCard();
+  card.setConfig({
+    entity: "sensor.energy",
+    contract_entity: "sensor.contract",
+  });
+  card.hass = {
+    states: {
+      "sensor.energy": { state: "2", attributes: { unit_of_measurement: "kWh" } },
+      "sensor.contract": { state: "Base", attributes: {} },
+    },
+  };
+  const wrapper = card.children[0].children[0];
+  const diagnostics = wrapper.children.find(
+    (child) => child.children?.[0]?.textContent === "Contrat et diagnostics",
+  );
+  assert.ok(diagnostics, "diagnostics panel is present");
+  assert.equal(diagnostics.children.at(-1).textContent, "Version de la carte : 1.0.0");
+});
+
 test("requires a configured energy entity", () => {
   const { card } = createCard();
   assert.throws(() => card.setConfig({}), /energy entity is required/);
