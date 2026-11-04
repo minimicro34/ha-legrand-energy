@@ -1,6 +1,6 @@
 """Tests for chart-safe serialization of Netatmo energy points."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -10,7 +10,6 @@ from custom_components.legrand_energy.helpers.measurement_history import (
 )
 
 
-UTC = timezone.utc
 START = datetime(2026, 11, 4, tzinfo=UTC)
 
 
@@ -37,11 +36,16 @@ def test_uses_real_intervals_and_wh_to_kwh() -> None:
 
 
 def test_half_open_window() -> None:
-    assert len(serialize_energy_history(
-        [point(0, 100), point(60, 200)],
-        start=START,
-        end=START + timedelta(hours=1),
-    )) == 1
+    assert (
+        len(
+            serialize_energy_history(
+                [point(0, 100), point(60, 200)],
+                start=START,
+                end=START + timedelta(hours=1),
+            )
+        )
+        == 1
+    )
 
 
 def test_rejects_unbounded_result() -> None:
