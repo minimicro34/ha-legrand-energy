@@ -103,8 +103,8 @@ test("builds Netatmo day chart series with exact HP/HC energy", () => {
   const start = new Date("2026-11-04T00:00:00Z");
   const end = new Date("2026-11-04T02:00:00Z");
   const result = card._netatmoChartData([
-    { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 0.2, interval_seconds: 1500, tariff: "peak" },
-    { timestamp: "2026-11-04T00:25:00Z", energy_kwh: 0.3, interval_seconds: 1500, tariff: "off_peak" },
+    { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 0.2, interval_seconds: 1500, tariff: "HP" },
+    { timestamp: "2026-11-04T00:25:00Z", energy_kwh: 0.3, interval_seconds: 1500, tariff: "HC" },
     { timestamp: "2026-11-04T01:30:00Z", energy_kwh: 0.4, interval_seconds: 1500, tariff: null },
   ], start, end, "day");
   assert.equal(Array.from(result.history, (row) => row.value).join(","), "0.5,0.4");
