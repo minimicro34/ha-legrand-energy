@@ -6,7 +6,7 @@ import importlib
 import sys
 import types
 from collections.abc import Generator
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -330,9 +330,8 @@ async def test_private_login_uses_dedicated_session(
     flow._oauth_data = {"auth_implementation": "netatmo"}
     flow.async_create_entry = Mock(return_value={"type": "create_entry"})
 
-    session = MagicMock()
-    session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock(return_value=None)
+    session = Mock()
+    session.close = AsyncMock()
     aiohttp_client.async_create_clientsession.return_value = session
 
     private_session = Mock(
@@ -352,4 +351,56 @@ async def test_private_login_uses_dedicated_session(
     aiohttp_client.async_create_clientsession.assert_called_once_with(flow.hass)
     factory.assert_called_once_with(session=session)
     private_service.login.assert_awaited_once()
-    session.__aexit__.assert_awaited_once()
+    session.close.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_keeps_session_open_and_preserves_oauth(
+    config_flow_module: types.ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reconfiguration retains OAuth data and never closes HA's session."""
+    from homeassistant.helpers import aiohttp_client
+
+    flow = config_flow_module.LegrandEnergyConfigFlow()
+    flow.hass = Mock()
+    entry = Mock()
+    entry.data = {
+        "auth_implementation": "netatmo",
+        "token": {"access_token": "existing"},
+        "username": "old@example.com",
+        "web_token": "old-private",
+        "refresh_token_web": "old-cookie",
+    }
+    flow._get_reconfigure_entry = Mock(return_value=entry)
+    expected = {"type": "abort", "reason": "reconfigure_successful"}
+    flow.async_update_reload_and_abort = Mock(return_value=expected)
+
+    session = Mock()
+    session.close = AsyncMock()
+    aiohttp_client.async_create_clientsession.return_value = session
+    private_session = Mock(
+        web_token="new-private",
+        cookies={"authnetatmocomrefresh_token": "new-cookie"},
+    )
+    private_service = Mock()
+    private_service.login = AsyncMock(return_value=private_session)
+    factory = Mock(return_value=private_service)
+    monkeypatch.setattr(config_flow_module, "PrivateAuthService", factory)
+
+    result = await flow.async_step_reconfigure(
+        {"username": "new@example.com", "password": "new-password"}
+    )
+
+    assert result == expected
+    aiohttp_client.async_create_clientsession.assert_called_once_with(flow.hass)
+    factory.assert_called_once_with(session=session)
+    private_service.login.assert_awaited_once_with(
+        username="new@example.com", password="new-password"
+    )
+    session.close.assert_not_awaited()
+    new_data = flow.async_update_reload_and_abort.call_args.kwargs["data"]
+    assert new_data["token"] == entry.data["token"]
+    assert new_data["web_token"] == "new-private"
+    assert new_data["refresh_token_web"] == "new-cookie"
+    assert new_data["username"] == "new@example.com"

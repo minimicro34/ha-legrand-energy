@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import (
     async_create_clientsession,
     async_get_clientsession,
@@ -23,8 +24,9 @@ from .authentication_store import (
     PRIVATE_COOKIE_NAMES,
     ConfigEntryAuthenticationStore,
 )
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .coordinator import LegrandEnergyCoordinator
+from .entity import get_main_module_id
 from .models.auth import PrivateSession
 from .oauth2 import async_get_session
 from .private_api import LegrandPrivateApi
@@ -183,6 +185,19 @@ async def async_setup_entry(
 
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+
+    # Register the physical EcoMeter before platforms create circuit entities.
+    # This also works on a fresh install with an empty device registry.
+    main_module_id = get_main_module_id(coordinator)
+    if main_module_id is not None:
+        main_module = coordinator.data.modules[main_module_id]
+        dr.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, main_module_id)},
+            manufacturer=MANUFACTURER,
+            model="EcoMeter",
+            name=main_module.name,
+        )
 
     await hass.config_entries.async_forward_entry_setups(
         entry,

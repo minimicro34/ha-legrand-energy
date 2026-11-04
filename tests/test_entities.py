@@ -94,10 +94,11 @@ def test_entity_device_info_and_availability(hass) -> None:
     }
     coordinator = _coordinator(hass, modules)
 
+    registry = MagicMock()
+    registry.async_get_device_by_identifier.return_value.id = "parent-device-id"
     with patch(
-        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
-        create=True,
-        return_value="parent-device-id",
+        "custom_components.legrand_energy.entity.dr.async_get",
+        return_value=registry,
     ):
         main = LegrandEntity(coordinator, "main")
         child = LegrandEntity(coordinator, "main#0")
@@ -207,12 +208,7 @@ async def test_sensor_setup_and_values(hass) -> None:
     entry = SimpleNamespace(runtime_data=coordinator)
     added = []
 
-    with patch(
-        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
-        create=True,
-        return_value="parent-device-id",
-    ):
-        await async_setup_sensors(hass, entry, added.extend)
+    await async_setup_sensors(hass, entry, added.extend)
 
     assert len(added) == len(GLOBAL_SENSOR_DESCRIPTIONS) + len(
         MODULE_SENSOR_DESCRIPTIONS
@@ -230,6 +226,7 @@ async def test_sensor_setup_and_values(hass) -> None:
     assert global_sensor.available is True
     assert module_sensor.native_value == 1.1
     assert module_sensor.available is True
+    assert "via_device_id" not in module_sensor.device_info
 
     coordinator.data = LegrandEnergyData(
         modules={"main": main, "main#0": circuit},
@@ -252,3 +249,21 @@ def test_sensor_optional_attributes(hass) -> None:
 
     assert sensor.extra_state_attributes is None
     assert sensor.last_reset is not None
+
+
+def test_child_entity_without_registered_parent_does_not_fail(hass) -> None:
+    """An absent parent must not abort initial sensor creation."""
+    modules = {
+        "main": LegrandModule(id="main", name="EcoMeter", type="NLE"),
+        "main#0": LegrandModule(id="main#0", name="Circuit", type="NLE", bridge="main"),
+    }
+    coordinator = _coordinator(hass, modules)
+    registry = MagicMock()
+    registry.async_get_device_by_identifier.return_value = None
+    with patch(
+        "custom_components.legrand_energy.entity.dr.async_get",
+        return_value=registry,
+    ):
+        child = LegrandEntity(coordinator, "main#0")
+    assert "via_device_id" not in child.device_info
+    assert child.device_info["identifiers"] == {("legrand_energy", "main#0")}
