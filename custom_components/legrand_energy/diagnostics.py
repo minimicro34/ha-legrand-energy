@@ -11,6 +11,8 @@ from homeassistant.core import HomeAssistant
 from .authentication_store import PRIVATE_COOKIE_NAMES
 from .coordinator import LegrandEnergyCoordinator
 
+CARD_VERSION = "1.0.0"
+
 TO_REDACT = {
     "access_token",
     "refresh_token",
@@ -40,6 +42,7 @@ async def async_get_config_entry_diagnostics(
     coordinator: LegrandEnergyCoordinator = entry.runtime_data
 
     return {
+        "card_version": CARD_VERSION,
         "entry": async_redact_data(
             dict(entry.data),
             TO_REDACT,
