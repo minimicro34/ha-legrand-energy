@@ -586,6 +586,22 @@ test("keeps half-hour bars when five-minute Recorder samples contain a gap", asy
   assert.match(chart.children.at(-1).textContent, /Hors créneaux.*18/);
 });
 
+test("distinguishes missing Recorder history from N/R", () => {
+  const { card } = createCard();
+  card.setConfig({ entity: "sensor.energy" });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  card._dateRange = () => ({ start: today, end: new Date() });
+  card._hass = { states: { "sensor.energy": { state: "10.76" } } };
+  card._history = [{ time: today.getTime(), value: 1.04 }];
+  card._dayGranularity = 1800000;
+  card._unallocatedEnergy = 0;
+  card._unallocatedGaps = 0;
+  const chart = card._chart();
+  assert.match(chart.children.at(-1).textContent, /Écart : 9,72 kWh/);
+  assert.match(chart.children.at(-1).textContent, /historique Recorder non disponible ou non comparable/);
+});
+
 test("keeps N/R separate from the clock axis and excludes it from the remaining gap", () => {
   const { card } = createCard();
   card.setConfig({ entity: "sensor.energy" });
