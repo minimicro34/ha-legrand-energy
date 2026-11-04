@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from homeassistant.util import dt as dt_util
 
@@ -55,6 +55,8 @@ class MeasurementService:
 
         self._current_day_backoff = RetryBackoff(CURRENT_DAY_RETRY_DELAYS)
         self._waiting_today_points: set[str] = set()
+        self._today_points_by_module: dict[str, list[EnergyPoint]] = {}
+        self._today_cache_date: date | None = None
 
     def _modules_for_fluid(
         self,
@@ -243,6 +245,9 @@ class MeasurementService:
 
             return self._cached_result(previous_data)
 
+        self._today_points_by_module = today_points_by_module
+        self._today_cache_date = today_start.date()
+
         previous_failure_count = self._current_day_backoff.reset()
 
         if previous_failure_count:
@@ -427,6 +432,21 @@ class MeasurementService:
             gas_measurements_by_module,
             projections,
         )
+
+    def cached_energy_history(
+        self,
+        module_id: str,
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> list[dict[str, object]]:
+        """Return decoded intervals from cache without additional API calls."""
+        from .helpers.measurement_history import serialize_energy_history
+
+        points = list(self._historical_points_by_module.get(module_id, []))
+        if self._today_cache_date == dt_util.now().date():
+            points.extend(self._today_points_by_module.get(module_id, []))
+        return serialize_energy_history(points, start=start, end=end)
 
     @staticmethod
     def _cached_result(
