@@ -242,14 +242,22 @@ def test_decode_gas_measurements() -> None:
 
 def test_decodes_native_hp_hc_daily_columns() -> None:
     data = {
-        "body": {"home": {"modules": [{
-            "id": "total",
-            "measures": [{
-                "beg_time": 1783350000,
-                "step_time": 86400,
-                "value": [[None, None, 14955, 5668, None, None, None]],
-            }],
-        }]}}
+        "body": {
+            "home": {
+                "modules": [
+                    {
+                        "id": "total",
+                        "measures": [
+                            {
+                                "beg_time": 1783350000,
+                                "step_time": 86400,
+                                "value": [[None, None, 14955, 5668, None, None, None]],
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
     }
     points = decode_energy_points(data)
     assert len(points) == 1
