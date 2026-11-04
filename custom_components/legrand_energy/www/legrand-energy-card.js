@@ -216,6 +216,41 @@ class LegrandEnergyCard extends HTMLElement {
     return [...buckets.values()].sort((a, b) => a.start - b.start);
   }
 
+  _netatmoChartData(points, start, end, period = this._period) {
+    // Calendar buckets use the browser's local timezone, like the period tabs.
+    // Day buckets use elapsed UTC milliseconds to preserve both autumn 02:00 hours.
+    const buckets = new Map();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    for (const point of points) {
+      const timestamp = Date.parse(point.timestamp);
+      const energy = Number(point.energy_kwh);
+      if (!Number.isFinite(timestamp) || timestamp < startMs || timestamp >= endMs ||
+          !Number.isFinite(energy) || energy < 0 ||
+          !Number.isFinite(Number(point.interval_seconds)) ||
+          Number(point.interval_seconds) <= 0) continue;
+      const date = new Date(timestamp);
+      const bucket = period === "day"
+        ? startMs + Math.floor((timestamp - startMs) / 1800000) * 1800000
+        : period === "year"
+          ? new Date(date.getFullYear(), date.getMonth(), 1).getTime()
+          : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      const row = buckets.get(bucket) || { time: bucket, value: 0, peak: 0, offPeak: 0 };
+      row.value += energy;
+      if (point.tariff === "peak") row.peak += energy;
+      if (point.tariff === "off_peak") row.offPeak += energy;
+      buckets.set(bucket, row);
+    }
+    const rows = [...buckets.values()].sort((a, b) => a.time - b.time);
+    return {
+      history: rows.map(({ time, value }) => ({ time, value })),
+      split: {
+        peak: new Map(rows.map((row) => [row.time, row.peak])),
+        offPeak: new Map(rows.map((row) => [row.time, row.offPeak])),
+      },
+    };
+  }
+
   async _loadHistory() {
     if (!this._hass?.callWS || !this._config) return;
     const entity = this._config.entity;
