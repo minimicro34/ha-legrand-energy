@@ -341,3 +341,88 @@ def test_cached_result_invalidates_average_power_without_mutating_cache() -> Non
 def test_cached_result_without_previous_data() -> None:
     """Missing cache must produce empty measurements."""
     assert MeasurementService._cached_result(None) == (None, {}, {}, {}, None)
+
+
+@pytest.mark.parametrize(
+    ("age_seconds", "expected_power"),
+    [
+        (0, 250.0),
+        (600, 250.0),
+        (3599, 250.0),
+        (3600, 250.0),
+        (3601, None),
+        (-1, None),
+    ],
+)
+def test_retain_recent_average_respects_original_timestamp(
+    age_seconds: int, expected_power: float | None
+) -> None:
+    """Keep cached power through one hour, without refreshing its timestamp."""
+    now = datetime(2026, 11, 4, 12, tzinfo=UTC)
+    timestamp = now - timedelta(seconds=age_seconds)
+    previous = LegrandMeasurements(
+        average_power=250.0,
+        average_power_timestamp=timestamp,
+        energy_today=4.2,
+    )
+
+    result = MeasurementService._retain_recent_average(previous, now)
+
+    assert result.average_power == expected_power
+    assert result.average_power_timestamp == (
+        timestamp if expected_power is not None else None
+    )
+    assert result.energy_today == 4.2
+    assert previous.average_power == 250.0
+    assert previous.average_power_timestamp == timestamp
+
+
+@pytest.mark.parametrize(
+    ("power", "timestamp"),
+    [
+        (None, datetime(2026, 11, 4, 12, tzinfo=UTC)),
+        (250.0, None),
+    ],
+)
+def test_retain_recent_average_rejects_incomplete_cache(
+    power: float | None, timestamp: datetime | None
+) -> None:
+    """A cached average requires both its value and source timestamp."""
+    previous = LegrandMeasurements(
+        average_power=power, average_power_timestamp=timestamp
+    )
+
+    result = MeasurementService._retain_recent_average(
+        previous, datetime(2026, 11, 4, 12, tzinfo=UTC)
+    )
+
+    assert result.average_power is None
+    assert result.average_power_timestamp is None
+
+
+def test_cached_result_preserves_recent_circuit_and_total(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep recent cached averages for both total and individual circuits."""
+    now = datetime(2026, 11, 4, 12, tzinfo=UTC)
+    monkeypatch.setattr(service_module.dt_util, "now", lambda: now)
+    timestamp = now - timedelta(minutes=25)
+    previous_measurements = LegrandMeasurements(
+        average_power=320.0,
+        average_power_timestamp=timestamp,
+        energy_today=3.5,
+    )
+    previous = LegrandEnergyData(
+        modules=_modules(),
+        measurements=previous_measurements,
+        measurements_by_module={ELECTRICITY_MODULE_ID: previous_measurements},
+    )
+
+    total, circuits, _, _, _ = MeasurementService._cached_result(previous)
+
+    assert total is not None
+    assert total.average_power == 320.0
+    assert total.average_power_timestamp == timestamp
+    assert circuits[ELECTRICITY_MODULE_ID].average_power == 320.0
+    assert circuits[ELECTRICITY_MODULE_ID].average_power_timestamp == timestamp
+    assert circuits[ELECTRICITY_MODULE_ID].energy_today == 3.5
