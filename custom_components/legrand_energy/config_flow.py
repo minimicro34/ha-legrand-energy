@@ -94,12 +94,12 @@ class LegrandEnergyConfigFlow(
             password = user_input["password"]
 
             try:
-                async with async_create_clientsession(self.hass) as session:
-                    private_service = PrivateAuthService(session=session)
-                    private_session = await private_service.login(
-                        username=username,
-                        password=password,
-                    )
+                session = async_create_clientsession(self.hass)
+                private_service = PrivateAuthService(session=session)
+                private_session = await private_service.login(
+                    username=username,
+                    password=password,
+                )
 
             except PrivateAuthServiceAuthenticationError:
                 errors["base"] = "invalid_auth"
@@ -165,12 +165,12 @@ class LegrandEnergyConfigFlow(
             password = user_input["password"]
 
             try:
-                async with async_create_clientsession(self.hass) as session:
-                    private_service = PrivateAuthService(session=session)
-                    private_session = await private_service.login(
-                        username=username,
-                        password=password,
-                    )
+                session = async_create_clientsession(self.hass)
+                private_service = PrivateAuthService(session=session)
+                private_session = await private_service.login(
+                    username=username,
+                    password=password,
+                )
 
             except PrivateAuthServiceAuthenticationError:
                 errors["base"] = "invalid_auth"
