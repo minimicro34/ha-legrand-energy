@@ -8,19 +8,31 @@ The format is based on Keep a Changelog.
 
 ## [1.3.1] - 2026-11-04
 
-Maintenance release following the initial installation through the official Home Assistant Marketplace / HACS catalog.
+### Added
+
+- Regression tests for Week and Month chart calendar axes.
+- Automated regression test ensuring English translations remain synchronized with `strings.json`.
+- Regression tests for initial device registration, missing parent lookup, and authentication session lifecycle.
 
 ### Fixed
 
-- Register the physical EcoMeter in Home Assistant's device registry before setting up sensor platforms, preventing missing-parent-device errors on first installation.
-- Resolve circuit parent devices safely when a parent has not yet been registered, without changing existing device identifiers, entity unique IDs, or Recorder history.
-- Keep Home Assistant-managed aiohttp sessions open during private authentication and reconfiguration instead of closing them explicitly.
+- Week chart now displays all seven calendar days, including days without Recorder statistics.
+- Month chart now displays all 28, 29, 30, or 31 calendar days.
+- Improved Month chart date label spacing while preserving the final calendar day's label.
+- Missing Recorder measurements are no longer represented as zero consumption.
+- Restored English translations for `average_power` and `circuit_average_power` sensors.
+- Fixed EcoMeter device registration during initial setup, preventing missing-parent errors on first installation.
+- Fixed circuit parent device lookup when the parent is not yet registered, preserving existing entity identifiers and Recorder history.
+- Fixed Home Assistant-managed aiohttp sessions being closed during private authentication and reconfiguration.
 
 ### Validation
 
-- 147 Python tests passed with 90.47% coverage; 20 Lovelace JavaScript tests passed.
-- Local checks and GitHub Actions CI validated after merging the fixes into `main`.
-- Added regression tests for initial device registration, missing parent lookup, private login session ownership, and reconfiguration.
+- 147 Python tests passed.
+- 20 JavaScript tests passed.
+- 90.47% Python coverage.
+- `make check` and GitHub Actions CI passed.
+
+Thanks to @frenck for reporting the English translation issue.
 
 ---
 
