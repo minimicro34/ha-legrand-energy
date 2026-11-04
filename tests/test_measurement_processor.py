@@ -175,7 +175,16 @@ def test_average_power_source_timestamp_and_invalid_latest_point() -> None:
     from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
 
     now = datetime(2026, 11, 4, 22, 30, tzinfo=UTC)
-    valid = EnergyPoint(timestamp=now - timedelta(minutes=25), energy=10, interval_seconds=300)
-    invalid = EnergyPoint(timestamp=now - timedelta(minutes=5), energy=10, interval_seconds=0)
-    assert MeasurementProcessor.latest_average_power([valid, invalid], now=now) == pytest.approx(120)
-    assert MeasurementProcessor.latest_average_power_timestamp([valid, invalid], now=now) == valid.timestamp
+    valid = EnergyPoint(
+        timestamp=now - timedelta(minutes=25), energy=10, interval_seconds=300
+    )
+    invalid = EnergyPoint(
+        timestamp=now - timedelta(minutes=5), energy=10, interval_seconds=0
+    )
+    assert MeasurementProcessor.latest_average_power(
+        [valid, invalid], now=now
+    ) == pytest.approx(120)
+    assert (
+        MeasurementProcessor.latest_average_power_timestamp([valid, invalid], now=now)
+        == valid.timestamp
+    )
