@@ -101,6 +101,48 @@ class MeasurementService:
             fluid_type=fluid_type,
         )
 
+        if scale == "5min" and fluid_type is FluidType.ELECTRICITY:
+            body = raw.get("body")
+            home = body.get("home") if isinstance(body, dict) else None
+            raw_modules = home.get("modules") if isinstance(home, dict) else None
+            raw_counts: list[tuple[int, int, int]] = []
+            if isinstance(raw_modules, list):
+                for item in raw_modules:
+                    if not isinstance(item, dict):
+                        continue
+                    measures = item.get("measures")
+                    if not isinstance(measures, list):
+                        raw_counts.append((0, 0, 0))
+                        continue
+                    rows = sum(
+                        len(measure.get("value", []))
+                        for measure in measures
+                        if isinstance(measure, dict)
+                        and isinstance(measure.get("value"), list)
+                    )
+                    raw_counts.append((len(measures), rows, 0))
+            decoded_counts = [len(points) for points in points_by_module.values()]
+            timestamps = [
+                point.timestamp
+                for points in points_by_module.values()
+                for point in points
+            ]
+            _LOGGER.info(
+                "Current-day API diagnostic: requested_modules=%d "
+                "response_modules=%s raw_measures=%s raw_rows=%s "
+                "decoded_points=%s first=%s last=%s "
+                "range_start=%s range_end=%s",
+                len(modules),
+                len(raw_modules) if isinstance(raw_modules, list) else "missing",
+                sum(item[0] for item in raw_counts),
+                sum(item[1] for item in raw_counts),
+                sum(decoded_counts),
+                min(timestamps).isoformat() if timestamps else "none",
+                max(timestamps).isoformat() if timestamps else "none",
+                datetime.fromtimestamp(date_begin, dt_util.UTC).isoformat(),
+                datetime.fromtimestamp(date_end, dt_util.UTC).isoformat(),
+            )
+
         for module_id, _bridge in modules:
             points_by_module.setdefault(module_id, [])
 
