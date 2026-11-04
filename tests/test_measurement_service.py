@@ -394,8 +394,11 @@ def test_cached_energy_history_empty_before_first_poll(
     now = datetime(2026, 7, 31, 12, tzinfo=UTC)
     monkeypatch.setattr(service_module.dt_util, "now", lambda: now)
     service = MeasurementService(cast(LegrandPrivateApi, FakePrivateApi()))
-    assert service.cached_energy_history(
-        ELECTRICITY_MODULE_ID,
-        start=now - timedelta(days=1),
-        end=now,
-    ) == []
+    assert (
+        service.cached_energy_history(
+            ELECTRICITY_MODULE_ID,
+            start=now - timedelta(days=1),
+            end=now,
+        )
+        == []
+    )
