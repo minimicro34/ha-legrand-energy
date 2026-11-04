@@ -94,13 +94,17 @@ def test_entity_device_info_and_availability(hass) -> None:
     }
     coordinator = _coordinator(hass, modules)
 
-    main = LegrandEntity(coordinator, "main")
-    child = LegrandEntity(coordinator, "main#0")
+    with patch(
+        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
+        return_value="parent-device-id",
+    ):
+        main = LegrandEntity(coordinator, "main")
+        child = LegrandEntity(coordinator, "main#0")
 
     assert main.device_info["model"] == "EcoMeter"
-    assert "via_device" not in main.device_info
+    assert "via_device_id" not in main.device_info
     assert child.device_info["model"] == "EcoMeter Circuit"
-    assert child.device_info["via_device"] == ("legrand_energy", "main")
+    assert child.device_info["via_device_id"] == "parent-device-id"
     assert child.module == modules["main#0"]
     assert child.available is True
 
@@ -220,7 +224,7 @@ async def test_sensor_setup_and_values(hass) -> None:
     assert global_sensor.available is True
     assert module_sensor.native_value == 1.1
     assert module_sensor.available is True
-    assert module_sensor.device_info["via_device"] == ("legrand_energy", "main")
+    assert "via_device_id" not in module_sensor.device_info
 
     coordinator.data = LegrandEnergyData(
         modules={"main": main, "main#0": circuit},
@@ -243,3 +247,21 @@ def test_sensor_optional_attributes(hass) -> None:
 
     assert sensor.extra_state_attributes is None
     assert sensor.last_reset is not None
+
+
+def test_child_entity_without_registered_parent_does_not_fail(hass) -> None:
+    """An absent parent must not abort initial sensor creation."""
+    modules = {
+        "main": LegrandModule(id="main", name="EcoMeter", type="NLE"),
+        "main#0": LegrandModule(
+            id="main#0", name="Circuit", type="NLE", bridge="main"
+        ),
+    }
+    coordinator = _coordinator(hass, modules)
+    with patch(
+        "custom_components.legrand_energy.entity.dr.async_get_device_id_by_identifier",
+        return_value=None,
+    ):
+        child = LegrandEntity(coordinator, "main#0")
+    assert "via_device_id" not in child.device_info
+    assert child.device_info["identifiers"] == {("legrand_energy", "main#0")}
