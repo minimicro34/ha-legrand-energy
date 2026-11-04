@@ -51,9 +51,7 @@ def serialize_energy_history(
             "energy_kwh": point.energy / 1000,
             "interval_seconds": point.interval_seconds,
             "peak_kwh": (
-                point.peak_energy / 1000
-                if point.peak_energy is not None
-                else None
+                point.peak_energy / 1000 if point.peak_energy is not None else None
             ),
             "off_peak_kwh": (
                 point.off_peak_energy / 1000
