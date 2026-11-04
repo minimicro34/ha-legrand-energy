@@ -50,6 +50,16 @@ def serialize_energy_history(
             "timestamp": point.timestamp.isoformat(),
             "energy_kwh": point.energy / 1000,
             "interval_seconds": point.interval_seconds,
+            "peak_kwh": (
+                point.peak_energy / 1000
+                if point.peak_energy is not None
+                else None
+            ),
+            "off_peak_kwh": (
+                point.off_peak_energy / 1000
+                if point.off_peak_energy is not None
+                else None
+            ),
             "tariff": (
                 point.tariff
                 if point.interval_seconds is not None
