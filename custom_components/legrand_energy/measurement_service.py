@@ -447,10 +447,14 @@ class MeasurementService:
         """Keep a valid cached average until its original timestamp expires."""
         timestamp = measurements.average_power_timestamp
         if timestamp is None or measurements.average_power is None:
-            return replace(measurements, average_power=None, average_power_timestamp=None)
+            return replace(
+                measurements, average_power=None, average_power_timestamp=None
+            )
         age = (now - timestamp).total_seconds()
         if age < 0 or age > MAX_AVERAGE_POWER_AGE_SECONDS:
-            return replace(measurements, average_power=None, average_power_timestamp=None)
+            return replace(
+                measurements, average_power=None, average_power_timestamp=None
+            )
         return measurements
 
     def _cached_result(
