@@ -108,3 +108,17 @@ def test_preserves_dst_offsets_without_filling_missing_intervals() -> None:
 def test_rejects_reversed_history_window() -> None:
     with pytest.raises(ValueError, match="after start"):
         serialize_energy_history([point(0, 100)], start=START, end=START)
+
+
+def test_daily_totals_do_not_claim_a_single_hp_hc_tariff() -> None:
+    daily = point(0, 18000, 86400)
+    daily.tariff = "HP"  # Tariff at midnight cannot classify the entire day.
+    intraday = point(60, 500, 1500)
+    intraday.tariff = "HC"
+    result = serialize_energy_history(
+        [daily, intraday],
+        start=START,
+        end=START + timedelta(days=1),
+    )
+    assert [row["energy_kwh"] for row in result] == [18, 0.5]
+    assert [row["tariff"] for row in result] == [None, "HC"]
