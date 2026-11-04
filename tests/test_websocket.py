@@ -41,7 +41,7 @@ async def test_returns_cached_points_without_api_call(hass) -> None:
     entry.runtime_data = coordinator
 
     with patch.object(hass.config_entries, "async_get_entry", return_value=entry):
-        await async_cached_history(hass, connection, _request())
+        async_cached_history(hass, connection, _request())
 
     coordinator.cached_energy_history.assert_called_once_with(
         start=datetime(2026, 11, 4, tzinfo=UTC),
@@ -59,7 +59,7 @@ async def test_rejects_missing_or_foreign_entry(hass, entry_domain) -> None:
     connection = MagicMock()
     entry = None if entry_domain is None else MagicMock(domain=entry_domain)
     with patch.object(hass.config_entries, "async_get_entry", return_value=entry):
-        await async_cached_history(hass, connection, _request())
+        async_cached_history(hass, connection, _request())
 
     connection.send_error.assert_called_once_with(
         1, "not_found", "Legrand Energy entry not found"
@@ -84,7 +84,7 @@ async def test_rejects_invalid_windows(hass, start: str, end: str) -> None:
     entry = MagicMock()
     entry.domain = "legrand_energy"
     with patch.object(hass.config_entries, "async_get_entry", return_value=entry):
-        await async_cached_history(hass, connection, _request(start=start, end=end))
+        async_cached_history(hass, connection, _request(start=start, end=end))
 
     connection.send_error.assert_called_once_with(
         1, "invalid_range", "Invalid history date range"
@@ -98,7 +98,7 @@ async def test_rejects_unready_coordinator(hass) -> None:
     entry.domain = "legrand_energy"
     entry.runtime_data = None
     with patch.object(hass.config_entries, "async_get_entry", return_value=entry):
-        await async_cached_history(hass, connection, _request())
+        async_cached_history(hass, connection, _request())
 
     connection.send_error.assert_called_once_with(
         1, "not_ready", "Legrand Energy is not ready"
