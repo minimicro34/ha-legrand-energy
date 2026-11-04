@@ -1,4 +1,5 @@
 /* Legrand Energy Lovelace card — bundled with the integration. */
+const LEGRAND_ENERGY_CARD_VERSION = "1.3.3-beta5";
 class LegrandEnergyCard extends HTMLElement {
   setConfig(config) {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
@@ -955,6 +956,9 @@ class LegrandEnergyCard extends HTMLElement {
       details.appendChild(grid);
       wrapper.appendChild(details);
     }
+    wrapper.appendChild(this._element("div",
+      "Version de la carte : " + LEGRAND_ENERGY_CARD_VERSION,
+      "font-size:12px;color:var(--secondary-text-color);margin-top:16px"));
     this._card.appendChild(wrapper);
   }
 }
