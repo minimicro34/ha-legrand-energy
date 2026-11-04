@@ -169,6 +169,7 @@ def test_latest_average_power_without_now() -> None:
     assert MeasurementProcessor.latest_average_power([point], now=None) is None
     assert MeasurementProcessor.latest_average_power([], now=None) is None
 
+
 def test_average_power_source_timestamp_and_invalid_latest_point() -> None:
     """Keep the original API timestamp and skip invalid intervals."""
     from datetime import timedelta
