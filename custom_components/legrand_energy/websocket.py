@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.components import websocket_api
@@ -25,7 +25,7 @@ from .coordinator import LegrandEnergyCoordinator
 async def async_cached_history(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
-    msg: dict[str, object],
+    msg: dict[str, Any],
 ) -> None:
     """Return bounded cached measurements without calling the private API."""
     entry_id = str(msg["entry_id"])
