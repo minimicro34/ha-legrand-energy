@@ -173,6 +173,7 @@ def test_latest_average_power_without_now() -> None:
 def test_average_power_source_timestamp_and_invalid_latest_point() -> None:
     """Keep the original API timestamp and skip invalid intervals."""
     from datetime import timedelta
+
     from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
 
     now = datetime(2026, 11, 4, 22, 30, tzinfo=UTC)
