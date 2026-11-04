@@ -9,7 +9,6 @@ from custom_components.legrand_energy.helpers.measurement_history import (
     serialize_energy_history,
 )
 
-
 START = datetime(2026, 11, 4, tzinfo=UTC)
 
 
