@@ -158,7 +158,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             modules = home.get("modules") if isinstance(home, dict) else None
             measures = (
                 modules[0].get("measures")
-                if isinstance(modules, list) and modules
+                if isinstance(modules, list)
+                and modules
                 and isinstance(modules[0], dict)
                 else None
             )
@@ -195,7 +196,11 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             _LOGGER.warning(
                 "Legrand Energy tariff probe: day=%s scale=%s rows=%s "
                 "steps_seconds=%s energy_columns=%s",
-                day_start.date(), scale, rows, sorted(steps), summary,
+                day_start.date(),
+                scale,
+                rows,
+                sorted(steps),
+                summary,
             )
 
     async def _async_update_data(self) -> LegrandEnergyData:
