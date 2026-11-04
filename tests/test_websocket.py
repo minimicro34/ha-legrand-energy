@@ -84,9 +84,7 @@ async def test_rejects_invalid_windows(hass, start: str, end: str) -> None:
     entry = MagicMock()
     entry.domain = "legrand_energy"
     with patch.object(hass.config_entries, "async_get_entry", return_value=entry):
-        await async_cached_history(
-            hass, connection, _request(start=start, end=end)
-        )
+        await async_cached_history(hass, connection, _request(start=start, end=end))
 
     connection.send_error.assert_called_once_with(
         1, "invalid_range", "Invalid history date range"
