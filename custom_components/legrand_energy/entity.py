@@ -62,7 +62,9 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
         )
 
         if not is_main_module and module.bridge is not None:
-            parent_device = dr.async_get(coordinator.hass).async_get_device_by_identifier(
+            parent_device = dr.async_get(
+                coordinator.hass
+            ).async_get_device_by_identifier(
                 (DOMAIN, module.bridge), coordinator.config_entry.entry_id
             )
             if parent_device is not None:
