@@ -426,3 +426,63 @@ def test_cached_result_preserves_recent_circuit_and_total(
     assert circuits[ELECTRICITY_MODULE_ID].average_power == 320.0
     assert circuits[ELECTRICITY_MODULE_ID].average_power_timestamp == timestamp
     assert circuits[ELECTRICITY_MODULE_ID].energy_today == 3.5
+
+
+async def test_cached_energy_history_combines_history_and_today_without_refetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Chart history uses already decoded Netatmo data, not another API call."""
+    now = datetime(2026, 7, 31, 12, tzinfo=UTC)
+    monkeypatch.setattr(service_module.dt_util, "now", lambda: now)
+    api = FakePrivateApi()
+    service = MeasurementService(cast(LegrandPrivateApi, api))
+    await _update(service)
+    calls_before = len(api.calls)
+
+    rows = service.cached_energy_history(
+        ELECTRICITY_MODULE_ID,
+        start=datetime(2026, 7, 1, tzinfo=UTC),
+        end=now + timedelta(minutes=1),
+    )
+
+    assert [row["energy_kwh"] for row in rows] == [10.0, 2.0, 1.0]
+    assert [row["interval_seconds"] for row in rows] == [300, 300, 300]
+    assert len(api.calls) == calls_before
+
+
+@pytest.mark.asyncio
+async def test_cached_energy_history_ignores_stale_today_after_midnight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Yesterday's intraday cache must not be reused as today's data."""
+    current_now = datetime(2026, 7, 31, 12, tzinfo=UTC)
+    monkeypatch.setattr(service_module.dt_util, "now", lambda: current_now)
+    api = FakePrivateApi()
+    service = MeasurementService(cast(LegrandPrivateApi, api))
+    await _update(service)
+
+    current_now += timedelta(days=1)
+    rows = service.cached_energy_history(
+        ELECTRICITY_MODULE_ID,
+        start=datetime(2026, 7, 1, tzinfo=UTC),
+        end=current_now + timedelta(minutes=1),
+    )
+
+    assert [row["energy_kwh"] for row in rows] == [10.0, 2.0]
+
+
+def test_cached_energy_history_empty_before_first_poll(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unpopulated cache yields an empty chart rather than fabricated data."""
+    now = datetime(2026, 7, 31, 12, tzinfo=UTC)
+    monkeypatch.setattr(service_module.dt_util, "now", lambda: now)
+    service = MeasurementService(cast(LegrandPrivateApi, FakePrivateApi()))
+    assert (
+        service.cached_energy_history(
+            ELECTRICITY_MODULE_ID,
+            start=now - timedelta(days=1),
+            end=now,
+        )
+        == []
+    )

@@ -17,3 +17,5 @@ class EnergyPoint:
 
     tariff: str | None = None
     zone_id: int | None = None
+    peak_energy: float | None = None
+    off_peak_energy: float | None = None
