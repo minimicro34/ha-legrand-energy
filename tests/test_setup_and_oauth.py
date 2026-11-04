@@ -82,6 +82,58 @@ async def test_setup_with_existing_private_session(hass) -> None:
 
 
 @pytest.mark.asyncio
+async def test_first_setup_registers_parent_before_platforms(hass) -> None:
+    """Fresh installs register the physical parent before circuit setup."""
+    from custom_components.legrand_energy.models import LegrandEnergyData, LegrandModule
+
+    entry = _entry({"web_token": "web-token"})
+    entry.add_to_hass(hass)
+    oauth_session = MagicMock()
+    oauth_session.async_ensure_token_valid = AsyncMock()
+    coordinator = MagicMock()
+    coordinator.async_config_entry_first_refresh = AsyncMock()
+    coordinator.data = LegrandEnergyData(
+        modules={
+            "main": LegrandModule(id="main", name="EcoMeter", type="NLE"),
+            "main#0": LegrandModule(
+                id="main#0", name="Circuit", type="NLE", bridge="main"
+            ),
+        }
+    )
+    registry = MagicMock()
+
+    async def check_parent_before_forward(*_args) -> None:
+        registry.async_get_or_create.assert_called_once_with(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, "main")},
+            manufacturer="Legrand",
+            model="EcoMeter",
+            name="EcoMeter",
+        )
+
+    with (
+        patch(
+            "custom_components.legrand_energy.async_get_session",
+            new=AsyncMock(return_value=oauth_session),
+        ),
+        patch(
+            "custom_components.legrand_energy.LegrandEnergyCoordinator",
+            return_value=coordinator,
+        ),
+        patch(
+            "custom_components.legrand_energy.dr.async_get",
+            return_value=registry,
+        ),
+        patch.object(
+            hass.config_entries,
+            "async_forward_entry_setups",
+            new=AsyncMock(side_effect=check_parent_before_forward),
+        ),
+    ):
+        assert await async_setup_entry(hass, entry) is True
+
+
+@pytest.mark.asyncio
 async def test_setup_logs_in_with_legacy_credentials(hass) -> None:
     entry = _entry({"username": "user@example.com", "password": "secret"})
     entry.add_to_hass(hass)
