@@ -203,7 +203,7 @@ def _module_measurement_description(
 
 
 def _average_power_attributes(
-    measurements: LegrandMeasurements | FluidMeasurements | None,
+    measurements: LegrandMeasurements | None,
 ) -> dict[str, Any] | None:
     """Expose the timestamp and freshness of the source interval."""
     if measurements is None or measurements.average_power is None:
