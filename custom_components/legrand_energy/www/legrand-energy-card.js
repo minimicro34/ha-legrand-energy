@@ -747,11 +747,16 @@ class LegrandEnergyCard extends HTMLElement {
           " kWh (" + this._unallocatedGaps + " interruption" +
           (this._unallocatedGaps > 1 ? "s" : "") + ")"
         : "";
+      const remaining = total - measured - missing;
+      const hasDailyTotal = isToday && Number.isFinite(total) && total >= 0;
       const message = "Somme des barres : " + format.format(measured) + " kWh" +
         gapInfo +
-        (isToday && Number.isFinite(total) && total >= 0
+        (hasDailyTotal
           ? " · Total Legrand : " + format.format(total) + " kWh" +
-            " · Écart : " + format.format(total - measured - missing) + " kWh"
+            " · Écart : " + format.format(remaining) + " kWh" +
+            (remaining > 0.01
+              ? " (historique Recorder non disponible ou non comparable ; non inclus dans N/R)"
+              : "")
           : "") + " · " + displayRecorded.length + " périodes";
       box.appendChild(this._element("div", message,
         "font-size:12px;color:var(--secondary-text-color);text-align:right;margin-top:6px"));
