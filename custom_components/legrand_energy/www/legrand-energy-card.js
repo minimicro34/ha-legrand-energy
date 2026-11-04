@@ -12,6 +12,8 @@ class LegrandEnergyCard extends HTMLElement {
     this._period = this._period || "day";
     this._history = null;
     this._historyKey = null;
+    this._historySource = null;
+    this._lastEnergyAvailable = false;
     this._partialMonths = new Map();
     this._tariffHistory = null;
     this._splitHistory = null;
@@ -21,7 +23,14 @@ class LegrandEnergyCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const wasAvailable = this._lastEnergyAvailable;
     this._hass = hass;
+    const isAvailable = Boolean(this._state(this._config?.entity));
+    this._lastEnergyAvailable = isAvailable;
+    // Recorder can load before the integration has finished starting.
+    if (!wasAvailable && isAvailable && this._historySource === "recorder") {
+      this._historyKey = null;
+    }
     this._render();
     this._loadHistory();
     this._loadEntityRegistry();
@@ -276,6 +285,7 @@ class LegrandEnergyCard extends HTMLElement {
     const key = [entity, this._period, start.toISOString(), Math.floor(end.getTime() / 300000)].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
+    this._historySource = null;
     this._history = null;
     this._partialMonths = new Map();
     this._historyError = false;
@@ -298,6 +308,7 @@ class LegrandEnergyCard extends HTMLElement {
           const chart = this._netatmoChartData(result.points, start, end);
           if (chart.history.length) {
             this._history = chart.history;
+            this._historySource = "netatmo";
             this._splitHistory = chart.split;
             this._dayGranularity = 1800000;
             this._unallocatedEnergy = 0;
@@ -615,6 +626,15 @@ class LegrandEnergyCard extends HTMLElement {
       } catch (_error) {
         // Never fabricate a partial month if daily Recorder data is missing.
       }
+    }
+    if (this._historyKey !== key) return;
+    this._historySource = "recorder";
+    // If startup completed during the Recorder request, retry native data.
+    if (!this._lastEnergyAvailable && this._state(entity)) {
+      this._lastEnergyAvailable = true;
+      this._historyKey = null;
+      void this._loadHistory();
+      return;
     }
     // Historical tariff states are needed: today's current HP/HC state cannot
     // reliably classify earlier hourly consumption.
