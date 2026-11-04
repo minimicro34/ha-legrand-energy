@@ -798,3 +798,33 @@ test("does not request Netatmo history for an entity without a config entry", as
   assert.ok(!calls.includes("legrand_energy/cached_history"));
   assert.ok(calls.includes("recorder/statistics_during_period"));
 });
+
+
+test("uses native Netatmo daily HP HC totals for week and year", () => {
+  const { card } = createCard();
+  const points = [
+    { timestamp: "2026-11-03T00:00:00Z", energy_kwh: 20.623,
+      interval_seconds: 86400, tariff: null, peak_kwh: 14.955, off_peak_kwh: 5.668 },
+    { timestamp: "2026-11-04T00:00:00Z", energy_kwh: 18.053,
+      interval_seconds: 86400, tariff: null, peak_kwh: 10.975, off_peak_kwh: 7.078 },
+  ];
+  const week = card._netatmoChartData(points,
+    new Date("2026-11-02T00:00:00Z"), new Date("2026-11-09T00:00:00Z"), "week");
+  assert.equal(Array.from(week.history, (r) => r.value).reduce((a, b) => a + b, 0).toFixed(3), "38.676");
+  assert.equal(Array.from(week.split.peak.values()).reduce((a, b) => a + b, 0).toFixed(3), "25.930");
+  assert.equal(Array.from(week.split.offPeak.values()).reduce((a, b) => a + b, 0).toFixed(3), "12.746");
+  const year = card._netatmoChartData(points,
+    new Date("2026-01-01T00:00:00Z"), new Date("2027-01-01T00:00:00Z"), "year");
+  assert.equal(year.history.length, 1);
+  assert.equal(year.split.peak.get(year.history[0].time).toFixed(3), "25.930");
+});
+
+test("does not invent native HP HC when daily split is inconsistent", () => {
+  const { card } = createCard();
+  const result = card._netatmoChartData([
+    { timestamp: "2026-11-03T00:00:00Z", energy_kwh: 20,
+      interval_seconds: 86400, tariff: null, peak_kwh: 14, off_peak_kwh: 5 },
+  ], new Date("2026-11-03T00:00:00Z"), new Date("2026-11-04T00:00:00Z"), "week");
+  assert.equal(Array.from(result.split.peak.values())[0], 0);
+  assert.equal(Array.from(result.split.offPeak.values())[0], 0);
+});
