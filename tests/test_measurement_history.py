@@ -75,3 +75,36 @@ def test_ignores_invalid_intervals() -> None:
         )
         == []
     )
+
+
+def test_preserves_dst_offsets_without_filling_missing_intervals() -> None:
+    """Fall-back hour contains two distinct local 02:30 instants."""
+    from zoneinfo import ZoneInfo
+
+    paris = ZoneInfo("Europe/Paris")
+    first = datetime(2026, 10, 25, 2, 30, tzinfo=paris, fold=0)
+    second = datetime(2026, 10, 25, 2, 30, tzinfo=paris, fold=1)
+    points = [
+        EnergyPoint(
+            timestamp=instant,
+            energy=125,
+            price=None,
+            interval_seconds=1500,
+            tariff=None,
+            zone_id=None,
+        )
+        for instant in (first, second)
+    ]
+    result = serialize_energy_history(
+        points,
+        start=datetime(2026, 10, 25, 0, tzinfo=UTC),
+        end=datetime(2026, 10, 26, 0, tzinfo=UTC),
+    )
+    assert len(result) == 2
+    assert {row["timestamp"][-6:] for row in result} == {"+02:00", "+01:00"}
+    assert sum(row["energy_kwh"] for row in result) == pytest.approx(0.25)
+
+
+def test_rejects_reversed_history_window() -> None:
+    with pytest.raises(ValueError, match="after start"):
+        serialize_energy_history([point(0, 100)], start=START, end=START)
