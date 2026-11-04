@@ -6,6 +6,25 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.3.2] - 2026-11-04
+
+### Changed
+
+- Clarified the Day chart footer when Legrand's daily total exceeds the energy covered by Recorder statistics.
+- Distinguished unavailable or non-comparable Recorder history from N/R energy, which remains reserved for measured deltas spanning missing five-minute samples.
+- Kept chart energy calculations and existing entity identifiers unchanged.
+
+### Validation
+
+- Added a JavaScript regression test for an uncovered Recorder history gap.
+- GitHub Actions CI, Hassfest, and HACS Validation passed for PR #13.
+
+---
+
+[1.3.2]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.1...v1.3.2
+
+---
+
 ## [1.3.1] - 2026-11-04
 
 ### Added
