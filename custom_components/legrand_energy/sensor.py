@@ -145,6 +145,11 @@ def _global_measurement_description(
         value_fn=value_fn,
         available_fn=available_fn,
         last_reset_fn=last_reset_fn,
+        attributes_fn=(
+            lambda data, _module: _average_power_attributes(data.measurements)
+        )
+        if field == "average_power"
+        else None,
     )
 
 
@@ -185,7 +190,38 @@ def _module_measurement_description(
         value_fn=value_fn,
         available_fn=available_fn,
         last_reset_fn=last_reset_fn,
+        attributes_fn=(
+            (
+                lambda data, module: _average_power_attributes(
+                    _module_measurements(data, module)
+                )
+            )
+            if field == "average_power"
+            else None
+        ),
     )
+
+
+def _average_power_attributes(
+    measurements: LegrandMeasurements | FluidMeasurements | None,
+) -> dict[str, Any] | None:
+    """Expose the timestamp and freshness of the source interval."""
+    if (
+        not isinstance(measurements, LegrandMeasurements)
+        or measurements.average_power is None
+    ):
+        return None
+    timestamp = measurements.average_power_timestamp
+    if timestamp is None:
+        return None
+    age = max(0, (dt_util.now() - timestamp).total_seconds())
+    return {
+        "last_measurement": timestamp.isoformat(),
+        "measurement_age_minutes": round(age / 60, 1),
+        "measurement_freshness": (
+            "fresh" if age <= 600 else "delayed" if age <= 1800 else "old"
+        ),
+    }
 
 
 GLOBAL_SENSOR_DESCRIPTIONS: tuple[LegrandSensorDescription, ...] = (

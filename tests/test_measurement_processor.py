@@ -104,6 +104,8 @@ def test_average_power_for_point(
     ("age_seconds", "interval", "expected"),
     [
         (1800, 1800, 8.0),
+        (1800, 300, 48.0),
+        (3599, 300, 48.0),
         (3600, 1800, 8.0),
         (3601, 1800, None),
         (-1, 1800, None),
@@ -166,3 +168,25 @@ def test_latest_average_power_without_now() -> None:
     )
     assert MeasurementProcessor.latest_average_power([point], now=None) is None
     assert MeasurementProcessor.latest_average_power([], now=None) is None
+
+
+def test_average_power_source_timestamp_and_invalid_latest_point() -> None:
+    """Keep the original API timestamp and skip invalid intervals."""
+    from datetime import timedelta
+
+    from custom_components.legrand_energy.helpers.energy_series import EnergyPoint
+
+    now = datetime(2026, 11, 4, 22, 30, tzinfo=UTC)
+    valid = EnergyPoint(
+        timestamp=now - timedelta(minutes=25), energy=10, interval_seconds=300
+    )
+    invalid = EnergyPoint(
+        timestamp=now - timedelta(minutes=5), energy=10, interval_seconds=0
+    )
+    assert MeasurementProcessor.latest_average_power(
+        [valid, invalid], now=now
+    ) == pytest.approx(120)
+    assert (
+        MeasurementProcessor.latest_average_power_timestamp([valid, invalid], now=now)
+        == valid.timestamp
+    )

@@ -6,6 +6,36 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- Exposed original measurement timestamps, age, and freshness attributes for average-power sensors.
+- Displayed measurement freshness in the Lovelace card and introduced an explicit card version (`1.0.1`), independent of the integration version.
+- Added regression tests for cached averages, one-hour expiration boundaries, and invalid timestamps.
+
+### Changed
+
+- Kept the last valid average-power reading for up to 60 minutes without extending its original timestamp.
+- Restricted GitHub Actions push triggers to `main` to avoid duplicate runs alongside pull-request checks.
+
+### Improved
+
+- Preserved recent cached average power during temporary API failures and missing measurement intervals.
+- Improved validation of stale, future-dated, and incomplete cached readings.
+
+### Fixed
+
+- Prevented total and circuit average-power sensors from becoming unavailable while recent valid readings still exist.
+
+### Validation
+
+- 90.14% Python test coverage (80% required).
+- All 21 JavaScript tests passed.
+- Ruff, Mypy, CI, HACS Validation, and Hassfest passed before the card-version and changelog updates; the latest changes require revalidation.
+
+---
+
 ## [1.3.2] - 2026-11-04
 
 ### Changed

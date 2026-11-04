@@ -17,6 +17,7 @@ from .energy_series import EnergyPoint
 from .projections import project_today
 
 SECONDS_PER_DAY = 24 * 60 * 60
+MAX_AVERAGE_POWER_AGE_SECONDS = 60 * 60
 
 
 class MeasurementProcessor:
@@ -94,6 +95,9 @@ class MeasurementProcessor:
 
         return LegrandMeasurements(
             average_power=cls.latest_average_power(today_points, now=now),
+            average_power_timestamp=cls.latest_average_power_timestamp(
+                today_points, now=now
+            ),
             energy_today=(energy_today_wh / 1000),
             energy_peak_today=(energy_peak_today_wh / 1000),
             energy_off_peak_today=(energy_off_peak_today_wh / 1000),
@@ -119,21 +123,37 @@ class MeasurementProcessor:
         return point.energy * 3600 / interval
 
     @classmethod
-    def latest_average_power(
+    def latest_average_power_point(
         cls, points: list[EnergyPoint], *, now: datetime | None
-    ) -> float | None:
-        """Return recent interval-average power, never a stale reading."""
+    ) -> EnergyPoint | None:
+        """Find the most recent valid interval within the one-hour grace period."""
         if now is None:
             return None
         for point in sorted(points, key=lambda item: item.timestamp, reverse=True):
-            interval = point.interval_seconds
-            if interval is None or interval <= 0:
-                continue
             age = (now - point.timestamp).total_seconds()
-            if age < 0 or age > 2 * interval:
+            if age < 0:
+                continue
+            if age > MAX_AVERAGE_POWER_AGE_SECONDS:
                 return None
-            return cls.average_power_for_point(point)
+            if cls.average_power_for_point(point) is not None:
+                return point
         return None
+
+    @classmethod
+    def latest_average_power(
+        cls, points: list[EnergyPoint], *, now: datetime | None
+    ) -> float | None:
+        """Return the latest valid interval average within one hour."""
+        point = cls.latest_average_power_point(points, now=now)
+        return cls.average_power_for_point(point) if point is not None else None
+
+    @classmethod
+    def latest_average_power_timestamp(
+        cls, points: list[EnergyPoint], *, now: datetime | None
+    ) -> datetime | None:
+        """Return the source timestamp, never the Home Assistant poll time."""
+        point = cls.latest_average_power_point(points, now=now)
+        return point.timestamp if point is not None else None
 
     @staticmethod
     def total_energy(
