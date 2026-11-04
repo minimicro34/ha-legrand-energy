@@ -44,7 +44,7 @@ class LegrandEnergyCard extends HTMLElement {
         const offPeak = this._autoEntity(this._config?.offpeak_energy_entity,
           ["consommation_hc_aujourdhui", "consommation_heures_creuses_aujourd_hui"],
           "energy_off_peak_today");
-        if (peak && offPeak) {
+        if ((peak && offPeak) || this._registry[this._config?.entity]?.config_entry_id) {
           this._historyKey = null;
           this._loadHistory();
         }
@@ -271,6 +271,34 @@ class LegrandEnergyCard extends HTMLElement {
     this._tariffHistory = null;
     this._splitHistory = null;
     this._render();
+    // Prefer the integration's cached Netatmo intervals. Never fetch private API
+    // measurements from the card; Recorder remains the compatibility fallback.
+    const entryId = (this._registry || this._hass.entities)?.[entity]?.config_entry_id;
+    if (entryId) {
+      try {
+        const result = await this._hass.callWS({
+          type: "legrand_energy/cached_history",
+          entry_id: entryId,
+          start: start.toISOString(),
+          end: end.toISOString(),
+        });
+        if (this._historyKey !== key) return;
+        if (Array.isArray(result?.points) && result.points.length) {
+          const chart = this._netatmoChartData(result.points, start, end);
+          if (chart.history.length) {
+            this._history = chart.history;
+            this._splitHistory = chart.split;
+            this._dayGranularity = 1800000;
+            this._unallocatedEnergy = 0;
+            this._unallocatedGaps = 0;
+            this._render();
+            return;
+          }
+        }
+      } catch (_error) {
+        // Older integration versions or unavailable private history use Recorder.
+      }
+    }
     let historyPeriod = period;
     let monthlyRows = [];
     try {
