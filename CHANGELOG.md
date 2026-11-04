@@ -11,7 +11,7 @@ The format is based on Keep a Changelog.
 ### Added
 
 - Exposed original measurement timestamps, age, and freshness attributes for average-power sensors.
-- Displayed measurement freshness and the bundled card version in the Lovelace card.
+- Displayed measurement freshness in the Lovelace card and introduced an explicit card version (`1.0.1`), independent of the integration version.
 - Added regression tests for cached averages, one-hour expiration boundaries, and invalid timestamps.
 
 ### Changed
