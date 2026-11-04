@@ -7,7 +7,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/minimicro34/ha-legrand-energy)](https://github.com/minimicro34/ha-legrand-energy/releases)
 [![CI](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/ci.yml)
 [![Hassfest](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml/badge.svg)](https://github.com/minimicro34/ha-legrand-energy/actions/workflows/hassfest.yml)
-[![HACS](https://img.shields.io/badge/HACS-Custom-blue.svg)](https://hacs.xyz/)
+[![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/minimicro34)
 [![License](https://img.shields.io/github/license/minimicro34/ha-legrand-energy)](LICENSE)
@@ -145,26 +145,15 @@ Support for additional Legrand energy devices may be added in future releases.
 
 ## Installation
 
-### HACS
+### HACS (official catalog)
 
-1. Open **HACS**
-2. Go to **Integrations**
-3. Open the **⋮** menu
-4. Select **Custom repositories**
-5. Add:
+Legrand Energy is available in the **default HACS catalog**. You do not need to add a custom repository.
 
-```text
-https://github.com/minimicro34/ha-legrand-energy
-```
-
-Category:
-
-```text
-Integration
-```
-
-6. Install **Legrand Energy**
-7. Restart Home Assistant
+1. Open **HACS** in Home Assistant.
+2. Search for **Legrand Energy** in the integration catalog.
+3. Open **Legrand Energy** and select **Download**.
+4. Restart Home Assistant.
+5. Go to **Settings → Devices & services → Add integration**, search for **Legrand Energy**, and follow the configuration steps below.
 
 ---
 
