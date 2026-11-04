@@ -131,3 +131,16 @@ def test_23_hour_dst_day_is_not_assigned_to_one_tariff() -> None:
         [daily], start=START, end=START + timedelta(days=1)
     )
     assert result[0]["tariff"] is None
+
+
+def test_serializes_native_tariff_split_for_daily_total() -> None:
+    daily = point(0, 20623, 86400)
+    daily.peak_energy = 14955
+    daily.off_peak_energy = 5668
+    result = serialize_energy_history(
+        [daily], start=START, end=START + timedelta(days=1)
+    )
+    assert result[0]["energy_kwh"] == pytest.approx(20.623)
+    assert result[0]["peak_kwh"] == pytest.approx(14.955)
+    assert result[0]["off_peak_kwh"] == pytest.approx(5.668)
+    assert result[0]["tariff"] is None
