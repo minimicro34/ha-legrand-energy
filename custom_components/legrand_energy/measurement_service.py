@@ -443,10 +443,9 @@ class MeasurementService:
         )
 
     @staticmethod
-    @staticmethod
     def _retain_recent_average(
         measurements: LegrandMeasurements,
-        now,
+        now: datetime,
     ) -> LegrandMeasurements:
         """Keep a valid cached average until its original timestamp expires."""
         timestamp = measurements.average_power_timestamp
@@ -461,6 +460,7 @@ class MeasurementService:
             )
         return measurements
 
+    @staticmethod
     def _cached_result(
         previous_data: LegrandEnergyData | None,
     ) -> tuple[
