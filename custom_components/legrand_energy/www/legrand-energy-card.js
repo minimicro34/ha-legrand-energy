@@ -191,6 +191,31 @@ class LegrandEnergyCard extends HTMLElement {
     return { start, end: now };
   }
 
+  // Netatmo reports interval energy (Wh decoded to kWh), not cumulative Recorder sums.
+  // Keep every timestamp in UTC milliseconds to distinguish repeated DST hours.
+  _netatmoBuckets(points, start, end, bucketMs) {
+    const buckets = new Map();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    if (!(bucketMs > 0) || !(endMs > startMs)) return [];
+    for (const point of points) {
+      const timestamp = Date.parse(point.timestamp);
+      const energy = Number(point.energy_kwh);
+      const interval = Number(point.interval_seconds);
+      if (!Number.isFinite(timestamp) || timestamp < startMs || timestamp >= endMs ||
+          !Number.isFinite(energy) || energy < 0 || !Number.isFinite(interval) || interval <= 0)
+        continue;
+      // Do not spread a measurement over unreported intervals.
+      const bucketStart = startMs + Math.floor((timestamp - startMs) / bucketMs) * bucketMs;
+      const previous = buckets.get(bucketStart) || { start: bucketStart, energy_kwh: 0, peak_kwh: 0, offpeak_kwh: 0 };
+      previous.energy_kwh += energy;
+      if (point.tariff === "peak") previous.peak_kwh += energy;
+      if (point.tariff === "off_peak") previous.offpeak_kwh += energy;
+      buckets.set(bucketStart, previous);
+    }
+    return [...buckets.values()].sort((a, b) => a.start - b.start);
+  }
+
   async _loadHistory() {
     if (!this._hass?.callWS || !this._config) return;
     const entity = this._config.entity;
