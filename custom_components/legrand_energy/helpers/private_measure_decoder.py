@@ -113,6 +113,12 @@ def decode_points_by_module(
 
                 consumption, price = decoded
 
+                peak_energy = None
+                off_peak_energy = None
+                if fluid_type is FluidType.ELECTRICITY:
+                    peak_energy = _number_at(row, 2)
+                    off_peak_energy = _number_at(row, 3)
+
                 points.append(
                     EnergyPoint(
                         timestamp=datetime.fromtimestamp(
@@ -122,6 +128,8 @@ def decode_points_by_module(
                         energy=consumption,
                         price=price,
                         interval_seconds=step_time if step_time > 0 else None,
+                        peak_energy=peak_energy,
+                        off_peak_energy=off_peak_energy,
                     )
                 )
 
