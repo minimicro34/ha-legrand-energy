@@ -323,17 +323,23 @@ class MeasurementService:
                     if year_points:
                         # Historical daily points remain valid even when the
                         # private API has not published today's first interval.
-                        measurements_by_module[module_id] = (
-                            MeasurementProcessor.build_measurements(
-                                today_points=[],
-                                week_points=week_points,
-                                month_points=month_points,
-                                year_points=year_points,
-                                peak_price=peak_price,
-                                off_peak_price=off_peak_price,
-                                now=now,
-                            )
+                        historical_measurements = MeasurementProcessor.build_measurements(
+                            today_points=[],
+                            week_points=week_points,
+                            month_points=month_points,
+                            year_points=year_points,
+                            peak_price=peak_price,
+                            off_peak_price=off_peak_price,
+                            now=now,
                         )
+                        if previous_measurements is not None:
+                            cached = self._retain_recent_average(previous_measurements, now)
+                            historical_measurements = replace(
+                                historical_measurements,
+                                average_power=cached.average_power,
+                                average_power_timestamp=cached.average_power_timestamp,
+                            )
+                        measurements_by_module[module_id] = historical_measurements
                     elif previous_measurements is not None:
                         # No historical points are available either. Avoid
                         # presenting yesterday's totals as today's totals.
