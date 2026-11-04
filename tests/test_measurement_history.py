@@ -68,8 +68,11 @@ def test_rejects_naive_boundary() -> None:
 
 
 def test_ignores_invalid_intervals() -> None:
-    assert serialize_energy_history(
-        [point(0, 100, 0), point(25, -1)],
-        start=START,
-        end=START + timedelta(hours=1),
-    ) == []
+    assert (
+        serialize_energy_history(
+            [point(0, 100, 0), point(25, -1)],
+            start=START,
+            end=START + timedelta(hours=1),
+        )
+        == []
+    )
