@@ -6,6 +6,8 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.components import websocket_api
+from homeassistant.components.websocket_api.connection import ActiveConnection
+from homeassistant.components.websocket_api.decorators import async_response, websocket_command
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
@@ -13,18 +15,18 @@ from .const import DOMAIN
 from .coordinator import LegrandEnergyCoordinator
 
 
-@websocket_api.websocket_command(
+@websocket_command(
     {
-        vol.Required("type"): "legrand_energy/cached_history",
-        vol.Required("entry_id"): str,
-        vol.Required("start"): str,
-        vol.Required("end"): str,
+        vol.Required("type"): "legrand_energy/cached_history",  # type: ignore[dict-item]
+        vol.Required("entry_id"): str,  # type: ignore[dict-item]
+        vol.Required("start"): str,  # type: ignore[dict-item]
+        vol.Required("end"): str,  # type: ignore[dict-item]
     }
 )
-@websocket_api.async_response
+@async_response
 async def async_cached_history(
     hass: HomeAssistant,
-    connection: websocket_api.ActiveConnection,
+    connection: ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
     """Return bounded cached measurements without calling the private API."""
