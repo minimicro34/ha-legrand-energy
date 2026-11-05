@@ -280,9 +280,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     totals = daily_totals.setdefault(
                         day, {"hp_wh": 0.0, "hc_wh": 0.0, "hp_eur": 0.0, "hc_eur": 0.0}
                     )
-                    counts = daily_counts.setdefault(
-                        day, {"hp": 0, "hc": 0, "rows": 0}
-                    )
+                    counts = daily_counts.setdefault(day, {"hp": 0, "hc": 0, "rows": 0})
                     counts["rows"] += 1
                     for suffix, label in (("1", "hp"), ("2", "hc")):
                         energy = energies[f"sum_energy_elec${suffix}"]
