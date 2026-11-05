@@ -21,13 +21,14 @@ class Element {
   setAttribute(name, value) { this[name] = value; }
 }
 
-function createCard() {
+function createCard(timers = {}) {
   const registry = new Map();
   const window = {};
   runInNewContext(source, {
     HTMLElement: Element,
     document: { createElement: () => new Element(), createElementNS: () => new Element() },
     Intl, Date, Number, Array, Math,
+    ...timers,
     customElements: {
       define: (name, constructor) => registry.set(name, constructor),
       get: (name) => registry.get(name),
@@ -743,4 +744,60 @@ test("does not invent native HP HC when daily split is inconsistent", () => {
   ], new Date("2026-11-03T00:00:00Z"), new Date("2026-11-04T00:00:00Z"), "week");
   assert.equal(Array.from(result.split.peak.values())[0], 0);
   assert.equal(Array.from(result.split.offPeak.values())[0], 0);
+});
+
+test("retries Recorder fallback promptly and clears retry after native recovery", async () => {
+  let scheduled;
+  let cleared = 0;
+  const { card } = createCard({
+    setTimeout: (callback, delay) => {
+      assert.equal(delay, 3000);
+      scheduled = callback;
+      return 1;
+    },
+    clearTimeout: () => { cleared++; },
+  });
+  card.setConfig({ entity: "sensor.energy" });
+  card._dateRange = () => ({
+    start: new Date("2026-11-04T00:00:00Z"),
+    end: new Date("2026-11-04T03:00:00Z"),
+  });
+  card._registry = {
+    "sensor.energy": { entity_id: "sensor.energy", config_entry_id: "entry-1" },
+  };
+  let nativeReady = false;
+  let nativeCalls = 0;
+  card._hass = {
+    states: { "sensor.energy": { state: "1" } },
+    callWS: async (payload) => {
+      if (payload.type === "legrand_energy/cached_history") {
+        nativeCalls++;
+        return nativeReady ? { points: [{
+          timestamp: "2026-11-04T00:00:00Z", energy_kwh: 0.5,
+          interval_seconds: 1500, tariff: "HP",
+        }] } : { points: [] };
+      }
+      if (payload.type === "recorder/statistics_during_period") {
+        const begin = Date.parse(payload.start_time);
+        return { "sensor.energy": [
+          { start: begin, sum: 10 },
+          { start: begin + 300000, sum: 10.5 },
+          { start: begin + 600000, sum: 11 },
+        ] };
+      }
+      return {};
+    },
+  };
+  await card._loadHistory();
+  assert.equal(card._historySource, "recorder");
+  assert.equal(typeof scheduled, "function");
+  const fallbackText = JSON.stringify(card.children);
+  assert.match(fallbackText, /Historique de secours Recorder/);
+  nativeReady = true;
+  scheduled();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(nativeCalls, 2);
+  assert.equal(card._historySource, "netatmo");
+  assert.equal(card._nativeRetryTimer, null);
+  assert.ok(cleared >= 0);
 });
