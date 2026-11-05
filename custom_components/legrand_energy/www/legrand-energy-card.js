@@ -745,15 +745,25 @@ class LegrandEnergyCard extends HTMLElement {
   _chart() {
     const box = this._element("div", undefined, "position:relative");
     const recorded = this._history || [];
+    const now = new Date();
+    const today = this._dateRange().start;
+    const liveEnergy = Number(this._state(this._config.entity)?.state);
+    // At midnight cached data and Recorder may both lack today's first interval.
+    // Keep a stable state until the first measurement arrives.
+    const waitingForFirstValues = this._period === "day" && now.getHours() === 0 &&
+      Number.isFinite(liveEnergy) && liveEnergy === 0 &&
+      !recorded.some((point) => point.time >= today.getTime() && Number(point.value) > 0);
+    if (waitingForFirstValues) {
+      box.appendChild(this._element("div", "En attente des premières valeurs…",
+        "font-size:12px;color:var(--secondary-text-color);padding:4px 0 8px"));
+      return box;
+    }
     const nativeEntryId = (this._registry || this._hass?.entities)?.[this._config?.entity]?.config_entry_id;
     if (this._historySource === "recorder" && nativeEntryId && !this._historyError) {
       box.appendChild(this._element("div",
         "Historique de secours Recorder — répartition HP/HC en cours de chargement",
         "font-size:12px;color:var(--secondary-text-color);padding:4px 0 8px"));
     }
-    const now = new Date();
-    const today = this._dateRange().start;
-    const liveEnergy = Number(this._state(this._config.entity)?.state);
     // During the first hour, the day sensor itself is the exact partial-hour
     // total. Never add it to Recorder data, which would double-count energy.
     const firstHour = this._period === "day" && now.getHours() === 0 &&
@@ -947,13 +957,13 @@ class LegrandEnergyCard extends HTMLElement {
             (remaining > 0.01
               ? " (historique Recorder non disponible ou non comparable ; non inclus dans N/R)"
               : "")
-          : "") + " · " + displayRecorded.length + " périodes";
+          : "") + " · " + displayRecorded.length + (displayRecorded.length === 1 ? " période" : " périodes");
       box.appendChild(this._element("div", message,
         "font-size:12px;color:var(--secondary-text-color);text-align:right;margin-top:6px"));
     } else {
       box.appendChild(this._element("div",
         "Consommation par " + (this._period === "year" ? "mois" : "jour") +
-        " · " + displayRecorded.length + " périodes",
+        " · " + displayRecorded.length + (displayRecorded.length === 1 ? " période" : " périodes"),
         "font-size:12px;color:var(--secondary-text-color);text-align:right"));
     }
     return box;
