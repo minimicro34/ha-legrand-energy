@@ -225,6 +225,8 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             return
 
         field_names = fields.split(",")
+        daily_totals: dict[str, dict[str, float]] = {}
+        daily_counts: dict[str, dict[str, int]] = {}
         for item in modules:
             if not isinstance(item, dict) or item.get("id") != module.id:
                 continue
@@ -275,6 +277,25 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                         by_day.setdefault(day, []).append(
                             (local.isoformat(), prices, energies)
                         )
+                    totals = daily_totals.setdefault(
+                        day, {"hp_wh": 0.0, "hc_wh": 0.0, "hp_eur": 0.0, "hc_eur": 0.0}
+                    )
+                    counts = daily_counts.setdefault(
+                        day, {"hp": 0, "hc": 0, "rows": 0}
+                    )
+                    counts["rows"] += 1
+                    for suffix, label in (("1", "hp"), ("2", "hc")):
+                        energy = energies[f"sum_energy_elec${suffix}"]
+                        price = prices[f"sum_energy_price${suffix}"]
+                        if (
+                            isinstance(energy, (int, float))
+                            and not isinstance(energy, bool)
+                            and isinstance(price, (int, float))
+                            and not isinstance(price, bool)
+                        ):
+                            totals[f"{label}_wh"] += energy
+                            totals[f"{label}_eur"] += price
+                            counts[label] += 1
                 for day, samples in sorted(by_day.items()):
                     _LOGGER.info(
                         (
@@ -294,6 +315,29 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                         ),
                         len(rows),
                     )
+
+        for day, totals in sorted(daily_totals.items()):
+            counts = daily_counts[day]
+            hp_kwh = totals["hp_wh"] / 1000
+            hc_kwh = totals["hc_wh"] / 1000
+            _LOGGER.info(
+                (
+                    "Legrand native price diagnostic: daily_total day=%s "
+                    "hp_kwh=%.4f hc_kwh=%.4f total_kwh=%.4f "
+                    "hp_eur=%.4f hc_eur=%.4f total_eur=%.4f "
+                    "hp_intervals=%d hc_intervals=%d rows=%d"
+                ),
+                day,
+                hp_kwh,
+                hc_kwh,
+                hp_kwh + hc_kwh,
+                totals["hp_eur"],
+                totals["hc_eur"],
+                totals["hp_eur"] + totals["hc_eur"],
+                counts["hp"],
+                counts["hc"],
+                counts["rows"],
+            )
 
     def cached_energy_history(
         self, *, start: datetime, end: datetime
