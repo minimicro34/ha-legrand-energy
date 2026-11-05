@@ -115,6 +115,59 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             matches or ["<none>"],
         )
 
+    async def async_debug_tariff_fields(self) -> None:
+        """Log current and midnight-adjacent tariff state at INFO level."""
+        now = dt_util.now()
+        contract = self.data.contract if self.data is not None else None
+        if contract is None:
+            _LOGGER.info(
+                "Legrand tariff fields diagnostic: time=%s contract=unavailable",
+                now.isoformat(),
+            )
+            return
+
+        engine = TariffEngine(contract)
+        from datetime import timedelta
+
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        samples = (
+            ("previous_day_2359", midnight - timedelta(minutes=1)),
+            ("today_0000", midnight),
+            ("today_0005", midnight + timedelta(minutes=5)),
+            ("now", now),
+            ("next_day_0000", midnight + timedelta(days=1)),
+        )
+        _LOGGER.info(
+            "Legrand tariff fields diagnostic: time=%s option=%s "
+            "tariff=%s zones=%s timetable=%s",
+            now.isoformat(),
+            contract.tariff_option,
+            contract.tariff,
+            [(z.id, z.price_type, z.price) for z in contract.zones],
+            [(p.zone_id, p.minute_offset) for p in contract.timetable],
+        )
+        for label, instant in samples:
+            try:
+                state = engine.state_at(instant)
+                _LOGGER.info(
+                    "Legrand tariff fields diagnostic: sample=%s time=%s "
+                    "zone_id=%s zone=%s off_peak=%s price=%s next_change=%s",
+                    label,
+                    instant.isoformat(),
+                    state.zone_id,
+                    state.zone_name,
+                    state.is_off_peak,
+                    state.price,
+                    state.next_change.isoformat() if state.next_change else None,
+                )
+            except ValueError as err:
+                _LOGGER.info(
+                    "Legrand tariff fields diagnostic: sample=%s time=%s error=%s",
+                    label,
+                    instant.isoformat(),
+                    err,
+                )
+
     def cached_energy_history(
         self, *, start: datetime, end: datetime
     ) -> list[dict[str, object]]:
