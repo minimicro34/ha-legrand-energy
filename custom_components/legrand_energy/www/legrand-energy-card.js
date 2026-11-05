@@ -12,6 +12,7 @@ class LegrandEnergyCard extends HTMLElement {
     this._historySource = null;
     this._lastEnergyAvailable = false;
     this._lastNativeRetry = 0;
+    this._nativeRetryTimer = null;
     this._partialMonths = new Map();
     this._tariffHistory = null;
     this._splitHistory = null;
@@ -26,15 +27,42 @@ class LegrandEnergyCard extends HTMLElement {
     const isAvailable = Boolean(this._state(this._config?.entity));
     this._lastEnergyAvailable = isAvailable;
     const entryId = (this._registry || hass.entities)?.[this._config?.entity]?.config_entry_id;
-    const now = Date.now();
     if (this._historySource === "recorder" && entryId && isAvailable &&
-        ((!wasAvailable && isAvailable) || now - this._lastNativeRetry >= 30000)) {
-      this._lastNativeRetry = now;
-      this._historyKey = null;
+        (!wasAvailable || !this._lastNativeRetry)) {
+      this._retryNativeHistory();
     }
     this._render();
     this._loadHistory();
     this._loadEntityRegistry();
+  }
+
+  disconnectedCallback() {
+    this._clearNativeRetry();
+  }
+
+  _clearNativeRetry() {
+    if (this._nativeRetryTimer !== null && typeof clearTimeout === "function") {
+      clearTimeout(this._nativeRetryTimer);
+    }
+    this._nativeRetryTimer = null;
+  }
+
+  _retryNativeHistory() {
+    if (this._historySource !== "recorder") return;
+    this._clearNativeRetry();
+    this._lastNativeRetry = Date.now();
+    this._historyKey = null;
+    void this._loadHistory();
+  }
+
+  _scheduleNativeRetry() {
+    this._clearNativeRetry();
+    if (this._historySource !== "recorder" || typeof setTimeout !== "function") return;
+    // Local cached-history request only; no extra private Netatmo API polling.
+    this._nativeRetryTimer = setTimeout(() => {
+      this._nativeRetryTimer = null;
+      this._retryNativeHistory();
+    }, 3000);
   }
 
   async _loadEntityRegistry() {
@@ -313,6 +341,7 @@ class LegrandEnergyCard extends HTMLElement {
     const key = [entity, this._period, start.toISOString(), Math.floor(end.getTime() / 300000)].join("|");
     if (key === this._historyKey) return;
     this._historyKey = key;
+    this._clearNativeRetry();
     const startedAvailable = Boolean(this._state(entity));
     this._historySource = null;
     this._history = null;
@@ -338,6 +367,7 @@ class LegrandEnergyCard extends HTMLElement {
           if (chart.history.length) {
             this._history = chart.history;
             this._historySource = "netatmo";
+            this._clearNativeRetry();
             this._splitHistory = chart.split;
             this._dayGranularity = 1800000;
             this._unallocatedEnergy = 0;
@@ -656,12 +686,13 @@ class LegrandEnergyCard extends HTMLElement {
         // Never fabricate a partial month if daily Recorder data is missing.
       }
     }
+    if (this._historyKey !== key) return;
     this._historySource = "recorder";
+    this._scheduleNativeRetry();
     // If startup completed during the Recorder request, retry native data.
     if (!startedAvailable && this._lastEnergyAvailable) {
       this._lastEnergyAvailable = true;
-      this._historyKey = null;
-      void this._loadHistory();
+      this._retryNativeHistory();
       return;
     }
     // Historical tariff states are needed: today's current HP/HC state cannot
@@ -712,6 +743,11 @@ class LegrandEnergyCard extends HTMLElement {
   _chart() {
     const box = this._element("div", undefined, "position:relative");
     const recorded = this._history || [];
+    if (this._historySource === "recorder") {
+      box.appendChild(this._element("div",
+        "Historique de secours Recorder — répartition HP/HC en cours de chargement",
+        "font-size:12px;color:var(--secondary-text-color);padding:4px 0 8px"));
+    }
     const now = new Date();
     const today = this._dateRange().start;
     const liveEnergy = Number(this._state(this._config.entity)?.state);
