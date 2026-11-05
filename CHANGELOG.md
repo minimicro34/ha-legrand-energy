@@ -8,6 +8,13 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
+### Beta 10 — Native Netatmo tariff diagnostics
+
+- Extended `legrand_energy.debug_tariff_fields` to inspect raw private `gethomemeasure` electricity and price fields (`sum_energy_elec`, `sum_energy_elec$0/$1/$2`, and `sum_energy_price$0/$1/$2`).
+- Logged per-day availability, timestamps, and representative first/last non-null price rows to investigate native HP/HC price mapping; no mapping is assumed until verified against actual API responses.
+- Kept the diagnostic read-only: no changes to sensor energy, cost calculations, or tariff attribution.
+- Local validation reported: 184 Python tests, 27 JavaScript tests, 86.62% coverage, and `make check` passing.
+
 ### Beta 6 — Native history restoration
 
 - Restored Netatmo / Home + Control cached interval history as the preferred source for Day, Week, Month, and Year charts.
