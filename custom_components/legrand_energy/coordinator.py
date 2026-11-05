@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -244,7 +244,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 for index, row in enumerate(rows):
                     if not isinstance(row, list):
                         continue
-                    stamp = datetime.fromtimestamp(start + index * step, dt_util.UTC)
+                    stamp = datetime.fromtimestamp(start + index * step, UTC)
                     local = dt_util.as_local(stamp)
                     day = local.date().isoformat()
                     prices = {
