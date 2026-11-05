@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -169,13 +170,17 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
     async def async_debug_native_price_fields(self) -> None:
         """Inspect raw Netatmo price series without changing sensor values."""
         if self.private_api is None or self.data is None:
-            _LOGGER.info("Legrand native price diagnostic: private API/data unavailable")
+            _LOGGER.info(
+                "Legrand native price diagnostic: private API/data unavailable"
+            )
             return
 
         home_id = self.api.get_first_home_id()
         module = MeasurementProcessor.find_total_module(self.data.modules)
         if home_id is None or module is None:
-            _LOGGER.info("Legrand native price diagnostic: home/total module unavailable")
+            _LOGGER.info(
+                "Legrand native price diagnostic: home/total module unavailable"
+            )
             return
 
         now = dt_util.now()
@@ -185,7 +190,7 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             "sum_energy_elec$2,sum_energy_price$0,sum_energy_price$1,"
             "sum_energy_price$2"
         )
-        home = {
+        home: dict[str, Any] = {
             "id": home_id,
             "modules": [{"id": module.id, "type": fields}],
             "rooms": [],
@@ -233,14 +238,25 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                 start = measure.get("beg_time")
                 step = measure.get("step_time")
                 rows = measure.get("value")
-                if not isinstance(start, int) or not isinstance(step, int) or not isinstance(rows, list):
-                    _LOGGER.info("Legrand native price diagnostic: invalid measure structure")
+                if (
+                    not isinstance(start, int)
+                    or not isinstance(step, int)
+                    or not isinstance(rows, list)
+                ):
+                    _LOGGER.info(
+                        "Legrand native price diagnostic: invalid measure structure"
+                    )
                     continue
                 _LOGGER.info(
                     "Legrand native price diagnostic: beg_time=%s step_time=%s rows=%d",
-                    start, step, len(rows),
+                    start,
+                    step,
+                    len(rows),
                 )
-                by_day = {}
+                by_day: dict[
+                    str,
+                    list[tuple[str, dict[str, Any], dict[str, Any]]],
+                ] = {}
                 for index, row in enumerate(rows):
                     if not isinstance(row, list):
                         continue
@@ -256,15 +272,26 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                         for pos in (1, 2, 3)
                     }
                     if any(value is not None for value in prices.values()):
-                        by_day.setdefault(day, []).append((local.isoformat(), prices, energies))
+                        by_day.setdefault(day, []).append(
+                            (local.isoformat(), prices, energies)
+                        )
                 for day, samples in sorted(by_day.items()):
                     _LOGGER.info(
-                        "Legrand native price diagnostic: day=%s nonempty_rows=%d first=%s last=%s",
-                        day, len(samples), samples[0], samples[-1],
+                        (
+                            "Legrand native price diagnostic: day=%s nonempty_rows=%d "
+                            "first=%s last=%s"
+                        ),
+                        day,
+                        len(samples),
+                        samples[0],
+                        samples[-1],
                     )
                 if not by_day:
                     _LOGGER.info(
-                        "Legrand native price diagnostic: no non-null price values in %d rows",
+                        (
+                            "Legrand native price diagnostic: no non-null price values "
+                            "in %d rows"
+                        ),
                         len(rows),
                     )
 
