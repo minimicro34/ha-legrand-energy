@@ -745,7 +745,8 @@ class LegrandEnergyCard extends HTMLElement {
   _chart() {
     const box = this._element("div", undefined, "position:relative");
     const recorded = this._history || [];
-    if (this._historySource === "recorder") {
+    const nativeEntryId = (this._registry || this._hass?.entities)?.[this._config?.entity]?.config_entry_id;
+    if (this._historySource === "recorder" && nativeEntryId && !this._historyError) {
       box.appendChild(this._element("div",
         "Historique de secours Recorder — répartition HP/HC en cours de chargement",
         "font-size:12px;color:var(--secondary-text-color);padding:4px 0 8px"));
