@@ -219,6 +219,7 @@ async def async_setup_entry(
     async def debug_tariff_fields(_call: ServiceCall) -> None:
         """Log tariff configuration and midnight boundary checks."""
         await coordinator.async_debug_tariff_fields()
+        await coordinator.async_debug_native_price_fields()
 
     hass.services.async_register(
         DOMAIN,
