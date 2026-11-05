@@ -57,7 +57,9 @@ class LegrandEnergyCard extends HTMLElement {
 
   _scheduleNativeRetry() {
     this._clearNativeRetry();
-    if (this._historySource !== "recorder" || typeof setTimeout !== "function") return;
+    const entryId = (this._registry || this._hass?.entities)?.[this._config?.entity]?.config_entry_id;
+    if (this._historySource !== "recorder" || !entryId ||
+        typeof setTimeout !== "function") return;
     // Local cached-history request only; no extra private Netatmo API polling.
     this._nativeRetryTimer = setTimeout(() => {
       this._nativeRetryTimer = null;
