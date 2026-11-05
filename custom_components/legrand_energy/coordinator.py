@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -127,8 +127,6 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
             return
 
         engine = TariffEngine(contract)
-        from datetime import timedelta
-
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
         samples = (
             ("previous_day_2359", midnight - timedelta(minutes=1)),
