@@ -166,6 +166,108 @@ class LegrandEnergyCoordinator(DataUpdateCoordinator[LegrandEnergyData]):
                     err,
                 )
 
+    async def async_debug_native_price_fields(self) -> None:
+        """Inspect raw Netatmo price series without changing sensor values."""
+        if self.private_api is None or self.data is None:
+            _LOGGER.info("Legrand native price diagnostic: private API/data unavailable")
+            return
+
+        home_id = self.api.get_first_home_id()
+        module = MeasurementProcessor.find_total_module(self.data.modules)
+        if home_id is None or module is None:
+            _LOGGER.info("Legrand native price diagnostic: home/total module unavailable")
+            return
+
+        now = dt_util.now()
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        fields = (
+            "sum_energy_elec,sum_energy_elec$0,sum_energy_elec$1,"
+            "sum_energy_elec$2,sum_energy_price$0,sum_energy_price$1,"
+            "sum_energy_price$2"
+        )
+        home = {
+            "id": home_id,
+            "modules": [{"id": module.id, "type": fields}],
+            "rooms": [],
+        }
+        if module.bridge is not None:
+            home["modules"][0]["bridge"] = module.bridge
+
+        try:
+            payload = await self.private_api.get_home_measure(
+                home=home,
+                scale="5min",
+                real_time=True,
+                date_begin=int((midnight - timedelta(days=1)).timestamp()),
+                date_end=int(now.timestamp()),
+            )
+        except Exception as err:
+            _LOGGER.warning(
+                "Legrand native price diagnostic: gethomemeasure failed (%s)",
+                type(err).__name__,
+            )
+            return
+
+        body = payload.get("body")
+        home_data = body.get("home") if isinstance(body, dict) else None
+        modules = home_data.get("modules") if isinstance(home_data, dict) else None
+        _LOGGER.info(
+            "Legrand native price diagnostic: requested_fields=%s response_modules=%s",
+            fields,
+            len(modules) if isinstance(modules, list) else "missing",
+        )
+        if not isinstance(modules, list):
+            return
+
+        field_names = fields.split(",")
+        for item in modules:
+            if not isinstance(item, dict) or item.get("id") != module.id:
+                continue
+            measures = item.get("measures")
+            if not isinstance(measures, list):
+                _LOGGER.info("Legrand native price diagnostic: measures=missing")
+                continue
+            for measure in measures:
+                if not isinstance(measure, dict):
+                    continue
+                start = measure.get("beg_time")
+                step = measure.get("step_time")
+                rows = measure.get("value")
+                if not isinstance(start, int) or not isinstance(step, int) or not isinstance(rows, list):
+                    _LOGGER.info("Legrand native price diagnostic: invalid measure structure")
+                    continue
+                _LOGGER.info(
+                    "Legrand native price diagnostic: beg_time=%s step_time=%s rows=%d",
+                    start, step, len(rows),
+                )
+                by_day = {}
+                for index, row in enumerate(rows):
+                    if not isinstance(row, list):
+                        continue
+                    stamp = datetime.fromtimestamp(start + index * step, dt_util.UTC)
+                    local = dt_util.as_local(stamp)
+                    day = local.date().isoformat()
+                    prices = {
+                        field_names[pos]: row[pos] if pos < len(row) else None
+                        for pos in (4, 5, 6)
+                    }
+                    energies = {
+                        field_names[pos]: row[pos] if pos < len(row) else None
+                        for pos in (1, 2, 3)
+                    }
+                    if any(value is not None for value in prices.values()):
+                        by_day.setdefault(day, []).append((local.isoformat(), prices, energies))
+                for day, samples in sorted(by_day.items()):
+                    _LOGGER.info(
+                        "Legrand native price diagnostic: day=%s nonempty_rows=%d first=%s last=%s",
+                        day, len(samples), samples[0], samples[-1],
+                    )
+                if not by_day:
+                    _LOGGER.info(
+                        "Legrand native price diagnostic: no non-null price values in %d rows",
+                        len(rows),
+                    )
+
     def cached_energy_history(
         self, *, start: datetime, end: datetime
     ) -> list[dict[str, object]]:
