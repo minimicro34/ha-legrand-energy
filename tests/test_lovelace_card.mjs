@@ -540,8 +540,10 @@ test("groups five-minute energy and HP/HC deltas into half-hour day bars", async
   assert.equal(overlays.length, 2);
   assert.equal(typeof overlays[0].on_mouseenter, "function");
   assert.equal(typeof overlays[0].on_click, "function");
-  const tooltip = chart.children.find((child) => child.style.display === "none");
-  assert.ok(tooltip, "chart must include a hidden tooltip");
+  const tooltip = chart.children.find((child) =>
+    child.style.cssText?.includes("display:none") &&
+    child.style.cssText?.includes("pointer-events:none"));
+  assert.ok(tooltip, "chart must include a tooltip element");
   overlays[0].on_mouseenter();
   assert.equal(tooltip.style.display, "block");
   assert.match(tooltip.textContent, /HP/);
