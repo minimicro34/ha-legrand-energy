@@ -8,45 +8,139 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
+The 1.3.3 beta entries below document incremental changes between successive beta tags. They remain under Unreleased until the next stable release. The beta12 changes are present on `main` but the beta12 tag has not yet been published.
+
+### Beta 12 — Midnight display stabilization (pending release)
+
+#### Fixed
+- Stabilized the Day chart's empty state before the first current-day measurements become available.
+- Corrected singular wording for a single chart period.
+
+#### Validation
+- Signed-release workflow dry run passed quality checks and local GPG tag verification; no beta12 tag or release was published.
+
+### Beta 11 — Daily native HP/HC diagnostics
+
+#### Added
+- Logged native daily electricity and price totals to help investigate HP/HC mapping in the private Netatmo response.
+
+#### Changed
+- Kept diagnostic output separate from energy and tariff attribution used by sensors and charts.
+
 ### Beta 10 — Native Netatmo tariff diagnostics
 
+#### Added
 - Extended `legrand_energy.debug_tariff_fields` to inspect raw private `gethomemeasure` electricity and price fields (`sum_energy_elec`, `sum_energy_elec$0/$1/$2`, and `sum_energy_price$0/$1/$2`).
-- Logged per-day availability, timestamps, and representative first/last non-null price rows to investigate native HP/HC price mapping; no mapping is assumed until verified against actual API responses.
-- Kept the diagnostic read-only: no changes to sensor energy, cost calculations, or tariff attribution.
-- Local validation reported: 184 Python tests, 27 JavaScript tests, 86.62% coverage, and `make check` passing.
+- Logged per-day availability, timestamps, and representative first and last non-null price rows.
+
+#### Improved
+- Used UTC-aware timestamps and cleaned up the read-only diagnostic output.
+
+#### Changed
+- Kept native HP/HC price mapping unassigned until verified against actual API responses; no change to sensor energy, cost calculations, or tariff attribution.
+
+#### Validation
+- Local validation reported 184 Python tests, 27 JavaScript tests, 86.62% coverage, and `make check` passing.
+
+### Beta 9 — Tariff and midnight diagnostics
+
+#### Added
+- Registered the `legrand_energy.debug_tariff_fields` Home Assistant action.
+- Added INFO-level tariff-field and midnight diagnostic reporting for investigating the private API response.
+
+#### Changed
+- Kept diagnostic collection read-only.
+
+### Beta 8 — Recorder fallback recovery
+
+#### Fixed
+- Retried cached Netatmo history promptly after Recorder fallback rather than waiting indefinitely.
+- Avoided scheduling a recovery retry when the integration entry was unknown.
+- Displayed the Recorder recovery notice only when native history was eligible.
+
+#### Improved
+- Made the fallback source more explicit in the Lovelace card.
+
+#### Validation
+- Added JavaScript regression coverage for timed fallback recovery and card version 1.0.3.
+
+### Beta 7 — Current-day measurement diagnostics
+
+#### Added
+- Added safe current-day API and decoder count diagnostics to investigate delayed native measurements.
+
+#### Changed
+- Restricted detailed current-day API counts to DEBUG logging.
+- Simplified diagnostic metadata without exposing private measurements or credentials.
 
 ### Beta 6 — Native history restoration
 
+#### Added
 - Restored Netatmo / Home + Control cached interval history as the preferred source for Day, Week, Month, and Year charts.
+- Restored authenticated cached-history WebSocket access, interval serialization, and native HP/HC measurements.
+
+#### Improved
 - Kept Home Assistant Recorder as fallback when the integration cache is unavailable or empty, and retried native history after startup.
-- Restored authenticated cached-history WebSocket access, interval serialization, and native HP/HC measurements with regression tests.
-- Bumped integration to `1.3.3-beta6` and Lovelace card to `1.0.2`; beta5 remains unchanged.
-- Integrated native-history changes on top of the merged average-power fixes.
+- Updated the bundled Lovelace card to version 1.0.2.
 
-### Added
+#### Validation
+- Python and JavaScript regression tests cover native history.
+- CI, HACS Validation, and Hassfest passed on the beta6 pull request.
 
-- Exposed original measurement timestamps, age, and freshness attributes for average-power sensors.
-- Displayed measurement freshness in the Lovelace card and introduced an explicit card version (`1.0.1`), independent of the integration version.
-- Added regression tests for cached averages, one-hour expiration boundaries, and invalid timestamps.
+### Beta 5 — Average-power freshness and resilience
 
-### Changed
+#### Added
+- Exposed source timestamps, measurement age, and freshness attributes for average-power sensors.
+- Displayed average-power freshness in the Lovelace card and introduced an independent card version (1.0.1).
+- Added regression tests for cached averages, expiry boundaries, and invalid timestamps.
 
-- Kept the last valid average-power reading for up to 60 minutes without extending its original timestamp.
+#### Changed
+- Retained the last valid average-power reading for up to 60 minutes without extending its source timestamp.
 - Restricted GitHub Actions push triggers to `main` to avoid duplicate runs alongside pull-request checks.
 
-### Improved
-
+#### Improved
 - Preserved recent cached average power during temporary API failures and missing measurement intervals.
 - Improved validation of stale, future-dated, and incomplete cached readings.
 
-### Fixed
-
+#### Fixed
 - Prevented total and circuit average-power sensors from becoming unavailable while recent valid readings still exist.
 
-### Validation
+#### Validation
+- At the beta5 changelog update: 90.14% Python coverage and 21 JavaScript tests passed; Ruff, Mypy, CI, HACS Validation, and Hassfest had passed before the final card-version and changelog edits.
 
-- Python and JavaScript regression tests cover average-power freshness and native history.
-- CI, HACS Validation, and Hassfest passed on the beta6 pull request; release validation on `main` is tracked by GitHub Actions.
+### Beta 4 — Native interval processing
+
+#### Changed
+- Updated native measurement history and private measurement decoding used by the integration and card.
+- Updated the energy-series processing and current-day history handling.
+
+#### Validation
+- Added or updated regression tests for the private measurement decoder, measurement history, and Lovelace card.
+
+### Beta 3 — Measurement-history reliability
+
+#### Fixed
+- Adjusted coordinator and measurement-history handling for native interval updates.
+
+#### Validation
+- Updated measurement-history regression tests.
+
+### Beta 2 — Lovelace card refinement
+
+#### Changed
+- Refined the bundled Lovelace card's display behavior.
+
+#### Validation
+- Updated Lovelace card regression tests.
+
+### Beta 1 — Native history groundwork
+
+#### Added
+- Introduced integration-side native measurement history support, WebSocket handling, and diagnostics for the 1.3.3 beta series.
+- Added regression coverage for measurement history, WebSocket, diagnostics, and Lovelace chart behavior.
+
+#### Changed
+- Updated the coordinator, measurement service, and Lovelace card to support native-history experimentation.
 
 ---
 
