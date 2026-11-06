@@ -168,6 +168,13 @@ jobs:
           Path("release-notes.md").write_text(notes, encoding="utf-8")
           PY
 
+      - name: Preserve generated release notes
+        uses: actions/upload-artifact@v6
+        with:
+          name: signed-release-notes
+          path: release-notes.md
+          retention-days: 7
+
       - name: Publish tag and GitHub release
         if: inputs.dry_run == false
         shell: bash
