@@ -146,8 +146,7 @@ jobs:
               section = re.search(pattern, changelog)
               if not section:
                   raise SystemExit(f"No changelog entry for beta {beta}")
-              heading = re.search(rf"(?m)^### Beta {beta} — (.+)$", changelog)
-              notes = f"## {heading.group(1).replace(' (pending release)', '')}\n\n" + section.group(1).strip() + "\n"
+              notes = re.sub(r"(?m)^#### ", "### ", section.group(1).strip()) + "\n"
           else:
               stable = version.removeprefix("v")
               pattern = rf"(?ms)^## \[\s*{re.escape(stable)}\s*\].*?\n(.*?)(?=^---\s*$)"
