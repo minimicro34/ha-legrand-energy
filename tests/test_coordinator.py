@@ -305,9 +305,7 @@ async def test_tariff_diagnostic_handles_invalid_sample(hass, caplog) -> None:
 @pytest.mark.asyncio
 async def test_native_price_diagnostic_handles_measure_failure(hass, caplog) -> None:
     coordinator = _coordinator(hass)
-    module = LegrandModule(
-        id="main#5", name="Total", type="NLE", bridge="bridge-1"
-    )
+    module = LegrandModule(id="main#5", name="Total", type="NLE", bridge="bridge-1")
     coordinator.data = LegrandEnergyData(modules={module.id: module})
     coordinator.api.get_first_home_id.return_value = "home-1"
     coordinator.private_api.get_home_measure = AsyncMock(
@@ -323,9 +321,7 @@ async def test_native_price_diagnostic_handles_measure_failure(hass, caplog) -> 
 @pytest.mark.asyncio
 async def test_native_price_diagnostic_handles_missing_modules(hass, caplog) -> None:
     coordinator = _coordinator(hass)
-    module = LegrandModule(
-        id="main#5", name="Total", type="NLE", bridge="bridge-1"
-    )
+    module = LegrandModule(id="main#5", name="Total", type="NLE", bridge="bridge-1")
     coordinator.data = LegrandEnergyData(modules={module.id: module})
     coordinator.api.get_first_home_id.return_value = "home-1"
     coordinator.private_api.get_home_measure = AsyncMock(
