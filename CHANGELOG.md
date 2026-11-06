@@ -24,11 +24,9 @@ The 1.3.3 beta entries below document incremental changes between successive bet
 - Corrected singular wording for a single chart period.
 - Restored HP tooltip interaction on the stacked chart overlay without adding duplicate keyboard-focusable bars.
 
-#### Validation
+#### Tests
 - Added JavaScript regression assertions for HP overlay interactions.
 - Expanded coordinator regression coverage for tariff, Home + Control, and native price diagnostics.
-- Latest Python CI results: 196 tests passed, 91.14% coverage (up from 85.87%).
-- JavaScript baseline: 27 tests passed (validated before version bump); final release checks pending.
 
 ### Beta 11 — Daily native HP/HC diagnostics
 
