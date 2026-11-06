@@ -166,3 +166,73 @@ async def test_oauth_error_requests_reauthentication(hass) -> None:
 
     with pytest.raises(ConfigEntryAuthFailed, match="OAuth authentication expired"):
         await coordinator._async_update_data()
+
+
+@pytest.mark.asyncio
+async def test_homestatus_diagnostic_without_private_api(hass, caplog) -> None:
+    coordinator = _coordinator(hass, private=False)
+    await coordinator.async_debug_homestatus()
+    assert "Private Home + Control API is unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_homestatus_diagnostic_without_home(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    coordinator.api.get_first_home_id.return_value = None
+    coordinator.private_api.homestatus = AsyncMock()
+    await coordinator.async_debug_homestatus()
+    coordinator.private_api.homestatus.assert_not_awaited()
+    assert "no home found" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_homestatus_diagnostic_summarizes_nested_fields(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    coordinator.api.get_first_home_id.return_value = "home-1"
+    coordinator.private_api.homestatus = AsyncMock(return_value={
+        "modules": [{"type": "NLE", "power": 120, "details": {"current": 3.5}}],
+        "energy": [1, 2],
+    })
+    await coordinator.async_debug_homestatus()
+    coordinator.private_api.homestatus.assert_awaited_once_with("home-1")
+    assert "NLE" in caplog.text
+    assert "root.modules[0].power=120" in caplog.text
+    assert "root.modules[0].details.current=3.5" in caplog.text
+    assert "root.energy=<list>" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_tariff_diagnostic_without_contract(hass, caplog) -> None:
+    coordinator = _coordinator(hass, private=False)
+    await coordinator.async_debug_tariff_fields()
+    assert "contract=unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_native_price_diagnostic_without_private_data(hass, caplog) -> None:
+    coordinator = _coordinator(hass, private=False)
+    await coordinator.async_debug_native_price_fields()
+    assert "private API/data unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_native_price_diagnostic_without_home_or_module(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    coordinator.data = LegrandEnergyData(modules={})
+    coordinator.api.get_first_home_id.return_value = "home-1"
+    coordinator.private_api.get_home_measure = AsyncMock()
+    await coordinator.async_debug_native_price_fields()
+    coordinator.private_api.get_home_measure.assert_not_awaited()
+    assert "home/total module unavailable" in caplog.text
+
+
+def test_cached_energy_history_without_service_or_data(hass) -> None:
+    coordinator = _coordinator(hass, private=False)
+    from datetime import UTC, datetime
+
+    start = datetime(2026, 11, 5, tzinfo=UTC)
+    end = datetime(2026, 11, 6, tzinfo=UTC)
+    assert coordinator.cached_energy_history(start=start, end=end) == []
+    coordinator = _coordinator(hass)
+    coordinator.data = LegrandEnergyData(modules={})
+    assert coordinator.cached_energy_history(start=start, end=end) == []
