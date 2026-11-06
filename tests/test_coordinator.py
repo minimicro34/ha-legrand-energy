@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -228,8 +229,6 @@ async def test_native_price_diagnostic_without_home_or_module(hass, caplog) -> N
 
 def test_cached_energy_history_without_service_or_data(hass) -> None:
     coordinator = _coordinator(hass, private=False)
-    from datetime import UTC, datetime
-
     start = datetime(2026, 11, 5, tzinfo=UTC)
     end = datetime(2026, 11, 6, tzinfo=UTC)
     assert coordinator.cached_energy_history(start=start, end=end) == []
