@@ -939,7 +939,6 @@ class LegrandEnergyCard extends HTMLElement {
         };
         bar.addEventListener("click", toggle);
         if (peakOverlay) {
-          peakOverlay.setAttribute("tabindex", 0);
           peakOverlay.setAttribute("aria-label", info);
           peakOverlay.addEventListener("mouseenter", show);
           peakOverlay.addEventListener("mouseleave", hide);
