@@ -535,6 +535,13 @@ test("groups five-minute energy and HP/HC deltas into half-hour day bars", async
   const svg = card._chart().children.find((child) => child.role === "img");
   const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
   assert.equal(bars.length, 2);
+  const overlays = svg.children.filter((child) => child.rx === 2 && child.tabindex !== 0);
+  assert.equal(overlays.length, 2);
+  assert.equal(typeof overlays[0].on_mouseenter, "function");
+  assert.equal(typeof overlays[0].on_click, "function");
+  overlays[0].on_mouseenter();
+  const chart = card._chart();
+  assert.ok(chart.children.some((child) => child.style.display === "none"));
 });
 
 test("keeps half-hour bars when five-minute Recorder samples contain a gap", async () => {
