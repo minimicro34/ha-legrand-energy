@@ -8,14 +8,15 @@ The format is based on Keep a Changelog.
 
 ## [Unreleased]
 
-The 1.3.3 beta entries below document incremental changes between successive beta tags. They remain under Unreleased until the next stable release. The beta12 changes are present on `main` but the beta12 tag has not yet been published.
+The 1.3.3 beta entries below document incremental changes between successive beta tags. They remain under Unreleased until the next stable release. Beta 12 includes Lovelace card version `1.0.4`.
 
-### Beta 12 — Midnight display stabilization (pending release)
+### Beta 12 — Midnight display stabilization
 
 #### Added
 - Added estimated euro costs to chart tooltips using the configured HP/HC contract rates, without treating current prices as historical billed prices.
 
 #### Improved
+- Updated the bundled Lovelace card to version `1.0.4`.
 - Enabled HP segment tooltips on hover and click, matching the existing HC behavior.
 
 #### Fixed
@@ -24,7 +25,8 @@ The 1.3.3 beta entries below document incremental changes between successive bet
 - Restored HP tooltip interaction on the stacked chart overlay without adding duplicate keyboard-focusable bars.
 
 #### Validation
-- Added JavaScript regression assertions for HP overlay interactions; full CI validation remains required before publication.
+- Added JavaScript regression assertions for HP overlay interactions.
+- Release quality checks: 184 Python tests passed, 85.87% Python coverage, and 27 JavaScript tests passed (validated before version bump).
 
 ### Beta 11 — Daily native HP/HC diagnostics
 
