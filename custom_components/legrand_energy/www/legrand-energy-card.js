@@ -1,5 +1,5 @@
 /* Legrand Energy Lovelace card — bundled with the integration. */
-const LEGRAND_ENERGY_CARD_VERSION = "1.0.3";
+const LEGRAND_ENERGY_CARD_VERSION = "1.0.4";
 class LegrandEnergyCard extends HTMLElement {
   setConfig(config) {
     if (!config || typeof config.entity !== "string" || !config.entity.trim()) {
