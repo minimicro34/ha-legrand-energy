@@ -403,43 +403,47 @@ If your Home + Control account credentials change, use the integration's **Recon
 
 ## Screenshots
 
-The bundled Lovelace card provides Day, Week, Month and Year consumption charts, plus expandable Circuits and Diagnostics panels. Chart values are based on the available Home Assistant Recorder statistics; missing history is not treated as zero consumption.
+The bundled **Legrand Energy Lovelace card (v1.0.4)** includes Day, Week, Month, and Year views, plus expandable Circuits and Diagnostics panels.
 
-### Day view
+The charts prefer cached **Home + Control interval history**, including native HP/HC measurements. Home Assistant Recorder is used as a fallback when native history is temporarily unavailable. At midnight, the Day chart waits for the first new-day measurements rather than displaying yesterday's consumption.
 
-![Legrand Energy Lovelace card — Day consumption chart](docs/card-day.png)
+The six screenshots below will be added before the **v1.3.3 stable release**. Save them in `docs/` using the exact filenames shown.
 
-*Day consumption in 30-minute intervals, including HP/HC distribution and a separate N/R bar for energy that cannot be reliably allocated to a time slot.*
+### Day
 
-### Week view
+![Legrand Energy — Day chart](docs/card-day.png)
 
-![Legrand Energy Lovelace card — Week consumption chart](docs/card-week.png)
+*30-minute energy intervals with HP/HC breakdown and estimated cost tooltips. Capture after the day's first measurements have arrived.*
 
-*Daily consumption across the week, with HP/HC breakdown when Recorder statistics are available.*
+### Week
 
-### Month view
+![Legrand Energy — Week chart](docs/card-week.png)
 
-![Legrand Energy Lovelace card — Month consumption chart](docs/card-month.png)
+*Daily electricity consumption over the current week.*
 
-*Daily consumption across the month, based on available Recorder history.*
+### Month
 
-### Year view
+![Legrand Energy — Month chart](docs/card-month.png)
 
-![Legrand Energy Lovelace card — Year consumption chart](docs/card-year.png)
+*Daily electricity consumption over the current month.*
 
-*Monthly consumption with HP/HC breakdown where available. A gray bar marks a partially recorded month, with its starting date shown in the tooltip; missing days are not estimated.*
+### Year
+
+![Legrand Energy — Year chart](docs/card-year.png)
+
+*Monthly electricity consumption, preserving gaps where no reliable history exists.*
 
 ### Circuits
 
-![Legrand Energy Lovelace card — Circuits panel](docs/card-circuits.png)
+![Legrand Energy — Circuits panel](docs/card-circuits.png)
 
-*Expanded Circuits panel showing the EcoMeter's discovered electrical circuits.*
+*Expanded circuit breakdown, including the estimated average power for “Reste de la maison” when synchronized measurements are available.*
 
 ### Diagnostics
 
-![Legrand Energy Lovelace card — Diagnostics panel](docs/card-diagnostics.png)
+![Legrand Energy — Diagnostics panel](docs/card-diagnostics.png)
 
-*Expanded Diagnostics panel for troubleshooting. Review and redact any identifying information before sharing your own screenshots.*
+*Expanded diagnostics and contract information. Remove any identifying information before publishing screenshots.*
 
 ---
 
