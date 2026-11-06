@@ -532,16 +532,21 @@ test("groups five-minute energy and HP/HC deltas into half-hour day bars", async
   const first = Date.parse("2026-10-24T00:00:00Z");
   assert.ok(Math.abs(card._splitHistory.peak.get(first) - 3.6) < 1e-9);
   assert.ok(Math.abs(card._splitHistory.offPeak.get(first) - 2.4) < 1e-9);
-  const svg = card._chart().children.find((child) => child.role === "img");
+  const chart = card._chart();
+  const svg = chart.children.find((child) => child.role === "img");
   const bars = svg.children.filter((child) => child.rx === 2 && child.tabindex === 0);
   assert.equal(bars.length, 2);
   const overlays = svg.children.filter((child) => child.rx === 2 && child.tabindex !== 0);
   assert.equal(overlays.length, 2);
   assert.equal(typeof overlays[0].on_mouseenter, "function");
   assert.equal(typeof overlays[0].on_click, "function");
+  const tooltip = chart.children.find((child) => child.style.display === "none");
+  assert.ok(tooltip, "chart must include a hidden tooltip");
   overlays[0].on_mouseenter();
-  const chart = card._chart();
-  assert.ok(chart.children.some((child) => child.style.display === "none"));
+  assert.equal(tooltip.style.display, "block");
+  assert.match(tooltip.textContent, /HP/);
+  overlays[0].on_mouseleave();
+  assert.equal(tooltip.style.display, "none");
 });
 
 test("keeps half-hour bars when five-minute Recorder samples contain a gap", async () => {
