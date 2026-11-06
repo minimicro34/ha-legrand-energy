@@ -1122,7 +1122,33 @@ class LegrandEnergyCard extends HTMLElement {
         addCircuit(name, this._state(circuit.entity) ? circuit.energy : NaN,
           circuit.power_entity, circuit.entity);
       }
-      if (remainder !== null) addCircuit("Reste de la maison", remainder, null, null);
+      if (remainder !== null) {
+        // The remainder has no physical power sensor. Estimate its average
+        // only when all circuit readings belong to the same measurement batch.
+        const totalPowerId = this._autoEntity(
+          this._config.power_entity, ["puissance_moyenne"], "average_power");
+        const powerIds = values.map((circuit) => circuit.power_entity);
+        const powerStates = [totalPowerId, ...powerIds].map((id) =>
+          id ? this._state(id) : null);
+        const powers = powerStates.map((state) => state ? Number(state.state) : NaN);
+        const timestamps = powerStates.map((state) =>
+          state ? Date.parse(state.last_updated) : NaN);
+        const validPowers = powerStates.every((state) =>
+          state?.attributes?.unit_of_measurement === "W") &&
+          powers.every((power) => Number.isFinite(power) && power >= 0) &&
+          timestamps.every(Number.isFinite) &&
+          Math.max(...timestamps) - Math.min(...timestamps) <= 120000;
+        const remainingPower = validPowers
+          ? powers[0] - powers.slice(1).reduce((sum, power) => sum + power, 0)
+          : null;
+        addCircuit("Reste de la maison", remainder, null, null);
+        if (remainingPower !== null && remainingPower >= 0) {
+          const tile = details.lastElementChild;
+          tile.appendChild(this._element("div",
+            "Puissance moyenne estimée : " + fmt.format(remainingPower) + " W",
+            "font-size:12px;color:var(--secondary-text-color);margin-top:5px"));
+        }
+      }
       wrapper.appendChild(details);
     }
 
