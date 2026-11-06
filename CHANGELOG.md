@@ -12,12 +12,19 @@ The 1.3.3 beta entries below document incremental changes between successive bet
 
 ### Beta 12 — Midnight display stabilization (pending release)
 
+#### Added
+- Added estimated euro costs to chart tooltips using the configured HP/HC contract rates, without treating current prices as historical billed prices.
+
+#### Improved
+- Enabled HP segment tooltips on hover and click, matching the existing HC behavior.
+
 #### Fixed
 - Stabilized the Day chart's empty state before the first current-day measurements become available.
 - Corrected singular wording for a single chart period.
+- Restored HP tooltip interaction on the stacked chart overlay without adding duplicate keyboard-focusable bars.
 
 #### Validation
-- Signed-release workflow dry run passed quality checks and local GPG tag verification; no beta12 tag or release was published.
+- Added JavaScript regression assertions for HP overlay interactions; full CI validation remains required before publication.
 
 ### Beta 11 — Daily native HP/HC diagnostics
 
