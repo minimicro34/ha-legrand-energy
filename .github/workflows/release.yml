@@ -42,7 +42,17 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements_dev.txt
       - name: Run quality checks
-        run: make check
+        shell: bash
+        run: |
+          set -euo pipefail
+          make check 2>&1 | tee "$RUNNER_TEMP/quality.log"
+          cp "$RUNNER_TEMP/quality.log" quality.log
+      - name: Preserve test and coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-quality
+          path: quality.log
+          retention-days: 3
 
   release:
     name: Sign tag and publish
@@ -60,6 +70,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+
+      - name: Retrieve validated test and coverage results
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-release-quality
 
       - name: Validate release inputs
         shell: bash
@@ -109,9 +124,49 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git tag -s "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git tag -s "$RELEASE_TAG" -m "$RELEASE_TAG"
           git tag -v "$RELEASE_TAG"
           echo "Signed tag verified locally: $RELEASE_TAG"
+
+      - name: Prepare release notes from changelog and test results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["RELEASE_TAG"]
+          match = re.fullmatch(r"v(\\d+\\.\\d+\\.\\d+)-beta(\\d+)", version)
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          if match:
+              beta = match.group(2)
+              pattern = rf"(?ms)^### Beta {beta} — [^\\n]+\\n(.*?)(?=^### Beta \\d+ — |^---\\s*$)"
+              section = re.search(pattern, changelog)
+              if not section:
+                  raise SystemExit(f"No changelog entry for beta {beta}")
+              heading = re.search(rf"(?m)^### Beta {beta} — (.+)$", changelog)
+              notes = f"## {heading.group(1).replace(' (pending release)', '')}\\n\\n" + section.group(1).strip() + "\\n"
+          else:
+              stable = version.removeprefix("v")
+              pattern = rf"(?ms)^## \\[\\s*{re.escape(stable)}\\s*\\].*?\\n(.*?)(?=^---\\s*$)"
+              section = re.search(pattern, changelog)
+              if not section:
+                  raise SystemExit(f"No changelog entry for {stable}")
+              notes = section.group(1).strip() + "\\n"
+
+          log = Path("quality.log").read_text(encoding="utf-8")
+          pytest = re.findall(r"(\\d+) passed(?:,| in| \\()", log)
+          coverage = re.findall(r"(?m)^TOTAL\\s+\\d+\\s+\\d+\\s+(\\d+(?:\\.\\d+)?%)", log)
+          js = re.findall(r"(?m)^# pass (\\d+)\\s*$", log)
+          if not pytest or not coverage or not js:
+              raise SystemExit("Unable to extract Python/JS test counts and coverage from validated make check log")
+          notes += f"\\n### Validation\\n\\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}.\\n- JavaScript: {js[-1]} tests passed.\\n- \`make check\` passed.\\n"
+          previous = "v1.3.3-beta" + str(int(match.group(2)) - 1) if match and int(match.group(2)) > 1 else "v1.3.2"
+          notes += f"\\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\\n"
+          Path("release-notes.md").write_text(notes, encoding="utf-8")
+          PY
 
       - name: Publish tag and GitHub release
         if: inputs.dry_run == false
@@ -121,7 +176,7 @@ jobs:
         run: |
           set -euo pipefail
           git push origin "refs/tags/$RELEASE_TAG"
-          args=(--title "$RELEASE_TAG" --generate-notes --verify-tag)
+          args=(--title "$RELEASE_TAG" --notes-file release-notes.md --verify-tag)
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             args+=(--prerelease)
           else
