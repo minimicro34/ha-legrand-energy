@@ -138,33 +138,33 @@ jobs:
           from pathlib import Path
 
           version = os.environ["RELEASE_TAG"]
-          match = re.fullmatch(r"v(\\d+\\.\\d+\\.\\d+)-beta(\\d+)", version)
+          match = re.fullmatch(r"v(\d+\.\d+\.\d+)-beta(\d+)", version)
           changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
           if match:
               beta = match.group(2)
-              pattern = rf"(?ms)^### Beta {beta} — [^\\n]+\\n(.*?)(?=^### Beta \\d+ — |^---\\s*$)"
+              pattern = rf"(?ms)^### Beta {beta} — [^\n]+\n(.*?)(?=^### Beta \d+ — |^---\s*$)"
               section = re.search(pattern, changelog)
               if not section:
                   raise SystemExit(f"No changelog entry for beta {beta}")
               heading = re.search(rf"(?m)^### Beta {beta} — (.+)$", changelog)
-              notes = f"## {heading.group(1).replace(' (pending release)', '')}\\n\\n" + section.group(1).strip() + "\\n"
+              notes = f"## {heading.group(1).replace(' (pending release)', '')}\n\n" + section.group(1).strip() + "\n"
           else:
               stable = version.removeprefix("v")
-              pattern = rf"(?ms)^## \\[\\s*{re.escape(stable)}\\s*\\].*?\\n(.*?)(?=^---\\s*$)"
+              pattern = rf"(?ms)^## \[\s*{re.escape(stable)}\s*\].*?\n(.*?)(?=^---\s*$)"
               section = re.search(pattern, changelog)
               if not section:
                   raise SystemExit(f"No changelog entry for {stable}")
-              notes = section.group(1).strip() + "\\n"
+              notes = section.group(1).strip() + "\n"
 
           log = Path("quality.log").read_text(encoding="utf-8")
-          pytest = re.findall(r"(\\d+) passed(?:,| in| \\()", log)
-          coverage = re.findall(r"(?m)^TOTAL\\s+\\d+\\s+\\d+\\s+(\\d+(?:\\.\\d+)?%)", log)
-          js = re.findall(r"(?m)^# pass (\\d+)\\s*$", log)
+          pytest = re.findall(r"(\d+) passed(?:,| in| \()", log)
+          coverage = re.findall(r"(?m)^TOTAL\s+\d+\s+\d+\s+(\d+(?:\.\d+)?%)", log)
+          js = re.findall(r"(?m)^# pass (\d+)\s*$", log)
           if not pytest or not coverage or not js:
               raise SystemExit("Unable to extract Python/JS test counts and coverage from validated make check log")
-          notes += f"\\n### Validation\\n\\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}.\\n- JavaScript: {js[-1]} tests passed.\\n- \`make check\` passed.\\n"
+          notes += f"\n### Validation\n\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}.\n- JavaScript: {js[-1]} tests passed.\n- `make check` passed.\n"
           previous = "v1.3.3-beta" + str(int(match.group(2)) - 1) if match and int(match.group(2)) > 1 else "v1.3.2"
-          notes += f"\\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\\n"
+          notes += f"\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\n"
           Path("release-notes.md").write_text(notes, encoding="utf-8")
           PY
 
