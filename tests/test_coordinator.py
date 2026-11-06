@@ -332,6 +332,7 @@ async def test_native_price_diagnostic_handles_missing_modules(hass, caplog) -> 
     assert coordinator.private_api.get_home_measure.await_count == 1
     assert "response_modules=missing" in caplog.text
 
+
 @pytest.mark.asyncio
 async def test_native_price_diagnostic_skips_malformed_measurements(
     hass, caplog
