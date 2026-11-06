@@ -26,7 +26,9 @@ The 1.3.3 beta entries below document incremental changes between successive bet
 
 #### Validation
 - Added JavaScript regression assertions for HP overlay interactions.
-- Release quality checks: 184 Python tests passed, 85.87% Python coverage, and 27 JavaScript tests passed (validated before version bump).
+- Expanded coordinator regression coverage for tariff, Home + Control, and native price diagnostics.
+- Latest Python CI results: 196 tests passed, 91.14% coverage (up from 85.87%).
+- JavaScript baseline: 27 tests passed (validated before version bump); final release checks pending.
 
 ### Beta 11 — Daily native HP/HC diagnostics
 
