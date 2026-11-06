@@ -333,7 +333,9 @@ async def test_native_price_diagnostic_handles_missing_modules(hass, caplog) -> 
     assert "response_modules=missing" in caplog.text
 
 @pytest.mark.asyncio
-async def test_native_price_diagnostic_skips_malformed_measurements(hass, caplog) -> None:
+async def test_native_price_diagnostic_skips_malformed_measurements(
+    hass, caplog
+) -> None:
     coordinator = _coordinator(hass)
     module = LegrandModule(id="main#5", name="Total", type="NLE", bridge="bridge-1")
     coordinator.data = LegrandEnergyData(modules={module.id: module})
