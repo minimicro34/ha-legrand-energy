@@ -237,3 +237,102 @@ def test_cached_energy_history_without_service_or_data(hass) -> None:
     coordinator = _coordinator(hass)
     coordinator.data = LegrandEnergyData(modules={})
     assert coordinator.cached_energy_history(start=start, end=end) == []
+
+
+
+@pytest.mark.asyncio
+async def test_tariff_diagnostic_logs_midnight_samples(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    contract = Contract(
+        id="contract",
+        type="electricity",
+        tariff="base",
+        tariff_option="base",
+        power_threshold=6000,
+        power_unit="VA",
+        peak_price=0.25,
+        off_peak_price=0.18,
+        zones=[],
+        timetable=[],
+    )
+    coordinator.data = LegrandEnergyData(modules={}, contract=contract)
+    state = MagicMock(spec=TariffState)
+    state.zone_id = "hp"
+    state.zone_name = "Peak"
+    state.is_off_peak = False
+    state.price = 0.25
+    state.next_change = None
+
+    with patch(
+        "custom_components.legrand_energy.coordinator.TariffEngine.state_at",
+        return_value=state,
+    ) as state_at:
+        await coordinator.async_debug_tariff_fields()
+
+    assert state_at.call_count == 5
+    assert "sample=previous_day_2359" in caplog.text
+    assert "sample=next_day_0000" in caplog.text
+    assert "zone_id=hp" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_tariff_diagnostic_handles_invalid_sample(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    contract = Contract(
+        id="contract",
+        type="electricity",
+        tariff="base",
+        tariff_option="base",
+        power_threshold=6000,
+        power_unit="VA",
+        peak_price=0.25,
+        off_peak_price=0.18,
+        zones=[],
+        timetable=[],
+    )
+    coordinator.data = LegrandEnergyData(modules={}, contract=contract)
+
+    with patch(
+        "custom_components.legrand_energy.coordinator.TariffEngine.state_at",
+        side_effect=ValueError("invalid timetable"),
+    ) as state_at:
+        await coordinator.async_debug_tariff_fields()
+
+    assert state_at.call_count == 5
+    assert "error=invalid timetable" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_native_price_diagnostic_handles_measure_failure(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    module = LegrandModule(
+        id="main#5", name="Total", type="NLE", bridge="bridge-1"
+    )
+    coordinator.data = LegrandEnergyData(modules={module.id: module})
+    coordinator.api.get_first_home_id.return_value = "home-1"
+    coordinator.private_api.get_home_measure = AsyncMock(
+        side_effect=RuntimeError("temporary outage")
+    )
+
+    await coordinator.async_debug_native_price_fields()
+
+    assert coordinator.private_api.get_home_measure.await_count == 1
+    assert "gethomemeasure failed (RuntimeError)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_native_price_diagnostic_handles_missing_modules(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    module = LegrandModule(
+        id="main#5", name="Total", type="NLE", bridge="bridge-1"
+    )
+    coordinator.data = LegrandEnergyData(modules={module.id: module})
+    coordinator.api.get_first_home_id.return_value = "home-1"
+    coordinator.private_api.get_home_measure = AsyncMock(
+        return_value={"body": {"home": {}}}
+    )
+
+    await coordinator.async_debug_native_price_fields()
+
+    assert coordinator.private_api.get_home_measure.await_count == 1
+    assert "response_modules=missing" in caplog.text
