@@ -331,3 +331,41 @@ async def test_native_price_diagnostic_handles_missing_modules(hass, caplog) -> 
 
     assert coordinator.private_api.get_home_measure.await_count == 1
     assert "response_modules=missing" in caplog.text
+
+@pytest.mark.asyncio
+async def test_native_price_diagnostic_skips_malformed_measurements(hass, caplog) -> None:
+    coordinator = _coordinator(hass)
+    module = LegrandModule(id="main#5", name="Total", type="NLE", bridge="bridge-1")
+    coordinator.data = LegrandEnergyData(modules={module.id: module})
+    coordinator.api.get_first_home_id.return_value = "home-1"
+    coordinator.private_api.get_home_measure = AsyncMock(
+        return_value={
+            "body": {
+                "home": {
+                    "modules": [
+                        None,
+                        {"id": "other", "measures": []},
+                        {"id": module.id},
+                        {
+                            "id": module.id,
+                            "measures": [
+                                None,
+                                {"beg_time": "invalid", "step_time": 300, "value": []},
+                                {"beg_time": 0, "step_time": 300, "value": [None]},
+                            ],
+                        },
+                    ]
+                }
+            }
+        }
+    )
+
+    await coordinator.async_debug_native_price_fields()
+
+    request = coordinator.private_api.get_home_measure.await_args.kwargs
+    assert request["home"]["modules"][0]["bridge"] == "bridge-1"
+    assert request["scale"] == "5min"
+    assert "response_modules=4" in caplog.text
+    assert "measures=missing" in caplog.text
+    assert "invalid measure structure" in caplog.text
+    assert "no non-null price values in 1 rows" in caplog.text
