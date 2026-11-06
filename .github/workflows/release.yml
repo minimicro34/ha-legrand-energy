@@ -159,7 +159,7 @@ jobs:
           log = Path("quality.log").read_text(encoding="utf-8")
           pytest = re.findall(r"(?m)(\d+) passed\b", log)
           coverage = re.findall(r"(?m)^TOTAL\s+[^\n]*?\b(\d+(?:\.\d+)?%)\b?", log)
-          js = re.findall(r"(?m)^\s*#\s*pass\s+(\d+)\s*$", log)
+          js = re.findall(r"(?m)^\s*(?:#|ℹ)\s*pass\s+(\d+)\s*$", log)
           if not pytest or not coverage or not js:
               raise SystemExit(f"Unable to extract validated metrics: Python={pytest}, coverage={coverage}, JS={js}. Inspect quality.log artifact.")
           notes += f"\n### Validation\n\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}.\n- JavaScript: {js[-1]} tests passed.\n- `make check` passed.\n"
