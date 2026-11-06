@@ -190,10 +190,12 @@ async def test_homestatus_diagnostic_without_home(hass, caplog) -> None:
 async def test_homestatus_diagnostic_summarizes_nested_fields(hass, caplog) -> None:
     coordinator = _coordinator(hass)
     coordinator.api.get_first_home_id.return_value = "home-1"
-    coordinator.private_api.homestatus = AsyncMock(return_value={
-        "modules": [{"type": "NLE", "power": 120, "details": {"current": 3.5}}],
-        "energy": [1, 2],
-    })
+    coordinator.private_api.homestatus = AsyncMock(
+        return_value={
+            "modules": [{"type": "NLE", "power": 120, "details": {"current": 3.5}}],
+            "energy": [1, 2],
+        }
+    )
     await coordinator.async_debug_homestatus()
     coordinator.private_api.homestatus.assert_awaited_once_with("home-1")
     assert "NLE" in caplog.text
