@@ -30,8 +30,8 @@ jobs:
     name: Quality checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
       - uses: actions/setup-node@v6
@@ -48,7 +48,7 @@ jobs:
           make check 2>&1 | tee "$RUNNER_TEMP/quality.log"
           cp "$RUNNER_TEMP/quality.log" quality.log
       - name: Preserve test and coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: signed-release-quality
           path: quality.log
@@ -66,13 +66,13 @@ jobs:
       GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     steps:
       - name: Check out the exact tested commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: true
 
       - name: Retrieve validated test and coverage results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: signed-release-quality
 
@@ -158,11 +158,11 @@ jobs:
 
           log = Path("quality.log").read_text(encoding="utf-8")
           pytest = re.findall(r"(?m)(\d+) passed\b", log)
-          coverage = re.findall(r"(?m)^TOTAL\s+[^\n]*?\b(\d+(?:\.\d+)?%)\b?", log)
+          coverage = re.findall(r"Total coverage:\s*(\d+(?:\.\d+)?)%", log)
           js = re.findall(r"(?m)^\s*(?:#|ℹ)\s*pass\s+(\d+)\s*$", log)
           if not pytest or not coverage or not js:
               raise SystemExit(f"Unable to extract validated metrics: Python={pytest}, coverage={coverage}, JS={js}. Inspect quality.log artifact.")
-          notes += f"\n### Validation\n\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}.\n- JavaScript: {js[-1]} tests passed.\n- `make check` passed.\n"
+          notes += f"\n### Validation\n\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}%.\n- JavaScript: {js[-1]} tests passed.\n- `make check` passed.\n"
           previous = "v1.3.3-beta" + str(int(match.group(2)) - 1) if match and int(match.group(2)) > 1 else "v1.3.2"
           notes += f"\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\n"
           Path("release-notes.md").write_text(notes, encoding="utf-8")
