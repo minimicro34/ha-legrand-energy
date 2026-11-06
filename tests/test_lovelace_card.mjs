@@ -119,7 +119,7 @@ test("auto-discovers period and contract sensors for the selected EcoMeter", () 
   }};
   assert.equal(card._autoEntity(null, ["puissance_souscrite"]), prefix + "puissance_souscrite");
   assert.equal(card.children[0].children[0].children.at(-2).children[0].textContent, "Contrat et diagnostics");
-  assert.equal(card.children[0].children[0].children.at(-1).textContent, "Version de la carte : 1.0.3");
+  assert.equal(card.children[0].children[0].children.at(-1).textContent, "Version de la carte : 1.0.4");
   for (const [period, suffix] of [["week", "energie"], ["month", "energie_2"], ["year", "energie_3"]]) {
     card._period = period;
     assert.equal(card._periodEntity(), prefix + suffix);
