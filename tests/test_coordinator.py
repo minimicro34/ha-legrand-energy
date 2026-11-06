@@ -239,7 +239,6 @@ def test_cached_energy_history_without_service_or_data(hass) -> None:
     assert coordinator.cached_energy_history(start=start, end=end) == []
 
 
-
 @pytest.mark.asyncio
 async def test_tariff_diagnostic_logs_midnight_samples(hass, caplog) -> None:
     coordinator = _coordinator(hass)
