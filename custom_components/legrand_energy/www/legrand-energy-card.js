@@ -886,22 +886,39 @@ class LegrandEnergyCard extends HTMLElement {
           Math.abs(hp + hc - point.value) <= Math.max(0.005, point.value * 0.02);
         const tariff = this._period === "day" && !point.unallocated ? this._hourTariff(point.time) : null;
         const partialFrom = this._period === "year" ? this._partialMonths?.get(point.time) : null;
+        // Prices are current contract rates, not historical billed prices.
+        const readPrice = (configured, suffix, fallback) => {
+          const id = this._autoEntity(configured, [suffix], fallback);
+          const raw = id ? this._state(id)?.state : null;
+          if (raw == null || raw === "" || raw === "unknown" || raw === "unavailable") return null;
+          const value = Number(raw);
+          return Number.isFinite(value) && value >= 0 ? value : null;
+        };
+        const peakPrice = readPrice(this._config.peak_price_entity, "prix_heures_pleines", "peak_price");
+        const offPeakPrice = readPrice(this._config.offpeak_price_entity, "prix_heures_creuses", "off_peak_price");
+        const estimatedCost = splitValid && peakPrice != null && offPeakPrice != null
+          ? hp * peakPrice + hc * offPeakPrice
+          : tariff === "HP" && peakPrice != null ? point.value * peakPrice
+            : tariff === "HC" && offPeakPrice != null ? point.value * offPeakPrice : null;
         const info = (point.unallocated ? "Non répartie (mesures manquantes)" : fullDate.format(date)) +
           (partialFrom != null ? " · Partiel (depuis le " +
             new Intl.DateTimeFormat(locale, { day: "2-digit", month: "long" }).format(new Date(partialFrom)) + ")" : "") +
           " : " + new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(point.value) + " kWh" +
           (splitValid ? " · HP " + format.format(hp) + " · HC " + format.format(hc)
-            : tariff ? " · " + tariff : "");
+            : tariff ? " · " + tariff : "") +
+          (estimatedCost != null ? " · Coût estimé " + new Intl.NumberFormat(locale, {
+            style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 3,
+          }).format(estimatedCost) : "");
         const bar = make("rect", { x: x + barInset, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - barGap), height: barHeight,
           fill: point.unallocated || partialFrom != null ? "var(--secondary-text-color)" : splitValid ? "#28558b" :
             tariff === "HP" ? "#4f86f7" : tariff === "HC" ? "#28558b" :
               "var(--primary-color)", rx: 2, tabindex: 0 });
-        if (splitValid && hp > 0 && partialFrom == null) make("rect", {
+        const peakOverlay = splitValid && hp > 0 && partialFrom == null ? make("rect", {
           x: x + barInset, y: top + plotHeight - barHeight,
           width: Math.max(1, slot - barGap), height: plotHeight * hp / ceiling,
           fill: "#4f86f7", rx: 2,
-        });
+        }) : null;
         bar.setAttribute("aria-label", info);
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
         title.textContent = info;
@@ -917,9 +934,19 @@ class LegrandEnergyCard extends HTMLElement {
         bar.addEventListener("mouseleave", hide);
         bar.addEventListener("focus", show);
         bar.addEventListener("blur", hide);
-        bar.addEventListener("click", () => {
+        const toggle = () => {
           if (tooltip.style.display === "block") hide(); else show();
-        });
+        };
+        bar.addEventListener("click", toggle);
+        if (peakOverlay) {
+          peakOverlay.setAttribute("tabindex", 0);
+          peakOverlay.setAttribute("aria-label", info);
+          peakOverlay.addEventListener("mouseenter", show);
+          peakOverlay.addEventListener("mouseleave", hide);
+          peakOverlay.addEventListener("focus", show);
+          peakOverlay.addEventListener("blur", hide);
+          peakOverlay.addEventListener("click", toggle);
+        }
       }
       const labelEvery = this._period === "year" ? 1 : Math.max(1, Math.ceil(points.length / 10));
       if (point.unallocated || index % labelEvery === 0 || index === points.length - 1) {
