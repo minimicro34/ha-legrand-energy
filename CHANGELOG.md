@@ -8,6 +8,17 @@ The format is based on Keep a Changelog.
 
 ## [1.3.3] - Unreleased
 
+### Beta 13 — Periodic Home + Control measurement synchronization
+
+#### Changed
+- Refresh the cached private `/homesdata` response every 15 minutes with `sync_measurements=true` instead of retaining it indefinitely, to investigate whether EcoMeter readings synchronize without opening Home + Control.
+- Preserve existing five-minute `gethomemeasure` polling, entity identifiers, and energy calculations.
+
+#### Tests
+- Add regression coverage for cache reuse before expiry, periodic refresh after 15 minutes, and explicit `force_refresh=True` behavior.
+- Confirm local `make check` passes with 197 Python tests, 27 JavaScript tests, and 91.16% Python coverage.
+
+
 ### Added
 - Restored native Home + Control cached interval history for Day, Week, Month, and Year charts, with native HP/HC measurements and authenticated WebSocket access.
 - Added a read-only `legrand_energy.debug_tariff_fields` action for investigating private Netatmo tariff and daily electricity fields.
