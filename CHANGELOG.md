@@ -20,6 +20,7 @@ The format is based on Keep a Changelog.
 - Retained recent valid average-power measurements for up to 60 minutes during temporary private API failures, without extending their source timestamps.
 - Restricted detailed current-day API measurement diagnostics to DEBUG logging.
 - Limited push-triggered GitHub Actions checks to `main` to avoid duplicate runs alongside pull-request checks.
+- Refresh the cached private `/homesdata` response every 15 minutes with `sync_measurements=true` to investigate whether EcoMeter measurements synchronize without opening Home + Control, while preserving existing five-minute measurement polling.
 
 ### Fixed
 - Recovered native cached history promptly after a temporary Home Assistant Recorder fallback.
