@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -131,6 +132,41 @@ async def test_homesdata_cache_and_simple_endpoints() -> None:
     assert fresh == {"body": {"homes": ["fresh"]}}
     assert await api.homestatus() == {"status": "home"}
     assert await api.contracts() == {"contracts": []}
+
+
+@pytest.mark.asyncio
+async def test_homesdata_periodic_refresh_and_forced_refresh() -> None:
+    """The sync request is repeated after 15 minutes, not every poll."""
+    api, _ = _api()
+    api._get = AsyncMock(
+        side_effect=[
+            {"body": {"homes": ["initial"]}},
+            {"body": {"homes": ["periodic"]}},
+            {"body": {"homes": ["forced"]}},
+        ]
+    )
+
+    initial = await api.homesdata()
+    assert api._get.await_count == 1
+    assert api._get.await_args.kwargs["params"]["sync_measurements"] == "true"
+
+    # Still cached just before the 15-minute threshold.
+    api._homes_data_fetched_at -= timedelta(minutes=14, seconds=59)
+    assert await api.homesdata() is initial
+    assert api._get.await_count == 1
+
+    # The next coordinator poll must request a fresh sync.
+    api._homes_data_fetched_at -= timedelta(seconds=2)
+    periodic = await api.homesdata()
+    assert periodic == {"body": {"homes": ["periodic"]}}
+    assert api._get.await_count == 2
+    assert api._get.await_args.args[0] == "homesdata"
+    assert api._get.await_args.kwargs["params"]["sync_measurements"] == "true"
+
+    # Explicit refresh bypasses the newly updated cache.
+    forced = await api.homesdata(force_refresh=True)
+    assert forced == {"body": {"homes": ["forced"]}}
+    assert api._get.await_count == 3
 
 
 @pytest.mark.asyncio

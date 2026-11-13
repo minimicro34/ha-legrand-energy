@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import aiohttp
@@ -13,6 +14,7 @@ from .helpers.fluid_types import detect_fluid_type
 from .models import LegrandModule
 
 APP_API_BASE = "https://app.netatmo.net/api"
+HOMESDATA_REFRESH_INTERVAL = timedelta(minutes=15)
 
 # Measurement types expected by the undocumented private
 # gethomemeasure endpoint. This value comes from reverse
@@ -49,6 +51,7 @@ class LegrandEnergyApi(BaseApiClient):
         super().__init__(session, LegrandEnergyApiError)
         self._authentication = authentication
         self._homes_data: dict[str, Any] | None = None
+        self._homes_data_fetched_at: datetime | None = None
 
     @property
     def headers(self) -> dict[str, str]:
@@ -208,7 +211,13 @@ class LegrandEnergyApi(BaseApiClient):
         force_refresh: bool = False,
     ) -> dict[str, Any]:
         """Return homes topology data."""
-        if self._homes_data is not None and not force_refresh:
+        now = datetime.now(UTC)
+        if (
+            not force_refresh
+            and self._homes_data is not None
+            and self._homes_data_fetched_at is not None
+            and now - self._homes_data_fetched_at < HOMESDATA_REFRESH_INTERVAL
+        ):
             return self._homes_data
 
         data = await self._get(
@@ -221,6 +230,7 @@ class LegrandEnergyApi(BaseApiClient):
         )
 
         self._homes_data = data
+        self._homes_data_fetched_at = datetime.now(UTC)
         return data
 
     async def homestatus(self) -> dict[str, Any]:
