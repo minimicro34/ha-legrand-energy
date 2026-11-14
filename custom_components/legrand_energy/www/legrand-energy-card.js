@@ -957,8 +957,19 @@ class LegrandEnergyCard extends HTMLElement {
       }
     });
     if (this._splitHistory || (this._period === "day" && this._tariffHistory?.length)) {
-      const legend = this._element("div", "■ HP (bleu clair)    ■ HC (bleu foncé)    ■ Indéterminé (couleur par défaut)",
-        "font-size:12px;color:var(--secondary-text-color);padding:6px 0");
+      const legend = this._element("div", undefined,
+        "display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:12px;color:var(--secondary-text-color);padding:6px 0");
+      for (const [label, color] of [
+        ["HP", "#4f86f7"],
+        ["HC", "#28558b"],
+        ["Indéterminé", "var(--primary-color)"],
+      ]) {
+        const item = this._element("span", undefined, "display:inline-flex;align-items:center;gap:5px");
+        item.appendChild(this._element("span", undefined,
+          "display:inline-block;width:10px;height:10px;flex-shrink:0;border-radius:2px;background:" + color));
+        item.appendChild(this._element("span", label));
+        legend.appendChild(item);
+      }
       box.appendChild(legend);
     }
     box.appendChild(svg);
