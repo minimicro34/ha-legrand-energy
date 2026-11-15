@@ -144,3 +144,63 @@ def test_serializes_native_tariff_split_for_daily_total() -> None:
     assert result[0]["peak_kwh"] == pytest.approx(14.955)
     assert result[0]["off_peak_kwh"] == pytest.approx(5.668)
     assert result[0]["tariff"] is None
+
+
+@pytest.mark.parametrize("limit", [0, -1, 3001])
+def test_rejects_invalid_history_limits(limit: int) -> None:
+    with pytest.raises(ValueError, match="between 1 and 3000"):
+        serialize_energy_history(
+            [point(0, 100)],
+            start=START,
+            end=START + timedelta(hours=1),
+            limit=limit,
+        )
+
+
+def test_late_arriving_intervals_are_sorted_without_inventing_gaps() -> None:
+    """A batch of delayed readings must preserve its real source intervals."""
+    result = serialize_energy_history(
+        [point(90, 300), point(0, 100), point(30, 200)],
+        start=START,
+        end=START + timedelta(hours=2),
+    )
+    assert [row["timestamp"] for row in result] == [
+        (START + timedelta(minutes=minute)).isoformat()
+        for minute in (0, 30, 90)
+    ]
+    assert [row["energy_kwh"] for row in result] == [0.1, 0.2, 0.3]
+    assert len(result) == 3
+
+
+def test_excludes_readings_outside_both_history_boundaries() -> None:
+    result = serialize_energy_history(
+        [point(-30, 100), point(0, 200), point(60, 300)],
+        start=START,
+        end=START + timedelta(hours=1),
+    )
+    assert len(result) == 1
+    assert result[0]["energy_kwh"] == pytest.approx(0.2)
+
+
+def test_preserves_distinct_native_hp_hc_intervals() -> None:
+    hp = point(0, 450)
+    hp.tariff = "HP"
+    hc = point(30, 250)
+    hc.tariff = "HC"
+    result = serialize_energy_history(
+        [hc, hp],
+        start=START,
+        end=START + timedelta(hours=1),
+    )
+    assert [row["tariff"] for row in result] == ["HP", "HC"]
+    assert sum(row["energy_kwh"] for row in result) == pytest.approx(0.7)
+
+
+def test_exact_history_limit_is_allowed() -> None:
+    result = serialize_energy_history(
+        [point(0, 100), point(30, 200)],
+        start=START,
+        end=START + timedelta(hours=1),
+        limit=2,
+    )
+    assert len(result) == 2
