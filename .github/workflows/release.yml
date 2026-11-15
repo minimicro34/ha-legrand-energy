@@ -155,6 +155,14 @@ jobs:
                   raise SystemExit(f"No changelog entry for {stable}")
               notes = section.group(1).strip() + "\n"
 
+          # Validation metrics must come from this workflow, not CHANGELOG.md.
+          # Remove any existing Validation section before appending live results.
+          notes = re.sub(
+              r"(?ms)^### Validation\s*\n.*?(?=^###? [^\n]+\n|\Z)",
+              "",
+              notes,
+          ).rstrip() + "\n"
+
           log = Path("quality.log").read_text(encoding="utf-8")
           pytest = re.findall(r"(?m)(\d+) passed\b", log)
           coverage = re.findall(r"Total coverage:\s*(\d+(?:\.\d+)?)%", log)
