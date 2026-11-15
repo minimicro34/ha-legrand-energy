@@ -28,9 +28,8 @@ The format is based on Keep a Changelog.
 - Restored HP tooltip interaction on stacked chart overlays and corrected singular wording for one chart period.
 - Improved handling of stale, invalid, future-dated, or incomplete average-power measurements.
 
-### Validation
+### Tests
 - Expanded Python and JavaScript regression coverage for native history, tariff diagnostics, cached power, fallback recovery, and card interactions.
-- CI, Hassfest, and HACS Validation passed for the remainder-power pull request (#16).
 - Home Assistant testing confirmed automatic arrival of the first post-midnight readings and matching HP/HC energy and estimated costs against Home + Control.
 - Six Lovelace card screenshots (Day, Week, Month, Year, Circuits, Diagnostics) are planned for `docs/` before the stable release.
 
