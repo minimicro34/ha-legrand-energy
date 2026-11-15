@@ -165,8 +165,7 @@ def test_late_arriving_intervals_are_sorted_without_inventing_gaps() -> None:
         end=START + timedelta(hours=2),
     )
     assert [row["timestamp"] for row in result] == [
-        (START + timedelta(minutes=minute)).isoformat()
-        for minute in (0, 30, 90)
+        (START + timedelta(minutes=minute)).isoformat() for minute in (0, 30, 90)
     ]
     assert [row["energy_kwh"] for row in result] == [0.1, 0.2, 0.3]
     assert len(result) == 3
