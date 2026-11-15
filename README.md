@@ -407,13 +407,13 @@ The bundled **Legrand Energy Lovelace card (v1.0.4)** includes Day, Week, Month,
 
 The charts prefer cached **Home + Control interval history**, including native HP/HC measurements. Home Assistant Recorder is used as a fallback when native history is temporarily unavailable. At midnight, the Day chart waits for the first new-day measurements rather than displaying yesterday's consumption.
 
-The six screenshots below will be added before the **v1.3.3 stable release**. Save them in `docs/` using the exact filenames shown.
+The six screenshots below show the bundled Lovelace card with native Home + Control measurements and a fresh average-power reading.
 
 ### Day
 
 ![Legrand Energy — Day chart](docs/card-day.png)
 
-*30-minute energy intervals with HP/HC breakdown and estimated cost tooltips. Capture after the day's first measurements have arrived.*
+*30-minute energy intervals with HP/HC breakdown and estimated cost tooltips. *
 
 ### Week
 
@@ -443,7 +443,7 @@ The six screenshots below will be added before the **v1.3.3 stable release**. Sa
 
 ![Legrand Energy — Diagnostics panel](docs/card-diagnostics.png)
 
-*Expanded diagnostics and contract information. Remove any identifying information before publishing screenshots.*
+*Expanded diagnostics and contract information.*
 
 ---
 
