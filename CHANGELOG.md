@@ -31,7 +31,6 @@ The format is based on Keep a Changelog.
 ### Tests
 - Expanded Python and JavaScript regression coverage for native history, tariff diagnostics, cached power, fallback recovery, and card interactions.
 - Home Assistant testing confirmed automatic arrival of the first post-midnight readings and matching HP/HC energy and estimated costs against Home + Control.
-- Six Lovelace card screenshots (Day, Week, Month, Year, Circuits, Diagnostics) are planned for `docs/` before the stable release.
 
 ### Beta 13 — Periodic Home + Control measurement synchronization
 
