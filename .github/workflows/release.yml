@@ -146,14 +146,32 @@ jobs:
               section = re.search(pattern, changelog, flags=re.MULTILINE | re.DOTALL)
               if not section:
                   raise SystemExit(f"No changelog entry for beta {beta}")
-              notes = re.sub(r"(?m)^#### ", "### ", section.group(1).strip()) + "\n"
+              raw_notes = re.sub(r"(?m)^#### ", "### ", section.group(1).strip())
+              heading = re.search(rf"(?m)^### Beta {beta} — ([^\n]+)$", changelog)
+              if heading is None:
+                  raise SystemExit(f"No title for beta {beta}")
+              summary = heading.group(1).strip()
+              notes = (
+                  f"## Legrand Energy {version} — {summary}\n\n"
+                  "This pre-release focuses on the change described below and "
+                  "is intended for testing before the next stable version.\n\n"
+                  "### Changes and technical details\n\n"
+                  + raw_notes
+                  + "\n"
+              )
           else:
               stable = version.removeprefix("v")
               pattern = rf"(?ms)^## \[\s*{re.escape(stable)}\s*\].*?\n(.*?)(?=^---\s*$)"
               section = re.search(pattern, changelog)
               if not section:
                   raise SystemExit(f"No changelog entry for {stable}")
-              notes = section.group(1).strip() + "\n"
+              notes = (
+                  f"## Legrand Energy {version}\n\n"
+                  "Stable release of the Legrand Energy integration for Home Assistant. "
+                  "Key improvements and fixes are detailed below.\n\n"
+                  + section.group(1).strip()
+                  + "\n"
+              )
 
           log = Path("quality.log").read_text(encoding="utf-8")
           pytest = re.findall(r"(?m)(\d+) passed\b", log)
