@@ -6,7 +6,7 @@ The format is based on Keep a Changelog.
 
 ---
 
-## [1.3.3] - Unreleased
+## [1.3.3] - 2026-11-15
 
 ### Added
 - Restored native Home + Control cached interval history for Day, Week, Month, and Year charts, with native HP/HC measurements and authenticated WebSocket access.
