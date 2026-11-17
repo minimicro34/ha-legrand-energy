@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,8 +11,8 @@ import pytest
 from custom_components.legrand_energy.api import (
     LegrandEnergyApi,
     LegrandEnergyApiError,
-    LegrandEnergyHttpError,
     LegrandEnergyAuthenticationError,
+    LegrandEnergyHttpError,
 )
 from custom_components.legrand_energy.authentication import AuthenticationError
 
