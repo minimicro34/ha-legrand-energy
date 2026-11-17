@@ -10,6 +10,7 @@ import pytest
 from custom_components.legrand_energy.api import (
     LegrandEnergyApi,
     LegrandEnergyApiError,
+    LegrandEnergyHttpError,
     LegrandEnergyAuthenticationError,
 )
 from custom_components.legrand_energy.authentication import AuthenticationError
@@ -253,3 +254,72 @@ def test_get_first_home_id() -> None:
 
     api._homes_data = {"body": {"homes": [{"id": 123}]}}
     assert api.get_first_home_id() is None
+
+
+@pytest.mark.asyncio
+async def test_homesdata_5xx_backoff_and_recovery(caplog: pytest.LogCaptureFixture) -> None:
+    """Reuse cached topology and progressively delay server-error retries."""
+    api, _ = _api()
+    cached = {"body": {"homes": ["cached"]}}
+    fresh = {"body": {"homes": ["recovered"]}}
+    api._get = AsyncMock(
+        side_effect=[
+            cached,
+            LegrandEnergyHttpError("server down", 503, 27),
+            LegrandEnergyHttpError("gateway", 502, None),
+            LegrandEnergyHttpError("internal", 500, None),
+            LegrandEnergyHttpError("unavailable", 503, 27),
+            fresh,
+        ]
+    )
+
+    assert await api.homesdata() is cached
+    original_fetched_at = api._homes_data_fetched_at
+
+    for count, delay in enumerate((15, 30, 60, 60), start=1):
+        api._homes_data_fetched_at -= timedelta(minutes=16)
+        assert await api.homesdata() is cached
+        assert api._homesdata_backoff.failure_count == count
+        assert api._homesdata_backoff.retry_at is not None
+        assert api._homesdata_backoff.retry_at - api._homes_data_fetched_at > timedelta(minutes=delay)
+        calls = api._get.await_count
+        assert await api.homesdata(force_refresh=True) is cached
+        assert api._get.await_count == calls
+        # Simulate the backoff deadline passing.
+        api._homesdata_backoff._retry_at -= timedelta(minutes=61)
+
+    assert await api.homesdata() is fresh
+    assert api._homesdata_backoff.failure_count == 0
+    assert api._homesdata_backoff.retry_at is None
+    assert api._homes_data_fetched_at != original_fetched_at
+    assert "recovered after 4 failed update(s)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_homesdata_does_not_mask_uncached_or_non_5xx_errors() -> None:
+    """Preserve normal errors without a cache or for client failures."""
+    api, _ = _api()
+    api._get = AsyncMock(side_effect=LegrandEnergyHttpError("down", 503, 27))
+    with pytest.raises(LegrandEnergyHttpError):
+        await api.homesdata()
+    assert api._homesdata_backoff.failure_count == 0
+
+    api._homes_data = {"body": {"homes": []}}
+    api._get.side_effect = LegrandEnergyHttpError("bad request", 400, 12)
+    with pytest.raises(LegrandEnergyHttpError):
+        await api.homesdata(force_refresh=True)
+    assert api._homesdata_backoff.failure_count == 0
+
+
+@pytest.mark.asyncio
+async def test_get_exposes_http_status_for_server_errors() -> None:
+    """Allow homesdata to distinguish server errors without parsing strings."""
+    api, _ = _api()
+    api._request = AsyncMock(return_value=_response(503, {}))
+    api._parse_json_response = MagicMock(
+        return_value={"error": {"code": 27, "message": "unavailable"}}
+    )
+    with pytest.raises(LegrandEnergyHttpError) as exc:
+        await api._get("homesdata")
+    assert exc.value.status == 503
+    assert exc.value.code == 27
