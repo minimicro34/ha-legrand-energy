@@ -184,7 +184,7 @@ jobs:
               if index + 1 >= len(stable_versions):
                   raise SystemExit(f"No previous stable release for {stable}")
               previous = f"v{stable_versions[index + 1]}"
-          notes += f"\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\n"
+          notes += f"\n---\n\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\n"
           Path("release-notes.md").write_text(notes, encoding="utf-8")
           PY
 
