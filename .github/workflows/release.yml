@@ -170,7 +170,20 @@ jobs:
           if not pytest or not coverage or not js:
               raise SystemExit(f"Unable to extract validated metrics: Python={pytest}, coverage={coverage}, JS={js}. Inspect quality.log artifact.")
           notes += f"\n### Validation\n\n- Python: {pytest[-1]} tests passed; coverage {coverage[-1]}%.\n- JavaScript: {js[-1]} tests passed.\n- `make check` passed.\n"
-          previous = "v1.3.3-beta" + str(int(match.group(2)) - 1) if match and int(match.group(2)) > 1 else "v1.3.2"
+          if match:
+              previous = (
+                  f"v{match.group(1)}-beta{int(match.group(2)) - 1}"
+                  if int(match.group(2)) > 1
+                  else "v1.3.2"
+              )
+          else:
+              stable_versions = re.findall(r"(?m)^## \\[(\\d+\\.\\d+\\.\\d+)\\]", changelog)
+              if stable not in stable_versions:
+                  raise SystemExit(f"Missing stable changelog entry for {stable}")
+              index = stable_versions.index(stable)
+              if index + 1 >= len(stable_versions):
+                  raise SystemExit(f"No previous stable release for {stable}")
+              previous = f"v{stable_versions[index + 1]}"
           notes += f"\n**Full Changelog**: https://github.com/minimicro34/ha-legrand-energy/compare/{previous}...{version}\n"
           Path("release-notes.md").write_text(notes, encoding="utf-8")
           PY
