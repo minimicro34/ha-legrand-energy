@@ -63,7 +63,6 @@ The format is based on Keep a Changelog.
 
 #### Tests
 - Add regression coverage for cache reuse before expiry, periodic refresh after 15 minutes, and explicit `force_refresh=True` behavior.
-- Confirm local `make check` passes with 197 Python tests, 27 JavaScript tests, and 91.16% Python coverage.
 
 ### Beta 12 — Midnight display stabilization
 
@@ -103,9 +102,6 @@ The format is based on Keep a Changelog.
 #### Changed
 - Kept native HP/HC price mapping unassigned until verified against actual API responses; no change to sensor energy, cost calculations, or tariff attribution.
 
-#### Validation
-- Local validation reported 184 Python tests, 27 JavaScript tests, 86.62% coverage, and `make check` passing.
-
 ### Beta 9 — Tariff and midnight diagnostics
 
 #### Added
@@ -124,9 +120,6 @@ The format is based on Keep a Changelog.
 
 #### Improved
 - Made the fallback source more explicit in the Lovelace card.
-
-#### Validation
-- Added JavaScript regression coverage for timed fallback recovery and card version 1.0.3.
 
 ### Beta 7 — Current-day measurement diagnostics
 
@@ -147,9 +140,8 @@ The format is based on Keep a Changelog.
 - Kept Home Assistant Recorder as fallback when the integration cache is unavailable or empty, and retried native history after startup.
 - Updated the bundled Lovelace card to version 1.0.2.
 
-#### Validation
+#### Tests
 - Python and JavaScript regression tests cover native history.
-- CI, HACS Validation, and Hassfest passed on the beta6 pull request.
 
 ### Beta 5 — Average-power freshness and resilience
 
@@ -169,16 +161,13 @@ The format is based on Keep a Changelog.
 #### Fixed
 - Prevented total and circuit average-power sensors from becoming unavailable while recent valid readings still exist.
 
-#### Validation
-- At the beta5 changelog update: 90.14% Python coverage and 21 JavaScript tests passed; Ruff, Mypy, CI, HACS Validation, and Hassfest had passed before the final card-version and changelog edits.
-
 ### Beta 4 — Native interval processing
 
 #### Changed
 - Updated native measurement history and private measurement decoding used by the integration and card.
 - Updated the energy-series processing and current-day history handling.
 
-#### Validation
+#### Tests
 - Added or updated regression tests for the private measurement decoder, measurement history, and Lovelace card.
 
 ### Beta 3 — Measurement-history reliability
@@ -186,7 +175,7 @@ The format is based on Keep a Changelog.
 #### Fixed
 - Adjusted coordinator and measurement-history handling for native interval updates.
 
-#### Validation
+#### Tests
 - Updated measurement-history regression tests.
 
 ### Beta 2 — Lovelace card refinement
@@ -194,7 +183,7 @@ The format is based on Keep a Changelog.
 #### Changed
 - Refined the bundled Lovelace card's display behavior.
 
-#### Validation
+#### Tests
 - Updated Lovelace card regression tests.
 
 ### Beta 1 — Native history groundwork
@@ -220,10 +209,9 @@ The format is based on Keep a Changelog.
 - Distinguished unavailable or non-comparable Recorder history from N/R energy, which remains reserved for measured deltas spanning missing five-minute samples.
 - Kept chart energy calculations and existing entity identifiers unchanged.
 
-### Validation
+### Tests
 
 - Added a JavaScript regression test for an uncovered Recorder history gap.
-- GitHub Actions CI, Hassfest, and HACS Validation passed for PR #13.
 
 ---
 
@@ -249,15 +237,6 @@ The format is based on Keep a Changelog.
 - Fixed EcoMeter device registration during initial setup, preventing missing-parent errors on first installation.
 - Fixed circuit parent device lookup when the parent is not yet registered, preserving existing entity identifiers and Recorder history.
 - Fixed Home Assistant-managed aiohttp sessions being closed during private authentication and reconfiguration.
-
-### Validation
-
-- 147 Python tests passed.
-- 20 JavaScript tests passed.
-- 90.47% Python coverage.
-- `make check` and GitHub Actions CI passed.
-
-Thanks to @frenck for reporting the English translation issue.
 
 ---
 
@@ -315,7 +294,7 @@ Cumulative changes since 1.2.0, including the full beta development and final st
 - Visually separate the non-temporal **N/R** bar and its axis label from the final time-of-day bar.
 - Display a first month with mid-month Recorder history as an explicitly marked **partial** gray bar, showing its first recorded date in the tooltip instead of claiming a full-month total.
 
-### Final validation and documentation
+### Tests and documentation
 
 - Add regression tests for first-month reconstruction, preservation of subsequent monthly HP/HC values, N/R spacing, and day-total reconciliation.
 - Clarify automatic Lovelace resource registration, optional manual setup, Recorder history limitations, and N/R behavior.
@@ -326,7 +305,6 @@ Cumulative changes since 1.2.0, including the full beta development and final st
 - The Lovelace card reads Home Assistant Recorder statistics and does not import old Home + Control measurements into Recorder.
 - A blank month means the available statistics do not justify a consumption value; a gray partial-month bar includes only recorded consumption and does not estimate missing days. An unallocated N/R amount cannot safely be assigned to a specific time slot.
 - Final Home Assistant validation confirmed: Day, Week, Month, and Year energy totals match the Legrand website. The Year chart begins in July because earlier Home Assistant Recorder history is unavailable, while the annual total remains consistent with Legrand.
-
 
 ---
 
