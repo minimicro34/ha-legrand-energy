@@ -6,6 +6,29 @@ The format is based on Keep a Changelog.
 
 ---
 
+## [1.3.4] - 2026-11-17
+
+### Improved
+
+- Added progressive retry backoff for temporary HTTP 5xx failures when refreshing private `/homesdata` topology: 15, 30, then 60 minutes (capped at 60 minutes).
+- Preserved the last successfully cached home topology during temporary server failures without extending its successful-refresh timestamp.
+- Restored normal 15-minute topology refresh automatically after the private API recovers.
+- Reduced repetitive failure logs while retaining a warning on the first failure and an informational recovery message.
+
+### Fixed
+
+- Exposed HTTP status and private API error code for targeted server-error handling without changing authentication or non-5xx error behavior.
+
+### Tests
+
+- Added regression coverage for successive HTTP 5xx failures, backoff intervals, cached-topology reuse, recovery, and uncached or non-5xx errors.
+
+---
+
+[1.3.4]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.3...v1.3.4
+
+---
+
 ## [1.3.3] - 2026-11-15
 
 ### Added
