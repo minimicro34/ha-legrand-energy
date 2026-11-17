@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -11,10 +12,18 @@ import aiohttp
 from .authentication import AuthenticationError, AuthenticationManager
 from .base_api import BaseApiClient
 from .helpers.fluid_types import detect_fluid_type
+from .helpers.retry_backoff import RetryBackoff
 from .models import LegrandModule
+
+_LOGGER = logging.getLogger(__name__)
 
 APP_API_BASE = "https://app.netatmo.net/api"
 HOMESDATA_REFRESH_INTERVAL = timedelta(minutes=15)
+HOMESDATA_RETRY_DELAYS = (
+    timedelta(minutes=15),
+    timedelta(minutes=30),
+    timedelta(minutes=60),
+)
 
 # Measurement types expected by the undocumented private
 # gethomemeasure endpoint. This value comes from reverse
@@ -35,6 +44,15 @@ class LegrandEnergyApiError(Exception):
     """Base exception for Legrand Energy API errors."""
 
 
+class LegrandEnergyHttpError(LegrandEnergyApiError):
+    """API error with an HTTP status for targeted recovery."""
+
+    def __init__(self, message: str, status: int, code: int | None) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+
+
 class LegrandEnergyAuthenticationError(LegrandEnergyApiError):
     """Exception raised when authentication fails."""
 
@@ -52,6 +70,7 @@ class LegrandEnergyApi(BaseApiClient):
         self._authentication = authentication
         self._homes_data: dict[str, Any] | None = None
         self._homes_data_fetched_at: datetime | None = None
+        self._homesdata_backoff = RetryBackoff(HOMESDATA_RETRY_DELAYS)
 
     @property
     def headers(self) -> dict[str, str]:
@@ -135,14 +154,16 @@ class LegrandEnergyApi(BaseApiClient):
                     f"Authentication failed for API endpoint {endpoint}"
                 )
 
-            raise LegrandEnergyApiError(
+            raise LegrandEnergyHttpError(
                 self._build_error_message(
                     "GET",
                     endpoint,
                     status,
                     error_code,
                     data,
-                )
+                ),
+                status,
+                error_code,
             )
 
         return data
@@ -220,14 +241,58 @@ class LegrandEnergyApi(BaseApiClient):
         ):
             return self._homes_data
 
-        data = await self._get(
-            "homesdata",
-            params={
-                "app_type": "app_magellan",
-                "sync_measurements": "true",
-                "gateway_types": '["NLE"]',
-            },
-        )
+        # A forced refresh bypasses the normal TTL, but not a server-error
+        # backoff: repeated forced calls must not hammer an unavailable API.
+        if self._homes_data is not None and not self._homesdata_backoff.is_ready(now):
+            _LOGGER.debug(
+                "Legrand homesdata backoff active; using cached topology "
+                "(failures=%d, retry_at=%s)",
+                self._homesdata_backoff.failure_count,
+                self._homesdata_backoff.retry_at,
+            )
+            return self._homes_data
+
+        try:
+            data = await self._get(
+                "homesdata",
+                params={
+                    "app_type": "app_magellan",
+                    "sync_measurements": "true",
+                    "gateway_types": '["NLE"]',
+                },
+            )
+        except LegrandEnergyHttpError as err:
+            if not 500 <= err.status <= 599 or self._homes_data is None:
+                raise
+
+            delay = self._homesdata_backoff.record_failure(now)
+            if self._homesdata_backoff.failure_count == 1:
+                _LOGGER.warning(
+                    "Legrand homesdata unavailable (HTTP %d, code=%s); "
+                    "using cached topology; failure #%d, retry in %s",
+                    err.status,
+                    err.code,
+                    self._homesdata_backoff.failure_count,
+                    delay,
+                )
+            else:
+                _LOGGER.debug(
+                    "Legrand homesdata still unavailable (HTTP %d, code=%s); "
+                    "using cached topology; failure #%d, retry in %s",
+                    err.status,
+                    err.code,
+                    self._homesdata_backoff.failure_count,
+                    delay,
+                )
+            return self._homes_data
+
+        previous_failures = self._homesdata_backoff.reset()
+        if previous_failures:
+            _LOGGER.info(
+                "Legrand homesdata recovered after %d failed update(s); "
+                "normal 15-minute refresh restored",
+                previous_failures,
+            )
 
         self._homes_data = data
         self._homes_data_fetched_at = datetime.now(UTC)
