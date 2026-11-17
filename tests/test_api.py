@@ -258,7 +258,9 @@ def test_get_first_home_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_homesdata_5xx_backoff_and_recovery(caplog: pytest.LogCaptureFixture) -> None:
+async def test_homesdata_5xx_backoff_and_recovery(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Reuse cached topology and progressively delay server-error retries."""
     caplog.set_level(logging.INFO)
     api, _ = _api()
@@ -283,7 +285,9 @@ async def test_homesdata_5xx_backoff_and_recovery(caplog: pytest.LogCaptureFixtu
         assert await api.homesdata() is cached
         assert api._homesdata_backoff.failure_count == count
         assert api._homesdata_backoff.retry_at is not None
-        assert api._homesdata_backoff.retry_at - api._homes_data_fetched_at > timedelta(minutes=delay)
+        assert api._homesdata_backoff.retry_at - api._homes_data_fetched_at > timedelta(
+            minutes=delay
+        )
         calls = api._get.await_count
         assert await api.homesdata(force_refresh=True) is cached
         assert api._get.await_count == calls
