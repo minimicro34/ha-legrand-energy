@@ -177,7 +177,7 @@ jobs:
                   else "v1.3.2"
               )
           else:
-              stable_versions = re.findall(r"(?m)^## \\[(\\d+\\.\\d+\\.\\d+)\\]", changelog)
+              stable_versions = re.findall(r"(?m)^## \[(\d+\.\d+\.\d+)\]", changelog)
               if stable not in stable_versions:
                   raise SystemExit(f"Missing stable changelog entry for {stable}")
               index = stable_versions.index(stable)
