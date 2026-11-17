@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -259,6 +260,7 @@ def test_get_first_home_id() -> None:
 @pytest.mark.asyncio
 async def test_homesdata_5xx_backoff_and_recovery(caplog: pytest.LogCaptureFixture) -> None:
     """Reuse cached topology and progressively delay server-error retries."""
+    caplog.set_level(logging.INFO)
     api, _ = _api()
     cached = {"body": {"homes": ["cached"]}}
     fresh = {"body": {"homes": ["recovered"]}}
