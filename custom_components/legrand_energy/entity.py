@@ -74,7 +74,9 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
                 if is_dataclass(device_info):
                     cast(Any, device_info).via_device_id = parent_device.id
                 else:
-                    cast(dict[str, Any], device_info)["via_device_id"] = parent_device.id
+                    cast(dict[str, Any], device_info)["via_device_id"] = (
+                        parent_device.id
+                    )
 
         self._attr_device_info = device_info
 
