@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import is_dataclass
+from typing import Any, cast
+
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -68,7 +71,10 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
                 (DOMAIN, module.bridge), coordinator.config_entry.entry_id
             )
             if parent_device is not None:
-                device_info["via_device_id"] = parent_device.id
+                if is_dataclass(device_info):
+                    cast(Any, device_info).via_device_id = parent_device.id
+                else:
+                    cast(dict[str, Any], device_info)["via_device_id"] = parent_device.id
 
         self._attr_device_info = device_info
 
