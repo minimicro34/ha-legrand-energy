@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -267,3 +268,58 @@ def test_child_entity_without_registered_parent_does_not_fail(hass) -> None:
         child = LegrandEntity(coordinator, "main#0")
     assert "via_device_id" not in child.device_info
     assert child.device_info["identifiers"] == {("legrand_energy", "main#0")}
+
+
+@dataclass
+class _DataclassDeviceInfo:
+    identifiers: set[tuple[str, str]]
+    manufacturer: str
+    model: str
+    name: str
+    via_device_id: str | None = None
+
+
+@pytest.mark.parametrize("device_info_factory", [dict, _DataclassDeviceInfo])
+@pytest.mark.parametrize("parent_exists", [True, False])
+def test_entity_device_info_compatibility(
+    hass, device_info_factory, parent_exists
+) -> None:
+    """Preserve device topology with both DeviceInfo representations."""
+    modules = {
+        "main": LegrandModule(id="main", name="EcoMeter", type="NLE"),
+        "main#0": LegrandModule(id="main#0", name="Circuit", type="NLE", bridge="main"),
+    }
+    coordinator = _coordinator(hass, modules)
+    registry = MagicMock()
+    registry.async_get_device_by_identifier.return_value = (
+        SimpleNamespace(id="parent-device-id") if parent_exists else None
+    )
+    with (
+        patch(
+            "custom_components.legrand_energy.entity.DeviceInfo",
+            device_info_factory,
+        ),
+        patch(
+            "custom_components.legrand_energy.entity.dr.async_get",
+            return_value=registry,
+        ),
+    ):
+        main = LegrandEntity(coordinator, "main")
+        child = LegrandEntity(coordinator, "main#0")
+
+    registry.async_get_device_by_identifier.assert_called_once_with(
+        ("legrand_energy", "main"), "entry-id"
+    )
+    expected_parent = "parent-device-id" if parent_exists else None
+    if device_info_factory is dict:
+        assert main.device_info["model"] == "EcoMeter"
+        assert "via_device_id" not in main.device_info
+        assert child.device_info["model"] == "EcoMeter Circuit"
+        assert child.device_info["identifiers"] == {("legrand_energy", "main#0")}
+        assert child.device_info.get("via_device_id") == expected_parent
+    else:
+        assert main.device_info.model == "EcoMeter"
+        assert main.device_info.via_device_id is None
+        assert child.device_info.model == "EcoMeter Circuit"
+        assert child.device_info.identifiers == {("legrand_energy", "main#0")}
+        assert child.device_info.via_device_id == expected_parent
