@@ -13,6 +13,10 @@ The format is based on Keep a Changelog.
 - Resolve the Home Assistant 2026.12 `DeviceInfo` deprecation by assigning `via_device_id` as a dataclass attribute, while retaining compatibility with older dictionary-based versions.
 - Preserve parent-device relationships between the EcoMeter and its circuits.
 
+### Tests
+
+- Add parameterized regression coverage for dictionary-based and dataclass-based DeviceInfo, with and without a registered parent device.
+
 ---
 
 [1.3.5]: https://github.com/minimicro34/ha-legrand-energy/compare/v1.3.4...v1.3.5
