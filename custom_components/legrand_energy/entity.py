@@ -71,7 +71,7 @@ class LegrandEntity(CoordinatorEntity[LegrandEnergyCoordinator]):
                 (DOMAIN, module.bridge), coordinator.config_entry.entry_id
             )
             if parent_device is not None:
-                if is_dataclass(device_info):
+                if is_dataclass(cast(Any, device_info)):
                     cast(Any, device_info).via_device_id = parent_device.id
                 else:
                     cast(dict[str, Any], device_info)["via_device_id"] = (
